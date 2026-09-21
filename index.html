@@ -3031,7 +3031,37 @@ const APP_IS_MOBILE=/Android|iPhone|iPad|iPod/i.test(APP_UA);
 let _loanStmtId=null;
 
 // Save a file. Order: native share sheet (mobile/APK) -> normal download (browsers) -> in-app copy screen.
+// Native APK (Capacitor build): write to app cache and open Android's share/save sheet
+let _saveDebug='';
+async function capCall(C,plugin,method,opts){
+  if(C.Plugins&&C.Plugins[plugin]&&typeof C.Plugins[plugin][method]==='function')return C.Plugins[plugin][method](opts);
+  if(typeof C.nativePromise==='function')return C.nativePromise(plugin,method,opts);
+  throw new Error(plugin+' plugin unavailable');
+}
+async function appNativeSave(name,data,mime){
+  const C=window.Capacitor;
+  _saveDebug='capacitor='+(C?'yes':'no');
+  try{
+    if(!C)return null;
+    const native=typeof C.isNativePlatform==='function'?C.isNativePlatform():(typeof C.getPlatform==='function'&&C.getPlatform()!=='web');
+    _saveDebug+=' native='+native+' plugins='+Object.keys(C.Plugins||{}).join(',');
+    if(!native)return null;
+    let b64;
+    if(typeof data==='string'){b64=btoa(unescape(encodeURIComponent(data)));}
+    else{let bin='';for(let i=0;i<data.length;i+=0x8000)bin+=String.fromCharCode.apply(null,data.subarray(i,i+0x8000));b64=btoa(bin);}
+    const w=await capCall(C,'Filesystem','writeFile',{path:name,data:b64,directory:'CACHE'});
+    await capCall(C,'Share','share',{title:name,dialogTitle:'Save or share '+name,url:w.uri});
+    return 'shared';
+  }catch(e){
+    const msg=String((e&&e.message)||e);
+    _saveDebug+=' error='+msg;
+    if(/cancel|dismiss/i.test(msg))return 'cancelled';
+    console.error('Native save failed',e);return 'failed';
+  }
+}
 async function appSaveFile(name,data,mime){
+  const nat=await appNativeSave(name,data,mime);
+  if(nat==='shared'||nat==='cancelled')return nat;
   let blob;try{blob=new Blob([data],{type:mime});}catch(e){return 'failed';}
   if(APP_IS_MOBILE||APP_IS_WEBVIEW){
     try{
@@ -3076,7 +3106,7 @@ async function exportFile(name,data,mime,opts){
   if(r==='cancelled')return;
   if(r==='shared'){showToast('✅ '+(opts.label||'File')+' ready - choose where to save it.',2600);return;}
   if(r==='download'){showToast('💾 '+(opts.label||'File')+' saved. Check Downloads.');return;}
-  showFileFallback(name,opts.fallbackText||'',opts.note);
+  showFileFallback(name,opts.fallbackText||'',(opts.note||'')+(_saveDebug?'  [Debug: '+_saveDebug+']':''));
 }
 function safeFileName(s){return String(s||'').replace(/[^\w.\-]+/g,'_');}
 
