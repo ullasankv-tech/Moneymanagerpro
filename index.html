@@ -3104,7 +3104,7 @@ async function exportFile(name,data,mime,opts){
   opts=opts||{};
   const r=await appSaveFile(name,data,mime);
   if(r==='cancelled')return;
-  if(r==='shared'){showToast('✅ '+(opts.label||'File')+' ready - choose where to save it.',2600);return;}
+  if(r==='shared'){showToast('✅ '+(opts.label||'File')+' completed successfully!',2600);return;}
   if(r==='download'){showToast('💾 '+(opts.label||'File')+' saved. Check Downloads.');return;}
   showFileFallback(name,opts.fallbackText||'',(opts.note||'')+(_saveDebug?'  [Debug: '+_saveDebug+']':''));
 }
