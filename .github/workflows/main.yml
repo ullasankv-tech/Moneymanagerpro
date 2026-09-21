@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['index.html', '.github/workflows/android.yml']
+    paths: ['index.html', '.github/workflows/main.yml']
 
 jobs:
   build:
