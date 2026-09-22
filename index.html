@@ -3068,6 +3068,16 @@ async function appSaveFile(name,data,mime){
   const nat=await appNativeSave(name,data,mime);
   if(nat==='shared'||nat==='cancelled')return nat;
   let blob;try{blob=new Blob([data],{type:mime});}catch(e){return 'failed';}
+  // Median native share/download bridge (median.co) — tried before navigator.share
+  if(window.median&&median.share&&typeof median.share.downloadFile==='function'){
+    try{
+      let b64;
+      if(typeof data==='string'){b64=btoa(unescape(encodeURIComponent(data)));}
+      else{let bin='';for(let i=0;i<data.length;i+=0x8000)bin+=String.fromCharCode.apply(null,data.subarray(i,i+0x8000));b64=btoa(bin);}
+      await median.share.downloadFile({url:'data:'+mime+';base64,'+b64,open:true});
+      return 'shared';
+    }catch(e){console.warn('Median downloadFile failed, falling back:',e);}
+  }
   if(APP_IS_MOBILE||APP_IS_WEBVIEW){
     try{
       const file=new File([blob],name,{type:mime});
@@ -3087,8 +3097,26 @@ async function appSaveFile(name,data,mime){
   }catch(e){return 'failed';}
 }
 async function appCopyText(t,ta){
+  try{if(window.median&&median.clipboard&&typeof median.clipboard.set==='function'){await median.clipboard.set({data:t});return true;}}catch(e){}
   try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(t);return true;}}catch(e){}
   try{ta.focus();ta.select();ta.setSelectionRange(0,t.length);return document.execCommand('copy');}catch(e){return false;}
+}
+// Copies text to the clipboard with no on-screen textarea/modal — used for the Export to JSON flow,
+// which should only ever show a toast, never a visible content screen.
+async function silentCopyText(text){
+  try{if(window.median&&median.clipboard&&typeof median.clipboard.set==='function'){await median.clipboard.set({data:text});return true;}}catch(e){}
+  try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return true;}}catch(e){}
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text;
+    ta.setAttribute('readonly','');
+    ta.style.position='fixed';ta.style.top='-9999px';ta.style.left='-9999px';ta.style.opacity='0';
+    document.body.appendChild(ta);
+    ta.focus();ta.select();ta.setSelectionRange(0,text.length);
+    const ok=document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  }catch(e){return false;}
 }
 function showFileFallback(name,text,note){
   const old=document.getElementById('fileFallbackOverlay');if(old)old.remove();
@@ -3111,6 +3139,11 @@ async function exportFile(name,data,mime,opts){
   if(r==='cancelled')return;
   if(r==='shared'){showToast('✅ '+(opts.label||'File')+' completed successfully!',2600);return;}
   if(r==='download'){showToast('💾 '+(opts.label||'File')+' saved. Check Downloads.');return;}
+  if(opts.silentFallback){
+    const ok=await silentCopyText(opts.fallbackText||'');
+    showToast(ok?'📋 '+(opts.label||'Content')+' copied to clipboard! Paste it into Notes, email, or a file manager to keep it safe.':'⚠️ Could not save or copy the '+(opts.label||'file')+'. Please try again.');
+    return;
+  }
   showFileFallback(name,opts.fallbackText||'',(opts.note||'')+(_saveDebug?'  [Debug: '+_saveDebug+']':''));
 }
 function safeFileName(s){return String(s||'').replace(/[^\w.\-]+/g,'_');}
@@ -3292,7 +3325,7 @@ function downloadFile(name,content,type){
   exportFile(name,content,type,{label:name,fallbackText:content,note:'File saving is not available on this device. Copy the text below and paste it into a file named '+name+'.'});
 }
 async function downloadJSONBackup(name,content){
-  await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,note:'File saving is not available on this device. Copy the whole text below and keep it safe in a note/file named '+name+' - it can be pasted back when restoring.'});
+  await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,silentFallback:true});
 }
 function importJSON(){
   const file=document.getElementById('importFile').files[0];if(!file)return;
