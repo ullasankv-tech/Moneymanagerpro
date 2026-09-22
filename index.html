@@ -1118,6 +1118,11 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           📱 <strong>About file storage:</strong> Your data is securely saved inside this app on your device using encrypted IndexedDB storage. On Android, this is managed automatically by the system — you cannot set a custom folder path. Use <em>Export as JSON</em> to backup your data to Google Drive, WhatsApp or any folder of your choice.
         </div>
         <div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--border);">
+          <div style="font-size:0.88rem;font-weight:700;margin-bottom:10px;">☁️ Cloud Backup</div>
+          <button class="export-btn" onclick="backupToFirebase()">☁️ Backup to Cloud</button>
+          <button class="export-btn" onclick="restoreFromFirebase()" style="margin-top:8px;">☁️ Restore from Cloud</button>
+        </div>
+        <div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--border);">
           <div style="font-size:0.88rem;font-weight:700;margin-bottom:10px;">📥 Restore</div>
           <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importJSON()"/>
           <button class="export-btn" onclick="document.getElementById('importFile').click()">📂 Import JSON Backup</button>
@@ -2987,35 +2992,38 @@ function saveEdit(){
 // ═══════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════
+async function buildBackupObj(){
+  // Decrypt and read all settings-stored modules
+  let remindersData=[],netWorthData=[],registerData=[],dailyLimitVal=0;
+  try{
+    const r1=await dbGet('settings','reminders_'+currentUser.username);
+    if(r1){ const dec=await decryptData(r1.value); remindersData=JSON.parse(dec); }
+    const r2=await dbGet('settings','networth_'+currentUser.username);
+    if(r2){ const dec=await decryptData(r2.value); netWorthData=JSON.parse(dec); }
+    const r3=await dbGet('settings','register_'+currentUser.username);
+    if(r3){ const dec=await decryptData(r3.value); registerData=JSON.parse(dec); }
+    const r4=await dbGet('settings','daily_limit_'+currentUser.username);
+    if(r4) dailyLimitVal=parseFloat(r4.value)||0;
+  }catch(e){ console.log('export module read',e); }
+
+  return {
+    appVersion:'1.3.0',
+    appName:'Money Manager Pro',
+    developer:'Ullasan KV, Poyanad, Kannur, Kerala',
+    user:currentUser.name,
+    username:currentUser.username,
+    exported:new Date().toISOString(),
+    transactions,budgets,goals,emis,recurringTxns,loans,
+    INCOME_CATS,EXPENSE_CATS,INVESTMENT_CATS,investments,
+    reminders:remindersData,
+    netWorth:netWorthData,
+    register:registerData,
+    dailyLimit:dailyLimitVal
+  };
+}
 async function exportJSON(){
   try{
-    // Decrypt and read all settings-stored modules
-    let remindersData=[],netWorthData=[],registerData=[],dailyLimitVal=0;
-    try{
-      const r1=await dbGet('settings','reminders_'+currentUser.username);
-      if(r1){ const dec=await decryptData(r1.value); remindersData=JSON.parse(dec); }
-      const r2=await dbGet('settings','networth_'+currentUser.username);
-      if(r2){ const dec=await decryptData(r2.value); netWorthData=JSON.parse(dec); }
-      const r3=await dbGet('settings','register_'+currentUser.username);
-      if(r3){ const dec=await decryptData(r3.value); registerData=JSON.parse(dec); }
-      const r4=await dbGet('settings','daily_limit_'+currentUser.username);
-      if(r4) dailyLimitVal=parseFloat(r4.value)||0;
-    }catch(e){ console.log('export module read',e); }
-
-    const backupObj={
-      appVersion:'1.3.0',
-      appName:'Money Manager Pro',
-      developer:'Ullasan KV, Poyanad, Kannur, Kerala',
-      user:currentUser.name,
-      username:currentUser.username,
-      exported:new Date().toISOString(),
-      transactions,budgets,goals,emis,recurringTxns,loans,
-      INCOME_CATS,EXPENSE_CATS,INVESTMENT_CATS,investments,
-      reminders:remindersData,
-      netWorth:netWorthData,
-      register:registerData,
-      dailyLimit:dailyLimitVal
-    };
+    const backupObj=await buildBackupObj();
     const jsonStr = JSON.stringify(backupObj, null, 2);
     const fname   = 'moneypro-backup-'+currentUser.username+'-'+new Date().toISOString().split('T')[0]+'.json';
     // Show in-app export modal — reliable on all platforms
@@ -3320,7 +3328,54 @@ function downloadFile(name,content,type){
   exportFile(name,content,type,{label:name,fallbackText:content,note:'File saving is not available on this device. Copy the text below and paste it into a file named '+name+'.'});
 }
 async function downloadJSONBackup(name,content){
+  // Option A: Median's downloadFile() requires a real, publicly-fetchable http(s) URL —
+  // a data: URI doesn't qualify, which is the most likely reason earlier attempts
+  // always fell back to a generic 'open with' chooser. Since Firebase is already
+  // connected, upload the backup there first, then hand Median a real URL to it.
+  if(window.median && median.share && typeof median.share.downloadFile==='function' && firebaseDB){
+    try{
+      const backupData=JSON.parse(content);
+      await firebaseDB.ref('backups/'+currentUser.username).set(backupData);
+      const url=FIREBASE_CONFIG.databaseURL+'/backups/'+encodeURIComponent(currentUser.username)+'.json';
+      await median.share.downloadFile({url:url,open:false});
+      showToast('✅ Backup downloaded successfully!');
+      return;
+    }catch(e){
+      console.warn('Median hosted-URL download failed, falling back:',e);
+    }
+  }
   await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,silentFallback:true,skipMedianDownload:true});
+}
+async function applyBackupData(data){
+  if(!data.transactions && !data.loans && !data.register){
+    throw new Error('Invalid backup data');
+  }
+  // Core data
+  if(data.transactions) transactions=data.transactions;
+  if(data.budgets)      budgets=data.budgets;
+  if(data.goals)        goals=data.goals;
+  if(data.emis)         emis=data.emis;
+  if(data.recurringTxns) recurringTxns=data.recurringTxns;
+  if(data.INCOME_CATS)  INCOME_CATS=data.INCOME_CATS;
+  if(data.EXPENSE_CATS) EXPENSE_CATS=data.EXPENSE_CATS;
+  if(data.INVESTMENT_CATS) INVESTMENT_CATS=data.INVESTMENT_CATS;
+  if(data.investments) investments=data.investments;
+  // Loans
+  if(data.loans)        loans=data.loans;
+  // Settings-stored modules
+  if(data.reminders)    await dbPut('settings',{key:'reminders_'+currentUser.username,  value:JSON.stringify(data.reminders)});
+  if(data.netWorth)     await dbPut('settings',{key:'networth_'+currentUser.username,    value:JSON.stringify(data.netWorth)});
+  if(data.register)     await dbPut('settings',{key:'register_'+currentUser.username,    value:JSON.stringify(data.register)});
+  if(data.dailyLimit)   await dbPut('settings',{key:'daily_limit_'+currentUser.username, value:String(data.dailyLimit)});
+  // Save and refresh
+  await saveData();
+  await saveCategories();
+  // Reload in-memory copies
+  await loadReminders();
+  await loadNetWorth();
+  await loadRegister();
+  dailyLimit = data.dailyLimit||0;
+  renderAll();
 }
 function importJSON(){
   const file=document.getElementById('importFile').files[0];if(!file)return;
@@ -3328,35 +3383,7 @@ function importJSON(){
   reader.onload=async e=>{
     try{
       const data=JSON.parse(e.target.result);
-      if(!data.transactions && !data.loans && !data.register){
-        showToast('⚠️ Invalid backup file!'); return;
-      }
-      // Core data
-      if(data.transactions) transactions=data.transactions;
-      if(data.budgets)      budgets=data.budgets;
-      if(data.goals)        goals=data.goals;
-      if(data.emis)         emis=data.emis;
-      if(data.recurringTxns) recurringTxns=data.recurringTxns;
-      if(data.INCOME_CATS)  INCOME_CATS=data.INCOME_CATS;
-      if(data.EXPENSE_CATS) EXPENSE_CATS=data.EXPENSE_CATS;
-      if(data.INVESTMENT_CATS) INVESTMENT_CATS=data.INVESTMENT_CATS;
-      if(data.investments) investments=data.investments;
-      // Loans
-      if(data.loans)        loans=data.loans;
-      // Settings-stored modules
-      if(data.reminders)    await dbPut('settings',{key:'reminders_'+currentUser.username,  value:JSON.stringify(data.reminders)});
-      if(data.netWorth)     await dbPut('settings',{key:'networth_'+currentUser.username,    value:JSON.stringify(data.netWorth)});
-      if(data.register)     await dbPut('settings',{key:'register_'+currentUser.username,    value:JSON.stringify(data.register)});
-      if(data.dailyLimit)   await dbPut('settings',{key:'daily_limit_'+currentUser.username, value:String(data.dailyLimit)});
-      // Save and refresh
-      await saveData();
-      await saveCategories();
-      // Reload in-memory copies
-      await loadReminders();
-      await loadNetWorth();
-      await loadRegister();
-      dailyLimit = data.dailyLimit||0;
-      renderAll();
+      await applyBackupData(data);
       showToast('✅ Full backup restored! All data recovered.');
     }catch(err){
       console.error('Import error',err);
@@ -5241,13 +5268,13 @@ function parseCSVLine(line){
 // ⚠️  Replace with YOUR Firebase config from console.firebase.google.com
 // ══════════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  databaseURL:       "https://YOUR_PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:         "YOUR_PROJECT",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  apiKey:            "AIzaSyAwKMHazhig-9t4yH2kTGYwsDr1bhFLxGw",
+  authDomain:        "moneypro-9fe44.firebaseapp.com",
+  databaseURL:       "https://moneypro-9fe44-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "moneypro-9fe44",
+  storageBucket:     "moneypro-9fe44.firebasestorage.app",
+  messagingSenderId: "832157359050",
+  appId:             "1:832157359050:web:47825752c1ccfc2fd78d33"
 };
 
 let firebaseApp=null, firebaseDB=null;
@@ -5280,6 +5307,41 @@ function saveUserToFirebase(user){
     firebaseDB.ref('users/'+user.username).set(safe);
     console.log('✅ User saved to Firebase');
   }catch(e){console.log('Firebase save skipped:',e.message);}
+}
+
+// ── Cloud Backup & Restore (Firebase) ──
+async function backupToFirebase(){
+  if(!firebaseDB){
+    showToast('⚠️ Cloud backup is not set up yet. Contact the developer.');
+    return;
+  }
+  try{
+    showToast('☁️ Backing up...',1500);
+    const backupObj=await buildBackupObj();
+    await firebaseDB.ref('backups/'+currentUser.username).set(backupObj);
+    showToast('✅ Backed up to the cloud!');
+  }catch(e){
+    console.error('Cloud backup error',e);
+    showToast('⚠️ Cloud backup failed: '+(e&&e.message?e.message:'error'));
+  }
+}
+async function restoreFromFirebase(){
+  if(!firebaseDB){
+    showToast('⚠️ Cloud backup is not set up yet. Contact the developer.');
+    return;
+  }
+  if(!confirm('Restore from your last cloud backup? This will replace the data currently on this device.'))return;
+  try{
+    showToast('☁️ Restoring...',1500);
+    const snap=await firebaseDB.ref('backups/'+currentUser.username).once('value');
+    const data=snap.val();
+    if(!data){ showToast('⚠️ No cloud backup found for this account.'); return; }
+    await applyBackupData(data);
+    showToast('✅ Restored from the cloud!');
+  }catch(e){
+    console.error('Cloud restore error',e);
+    showToast('⚠️ Cloud restore failed: '+(e&&e.message?e.message:'error'));
+  }
 }
 
 // ── Privacy Policy Modal ──
