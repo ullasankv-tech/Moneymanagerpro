@@ -3064,12 +3064,16 @@ async function appNativeSave(name,data,mime){
     console.error('Native save failed',e);return 'failed';
   }
 }
-async function appSaveFile(name,data,mime){
+async function appSaveFile(name,data,mime,opts){
+  opts=opts||{};
   const nat=await appNativeSave(name,data,mime);
   if(nat==='shared'||nat==='cancelled')return nat;
   let blob;try{blob=new Blob([data],{type:mime});}catch(e){return 'failed';}
-  // Median native share/download bridge (median.co) — tried before navigator.share
-  if(window.median&&median.share&&typeof median.share.downloadFile==='function'){
+  // Median native share/download bridge (median.co) — tried before navigator.share.
+  // Skipped when opts.skipMedianDownload is set: Android has no proper viewer for a
+  // data: URI of some mime types (e.g. application/json), so it falls back to a
+  // generic "open with" chooser instead of actually downloading the file.
+  if(!opts.skipMedianDownload&&window.median&&median.share&&typeof median.share.downloadFile==='function'){
     try{
       let b64;
       if(typeof data==='string'){b64=btoa(unescape(encodeURIComponent(data)));}
@@ -3135,7 +3139,7 @@ function showFileFallback(name,text,note){
 }
 async function exportFile(name,data,mime,opts){
   opts=opts||{};
-  const r=await appSaveFile(name,data,mime);
+  const r=await appSaveFile(name,data,mime,opts);
   if(r==='cancelled')return;
   if(r==='shared'){showToast('✅ '+(opts.label||'File')+' completed successfully!',2600);return;}
   if(r==='download'){showToast('💾 '+(opts.label||'File')+' saved. Check Downloads.');return;}
@@ -3325,7 +3329,7 @@ function downloadFile(name,content,type){
   exportFile(name,content,type,{label:name,fallbackText:content,note:'File saving is not available on this device. Copy the text below and paste it into a file named '+name+'.'});
 }
 async function downloadJSONBackup(name,content){
-  await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,silentFallback:true});
+  await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,silentFallback:true,skipMedianDownload:true});
 }
 function importJSON(){
   const file=document.getElementById('importFile').files[0];if(!file)return;
