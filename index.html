@@ -3078,7 +3078,7 @@ async function appSaveFile(name,data,mime,opts){
       let b64;
       if(typeof data==='string'){b64=btoa(unescape(encodeURIComponent(data)));}
       else{let bin='';for(let i=0;i<data.length;i+=0x8000)bin+=String.fromCharCode.apply(null,data.subarray(i,i+0x8000));b64=btoa(bin);}
-      await median.share.downloadFile({url:'data:'+mime+';base64,'+b64,open:true});
+      await median.share.downloadFile({url:'data:'+mime+';base64,'+b64,open:opts.medianOpen!==false});
       return 'shared';
     }catch(e){console.warn('Median downloadFile failed, falling back:',e);}
   }
@@ -3329,7 +3329,7 @@ function downloadFile(name,content,type){
   exportFile(name,content,type,{label:name,fallbackText:content,note:'File saving is not available on this device. Copy the text below and paste it into a file named '+name+'.'});
 }
 async function downloadJSONBackup(name,content){
-  await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,silentFallback:true,skipMedianDownload:true});
+  await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,silentFallback:true,medianOpen:false});
 }
 function importJSON(){
   const file=document.getElementById('importFile').files[0];if(!file)return;
