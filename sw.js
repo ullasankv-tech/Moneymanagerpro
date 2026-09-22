@@ -2,7 +2,7 @@
 // GitHub Pages: https://ullasankv-tech.github.io/money-manager-pro
 
 const CACHE_NAME = 'money-manager-pro-v12';
-const BASE = '/money-manager-pro/';
+const BASE = '/moneymanagerpro/';
 const ASSETS = [
   BASE,
   BASE + 'index.html',
