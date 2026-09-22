@@ -188,7 +188,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
 
 /* DR / CR INCOME & EXPENDITURE STATEMENT */
-.ie-statement{display:grid;grid-template-columns:1fr 1fr;border:2px solid #263238;border-radius:12px;overflow:hidden;background:#eef9f3;margin-bottom:14px;}
+.ie-statement{display:grid;grid-template-columns:1fr 1fr;border:2px solid #263238;border-radius:12px;overflow:hidden;background:#eef9f3;margin-bottom:14px;color:#1a2e1a;}
 .ie-side{min-width:0;display:flex;flex-direction:column;}
 .ie-side:first-child{border-right:2px solid #263238;}
 .ie-head{display:flex;justify-content:space-between;gap:8px;padding:10px;background:#263238;color:#fff;font-size:0.74rem;font-weight:800;}
@@ -530,6 +530,8 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .ledger-table tr:last-child td{border-bottom:none;}
 .ledger-table tr.debit-row td{background:#fff8f8;}
 .ledger-table tr.credit-row td{background:#f6fff9;}
+.ledger-table tr.debit-row td:nth-child(1),.ledger-table tr.debit-row td:nth-child(2),
+.ledger-table tr.credit-row td:nth-child(1),.ledger-table tr.credit-row td:nth-child(2){color:#1a2e1a;}
 .ledger-table tr.debit-row:hover td{background:#ffebee;}
 .ledger-table tr.credit-row:hover td{background:#e8f5e9;}
 .ledger-debit{color:#e53935;font-weight:800;}
@@ -601,8 +603,8 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     </div>
     <div id="registerForm" style="display:none;">
       <div class="form-group"><label>Full Name *</label><input type="text" id="regName" placeholder="Your full name"/></div>
-      <div class="form-group"><label>Phone Number *</label><input type="tel" id="regPhone" placeholder="e.g. 9876543210" maxlength="15"/></div>
-      <div class="form-group"><label>Email Address *</label><input type="email" id="regEmail" placeholder="your@email.com"/></div>
+      <div class="form-group"><label>Phone Number</label><input type="tel" id="regPhone" placeholder="e.g. 9876543210 (optional)" maxlength="15"/></div>
+      <div class="form-group"><label>Email Address</label><input type="email" id="regEmail" placeholder="your@email.com (optional)"/></div>
       <div class="form-group"><label>City / Town *</label><input type="text" id="regCity" placeholder="e.g. Thrissur"/></div>
       <div class="form-group"><label>Username *</label><input type="text" id="regUser" placeholder="Choose a username"/></div>
       <div class="form-group"><label>Password *</label><input type="password" id="regPass" placeholder="Min 4 characters"/></div>
@@ -1367,6 +1369,8 @@ let pinEntry='', pinMode='check';
 // UTILS
 // ═══════════════════════════════════════
 const fmt=n=>'₹'+Math.abs(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+// Used only inside the Reports screen (General + Investment reports) — same number formatting as fmt(), but without the ₹ symbol.
+const fmtR=n=>Math.abs(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
 // ═══════════════════════════════════════
 // INDEXEDDB — Proper database storage
 // Tables: transactions | loans | goals | emis | recurring | settings | users | categories
@@ -1808,10 +1812,10 @@ async function doRegister(){
   const city    = document.getElementById('regCity').value.trim();
   const user    = document.getElementById('regUser').value.trim().toLowerCase();
   const pass    = document.getElementById('regPass').value;
-  if(!name||!phone||!email||!city||!user||!pass) return showError('Please fill all fields.');
+  if(!name||!city||!user||!pass) return showError('Please fill all required fields.');
   if(pass.length<4) return showError('Password min 4 characters.');
-  if(!/^[0-9]{7,15}$/.test(phone)) return showError('Enter a valid phone number.');
-  if(!/^[^@]+@[^@]+\.[^@]+$/.test(email)) return showError('Enter a valid email address.');
+  if(phone && !/^[0-9]{7,15}$/.test(phone)) return showError('Enter a valid phone number.');
+  if(email && !/^[^@]+@[^@]+\.[^@]+$/.test(email)) return showError('Enter a valid email address.');
   const users=await getUsers();
   if(users[user]) return showError('Username already taken!');
 
@@ -2450,25 +2454,25 @@ function renderReport(){
   catChartSection.style.display='block';
   if(reportTab==='summary'){
     rc.innerHTML=`
-      <div class="report-row"><span class="report-label">💰 Total Income</span><span class="report-val" style="color:#00b894;">${fmt(income)}</span></div>
-      <div class="report-row"><span class="report-label">💸 Total Expense</span><span class="report-val" style="color:#ff6b6b;">${fmt(expense)}</span></div>
-      <div class="report-row"><span class="report-label">💾 Net Savings</span><span class="report-val" style="color:${saved>=0?'#00b894':'#ff6b6b'}">${saved>=0?'+':'-'}${fmt(saved)}</span></div>
+      <div class="report-row"><span class="report-label">💰 Total Income</span><span class="report-val" style="color:#00b894;">${fmtR(income)}</span></div>
+      <div class="report-row"><span class="report-label">💸 Total Expense</span><span class="report-val" style="color:#ff6b6b;">${fmtR(expense)}</span></div>
+      <div class="report-row"><span class="report-label">💾 Net Savings</span><span class="report-val" style="color:${saved>=0?'#00b894':'#ff6b6b'}">${saved>=0?'+':'-'}${fmtR(saved)}</span></div>
       <div class="report-row"><span class="report-label">📊 Saving Rate</span><span class="report-val">${savRate}%</span></div>
       <div class="report-row"><span class="report-label">🔢 Transactions</span><span class="report-val">${txns.length}</span></div>
-      <div class="report-row"><span class="report-label">📅 Avg Daily Expense</span><span class="report-val" style="color:#ff6b6b;">${fmt(expense/30)}</span></div>`;
+      <div class="report-row"><span class="report-label">📅 Avg Daily Expense</span><span class="report-val" style="color:#ff6b6b;">${fmtR(expense/30)}</span></div>`;
   } else if(reportTab==='weekly'){
     const weeks=[0,1,2,3].map(w=>{
       const wt=txns.filter(t=>{const d=new Date(t.date).getDate();return d>w*7&&d<=(w+1)*7;});
       return{week:`Week ${w+1}`,income:wt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0),expense:wt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0)};
     });
-    rc.innerHTML=weeks.map(w=>`<div class="report-row"><span class="report-label">${w.week}</span><span style="display:flex;gap:10px;"><span style="font-size:0.8rem;font-weight:700;color:#00b894;">+${fmt(w.income)}</span><span style="font-size:0.8rem;font-weight:700;color:#ff6b6b;">-${fmt(w.expense)}</span></span></div>`).join('');
+    rc.innerHTML=weeks.map(w=>`<div class="report-row"><span class="report-label">${w.week}</span><span style="display:flex;gap:10px;"><span style="font-size:0.8rem;font-weight:700;color:#00b894;">+${fmtR(w.income)}</span><span style="font-size:0.8rem;font-weight:700;color:#ff6b6b;">-${fmtR(w.expense)}</span></span></div>`).join('');
   } else if(reportTab==='category'){
     const catMap={};
     txns.filter(t=>t.type==='expense').forEach(t=>{catMap[t.category]=(catMap[t.category]||0)+t.amount;});
     const sorted=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
     rc.innerHTML=sorted.length?sorted.map(([cat,amt])=>{
       const info=[...EXPENSE_CATS,...INCOME_CATS].find(c=>c.name===cat)||{emoji:'📦'};
-      return`<div class="report-row"><span class="report-label">${info.emoji} ${cat}</span><span class="report-val" style="color:#ff6b6b;">${fmt(amt)}</span></div>`;
+      return`<div class="report-row"><span class="report-label">${info.emoji} ${cat}</span><span class="report-val" style="color:#ff6b6b;">${fmtR(amt)}</span></div>`;
     }).join(''):`<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.82rem;">No expense data</div>`;
   }
 
@@ -2522,7 +2526,7 @@ function renderReport(){
       ctx2.font = `800 ${Math.round(outerR*0.32)}px sans-serif`;
       ctx2.textAlign = 'center';
       ctx2.textBaseline = 'middle';
-      ctx2.fillText(fmt(total), cx, cy-8);
+      ctx2.fillText(fmtR(total), cx, cy-8);
       ctx2.font = `600 ${Math.round(outerR*0.18)}px sans-serif`;
       ctx2.fillStyle = isDark?'#aaa':'#888';
       ctx2.fillText('Total Expense', cx, cy+outerR*0.25);
@@ -2548,7 +2552,7 @@ function renderReport(){
     return`<div class="cat-item">
       <div class="cat-row">
         <span class="cat-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[i]};margin-right:5px;"></span>${info.emoji} ${cat}</span>
-        <span class="cat-amount" style="color:${colors[i]}">${fmt(amt)}</span>
+        <span class="cat-amount" style="color:${colors[i]}">${fmtR(amt)}</span>
       </div>
       <div class="cat-bar"><div class="cat-fill" style="width:${pct}%;background:${colors[i]};"></div></div>
     </div>`;
@@ -2571,9 +2575,9 @@ function renderAnnualReport(){
     <div style="background:linear-gradient(135deg,#00b894,#4d96ff);color:#fff;border-radius:12px;padding:14px;margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:0.82rem;font-weight:700;">Annual Summary ${reportYear}</span></div>
       <div style="display:flex;gap:14px;">
-        <div><div style="font-size:0.68rem;opacity:0.85;">Total Income</div><div style="font-size:1rem;font-weight:800;">+${fmt(totalInc)}</div></div>
-        <div><div style="font-size:0.68rem;opacity:0.85;">Total Expense</div><div style="font-size:1rem;font-weight:800;">-${fmt(totalExp)}</div></div>
-        <div><div style="font-size:0.68rem;opacity:0.85;">Net Saved</div><div style="font-size:1rem;font-weight:800;">${fmt(totalInc-totalExp)}</div></div>
+        <div><div style="font-size:0.68rem;opacity:0.85;">Total Income</div><div style="font-size:1rem;font-weight:800;">+${fmtR(totalInc)}</div></div>
+        <div><div style="font-size:0.68rem;opacity:0.85;">Total Expense</div><div style="font-size:1rem;font-weight:800;">-${fmtR(totalExp)}</div></div>
+        <div><div style="font-size:0.68rem;opacity:0.85;">Net Saved</div><div style="font-size:1rem;font-weight:800;">${fmtR(totalInc-totalExp)}</div></div>
       </div>
     </div>
     ${months.map(m=>{
@@ -2581,8 +2585,8 @@ function renderAnnualReport(){
       return`<div class="annual-month-row">
         <div class="annual-month">${m.label}</div>
         <div class="annual-bars">
-          <div class="annual-bar-wrap"><div class="annual-bar" style="width:${ih}px;background:#00b894;"></div><div class="annual-bar-val" style="color:#00b894;">+${fmt(m.income)}</div></div>
-          <div class="annual-bar-wrap"><div class="annual-bar" style="width:${eh}px;background:#ff6b6b;"></div><div class="annual-bar-val" style="color:#ff6b6b;">-${fmt(m.expense)}</div></div>
+          <div class="annual-bar-wrap"><div class="annual-bar" style="width:${ih}px;background:#00b894;"></div><div class="annual-bar-val" style="color:#00b894;">+${fmtR(m.income)}</div></div>
+          <div class="annual-bar-wrap"><div class="annual-bar" style="width:${eh}px;background:#ff6b6b;"></div><div class="annual-bar-val" style="color:#ff6b6b;">-${fmtR(m.expense)}</div></div>
         </div>
       </div>`;
     }).join('')}`;
@@ -2616,12 +2620,12 @@ function renderDateWise(){
     const dn=di-de;
     const dl=new Date(date+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
     return`<div class="date-group">
-      <div class="date-group-header"><span class="date-group-label">📅 ${dl}</span><span class="date-group-balance" style="color:${dn>=0?'#b2f5ea':'#fed7d7'}">${dn>=0?'+':'-'}${fmt(dn)}</span></div>
+      <div class="date-group-header"><span class="date-group-label">📅 ${dl}</span><span class="date-group-balance" style="color:${dn>=0?'#b2f5ea':'#fed7d7'}">${dn>=0?'+':'-'}${fmtR(dn)}</span></div>
       ${dt.map(t=>{
         const cat=[...INCOME_CATS,...EXPENSE_CATS].find(c=>c.name===t.category)||{emoji:'💰'};
-        return`<div class="date-txn-item"><span style="font-size:1rem;width:28px;">${cat.emoji}</span><div style="flex:1;"><div style="font-size:0.82rem;font-weight:700;">${t.category}</div>${t.note?`<div style="font-size:0.7rem;color:var(--muted);">${t.note}</div>`:''}</div><div style="font-size:0.85rem;font-weight:800;color:${t.type==='income'?'#00b894':'#ff6b6b'}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div></div>`;
+        return`<div class="date-txn-item"><span style="font-size:1rem;width:28px;">${cat.emoji}</span><div style="flex:1;"><div style="font-size:0.82rem;font-weight:700;">${t.category}</div>${t.note?`<div style="font-size:0.7rem;color:var(--muted);">${t.note}</div>`:''}</div><div style="font-size:0.85rem;font-weight:800;color:${t.type==='income'?'#00b894':'#ff6b6b'}">${t.type==='income'?'+':'-'}${fmtR(t.amount)}</div></div>`;
       }).join('')}
-      <div style="display:flex;justify-content:flex-end;gap:12px;padding:4px 10px;font-size:0.72rem;font-weight:700;"><span style="color:#00b894;">In: ${fmt(di)}</span><span style="color:#ff6b6b;">Out: ${fmt(de)}</span></div>
+      <div style="display:flex;justify-content:flex-end;gap:12px;padding:4px 10px;font-size:0.72rem;font-weight:700;"><span style="color:#00b894;">In: ${fmtR(di)}</span><span style="color:#ff6b6b;">Out: ${fmtR(de)}</span></div>
     </div>`;
   }).join('');
 }
@@ -2650,14 +2654,14 @@ function renderStatement(){
     const note=t.note?`<div style="font-size:0.66rem;color:var(--muted);margin-top:2px;">${t.note}</div>`:'';
     return `<div class="ie-entry">
       <div class="ie-entry-main"><span class="ie-date">${date}</span><span class="ie-desc">${cat.emoji} ${t.category}${note}</span></div>
-      <span class="ie-amt">${fmt(t.amount)}</span>
+      <span class="ie-amt">${fmtR(t.amount)}</span>
     </div>`;
   }).join('');
 
   const debitBalance=balance>0?balance:0;
   const creditBalance=balance<0?Math.abs(balance):0;
-  const debitRows=entryRows(groupedExpenseTxns)+(debitBalance?`<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-date"></span><span class="ie-desc">By Balance c/d</span></div><span class="ie-amt">${fmt(debitBalance)}</span></div>`:'');
-  const creditRows=entryRows(incomeTxns)+(creditBalance?`<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-date"></span><span class="ie-desc">To Balance c/d</span></div><span class="ie-amt">${fmt(creditBalance)}</span></div>`:'');
+  const debitRows=entryRows(groupedExpenseTxns)+(debitBalance?`<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-date"></span><span class="ie-desc">By Balance c/d</span></div><span class="ie-amt">${fmtR(debitBalance)}</span></div>`:'');
+  const creditRows=entryRows(incomeTxns)+(creditBalance?`<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-date"></span><span class="ie-desc">To Balance c/d</span></div><span class="ie-amt">${fmtR(creditBalance)}</span></div>`:'');
 
   rc.innerHTML=`
     <div class="date-filter-row" style="margin-bottom:12px;">
@@ -2675,18 +2679,18 @@ function renderStatement(){
       <div class="ie-side ie-debit">
         <div class="ie-head"><span>Dr. — Expenditure</span><span>Amount</span></div>
         <div class="ie-body">${debitRows||'<div class="ie-empty">No expenditure entries</div>'}</div>
-        <div class="ie-total"><span>Total</span><span>${fmt(total)}</span></div>
+        <div class="ie-total"><span>Total</span><span>${fmtR(total)}</span></div>
       </div>
       <div class="ie-side ie-credit">
         <div class="ie-head"><span>Cr. — Income</span><span>Amount</span></div>
         <div class="ie-body">${creditRows||'<div class="ie-empty">No income entries</div>'}</div>
-        <div class="ie-total"><span>Total</span><span>${fmt(total)}</span></div>
+        <div class="ie-total"><span>Total</span><span>${fmtR(total)}</span></div>
       </div>
     </div>
     <div class="stmt-summary-box">
-      <div class="stmt-summary-row"><span class="stmt-summary-label">💰 Credit / Income Total</span><span class="stmt-summary-val" style="color:#00897b;">${fmt(income)}</span></div>
-      <div class="stmt-summary-row"><span class="stmt-summary-label">💸 Debit / Expenditure Total</span><span class="stmt-summary-val" style="color:#e53935;">${fmt(expense)}</span></div>
-      <div class="stmt-summary-row"><span class="stmt-summary-label" style="font-size:0.95rem;">⚖️ Closing Balance</span><span class="stmt-summary-val" style="font-size:1.05rem;">${balance>=0?'Surplus: ':'Deficit: '}${fmt(Math.abs(balance))}</span></div>
+      <div class="stmt-summary-row"><span class="stmt-summary-label">💰 Credit / Income Total</span><span class="stmt-summary-val" style="color:#00897b;">${fmtR(income)}</span></div>
+      <div class="stmt-summary-row"><span class="stmt-summary-label">💸 Debit / Expenditure Total</span><span class="stmt-summary-val" style="color:#e53935;">${fmtR(expense)}</span></div>
+      <div class="stmt-summary-row"><span class="stmt-summary-label" style="font-size:0.95rem;">⚖️ Closing Balance</span><span class="stmt-summary-val" style="font-size:1.05rem;">${balance>=0?'Surplus: ':'Deficit: '}${fmtR(Math.abs(balance))}</span></div>
     </div>
     <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin:8px 0 12px;">The balance is automatically added to the smaller side so that Debit and Credit totals are equal.</div>
     <button class="stmt-print-btn" onclick="printStatement()">🖨️ Print / Save as PDF</button>`;
@@ -2751,7 +2755,7 @@ async function deleteInvestment(id){const x=investments.find(i=>i.id===id);if(!x
 function fillInvestmentSaleLots(selectedId){
   const sel=document.getElementById('invSalePurchase');
   const lots=investments.filter(p=>invBalanceQty(p)>1e-9||p.id===selectedId);
-  sel.innerHTML=lots.map(p=>`<option value="${p.id}">${invEsc(p.stock)} · ${invEsc(p.date)} · Buy ${fmt(p.buyRate)}</option>`).join('');
+  sel.innerHTML=lots.map(p=>`<option value="${p.id}">${invEsc(p.stock)} · ${invEsc(p.date)} · Buy ${fmtR(p.buyRate)}</option>`).join('');
   if(selectedId)sel.value=String(selectedId);
 }
 function updateInvestmentSaleBalance(){
@@ -2828,8 +2832,8 @@ function renderInvestments(){
   summary.innerHTML=`<div class="report-row"><span class="report-label">Total Buy Amount</span><span class="report-val">${fmt(buy)}</span></div><div class="report-row"><span class="report-label">Total Sell Amount</span><span class="report-val">${fmt(sold)}</span></div><div class="report-row"><span class="report-label">Total Profit / Loss</span><span class="report-val">${profit<0?'-':''}${fmt(Math.abs(profit))}</span></div>`;
   list.innerHTML=investments.length?investments.map(x=>{
     const bal=Number(invBalanceQty(x).toFixed(4));
-    const sales=(x.sales||[]).map(z=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 10px;margin:2px 0 0 14px;background:#e8f5e9;border-radius:8px;font-size:.74rem;"><span>📉 ${invEsc(z.date)} · ${z.qty} @ ${fmt(z.rate)} = ${fmt(z.qty*z.rate)}</span><span style="white-space:nowrap;"><button type="button" onclick="editInvestmentSale(${x.id},${z.id})">✏️</button> <button type="button" onclick="deleteInvestmentSale(${x.id},${z.id})">🗑️</button></span></div>`).join('');
-    return `<div style="margin-bottom:8px;"><div class="txn-item"><div class="txn-icon income">📈</div><div class="txn-body"><div class="txn-title">${invEsc(x.stock)}</div><div class="txn-meta">${invEsc(x.date)} · Qty ${x.qty} @ ${fmt(x.buyRate)} · Sold ${x.qtySold||0} · Bal ${bal}</div></div><div><div class="txn-amount ${x.profit>=0?'income':'expense'}">${x.profit<0?'-':''}${fmt(Math.abs(x.profit||0))}</div><button type="button" onclick="editInvestment(${x.id})">✏️ Edit</button><button type="button" onclick="deleteInvestment(${x.id})">🗑️ Delete</button></div></div>${sales}</div>`;
+    const sales=(x.sales||[]).map(z=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 10px;margin:2px 0 0 14px;background:#e8f5e9;border-radius:8px;font-size:.74rem;color:#1b5e20;"><span>📉 ${invEsc(z.date)} · ${z.qty} @ ${fmtR(z.rate)} = ${fmtR(z.qty*z.rate)}</span><span style="white-space:nowrap;"><button type="button" onclick="editInvestmentSale(${x.id},${z.id})">✏️</button> <button type="button" onclick="deleteInvestmentSale(${x.id},${z.id})">🗑️</button></span></div>`).join('');
+    return `<div style="margin-bottom:8px;"><div class="txn-item"><div class="txn-icon income">📈</div><div class="txn-body"><div class="txn-title">${invEsc(x.stock)}</div><div class="txn-meta">${invEsc(x.date)} · Qty ${x.qty} @ ${fmtR(x.buyRate)} · Sold ${x.qtySold||0} · Bal ${bal}</div></div><div><div class="txn-amount ${x.profit>=0?'income':'expense'}">${x.profit<0?'-':''}${fmtR(Math.abs(x.profit||0))}</div><button type="button" onclick="editInvestment(${x.id})">✏️ Edit</button><button type="button" onclick="deleteInvestment(${x.id})">🗑️ Delete</button></div></div>${sales}</div>`;
   }).join(''):'<div style="text-align:center;padding:20px;color:var(--muted)">No investments recorded.</div>';
 }
 // Refresh the Investments base screen whenever an input form is dismissed (Save, Cancel, back button)
@@ -2850,7 +2854,8 @@ function investmentStatementRows(from,to){
     const bought=inR(x.date);
     if(!bought&&!sales.length)return;
     const q=sales.reduce((t,z)=>t+Number(z.qty||0),0),amt=sales.reduce((t,z)=>t+Number(z.qty||0)*Number(z.rate||0),0);
-    out.push({date:x.date,stock:x.stock,qty:x.qty,buyRate:x.buyRate,buyAmount:x.buyAmount,bought:bought,qtySold:q,sellRate:q?amt/q:0,soldAmount:amt,profit:amt-q*Number(x.buyRate||0)});
+    const soldDates=[...new Set(sales.map(z=>z.date).filter(Boolean))].sort();
+    out.push({date:x.date,stock:x.stock,qty:x.qty,buyRate:x.buyRate,buyAmount:x.buyAmount,bought:bought,qtySold:q,sellRate:q?amt/q:0,soldAmount:amt,soldDates:soldDates,profit:amt-q*Number(x.buyRate||0)});
   });
   return out.sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.stock).localeCompare(String(b.stock)));
 }
@@ -2880,7 +2885,7 @@ function renderInvestmentDateWise(){
       <input type="date" class="date-filter-input" id="inv-to" value="${invTo}"/>
       <button class="date-filter-btn" onclick="applyInvestmentFilter()">Go</button>
     </div><div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;text-align:center;">Investment Statement: ${investmentBritishDate(invFrom)} to ${investmentBritishDate(invTo)} · change dates &amp; tap Go</div>
-    <div style="overflow-x:auto;background:var(--surface);border-radius:12px;border:1px solid var(--border);"><table style="width:max-content;min-width:0;border-collapse:collapse;font-size:.72rem;"><thead><tr style="background:#e3f2fd;"><th style="${cell}text-align:left;">Date</th><th style="${cell}text-align:left;">Scrip</th><th style="${cell}text-align:right;">Qty</th><th style="${cell}text-align:right;">Buy_Rate</th><th style="${cell}text-align:right;">Amount</th><th style="${cell}text-align:right;">Sell_qty</th><th style="${cell}text-align:right;">Sell_rate</th><th style="${cell}text-align:right;">Sell_Amt</th><th style="${cell}text-align:right;">Profit</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="${cell}${mu(r)}">${investmentBritishDate(r.date)}</td><td style="${cell}font-weight:700;">${invEsc(r.stock)}</td><td style="${cell}text-align:right;${mu(r)}">${r.qty}</td><td style="${cell}text-align:right;${mu(r)}">${fmt(r.buyRate)}</td><td style="${cell}text-align:right;${mu(r)}">${fmt(r.buyAmount)}</td><td style="${cell}text-align:right;">${r.qtySold||0}</td><td style="${cell}text-align:right;">${r.sellRate?fmt(r.sellRate):''}</td><td style="${cell}text-align:right;">${fmt(r.soldAmount||0)}</td><td style="${cell}text-align:right;font-weight:800;">${r.profit<0?'-':''}${fmt(Math.abs(r.profit||0))}</td></tr>`).join('')||'<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--muted)">No investment entries in this date range.</td></tr>'}</tbody><tfoot><tr style="font-weight:800;background:var(--bg);"><td colspan="4" style="padding:6px;text-align:right;">Total</td><td style="padding:6px;text-align:right;">${fmt(buyTotal)}</td><td colspan="2"></td><td style="padding:6px;text-align:right;">${fmt(sellTotal)}</td><td style="padding:6px;text-align:right;">${totalProfit<0?'-':''}${fmt(Math.abs(totalProfit))}</td></tr></tfoot></table></div>
+    <div style="overflow-x:auto;background:var(--surface);border-radius:12px;border:1px solid var(--border);"><table style="width:max-content;min-width:0;border-collapse:collapse;font-size:.72rem;"><thead><tr style="background:#e3f2fd;color:#1a2e1a;"><th style="${cell}text-align:left;">Date</th><th style="${cell}text-align:left;">Scrip</th><th style="${cell}text-align:right;">Qty</th><th style="${cell}text-align:right;">Buy_Rate</th><th style="${cell}text-align:right;">Amount</th><th style="${cell}text-align:left;">Date_sold</th><th style="${cell}text-align:right;">Sell_qty</th><th style="${cell}text-align:right;">Sell_rate</th><th style="${cell}text-align:right;">Sell_Amt</th><th style="${cell}text-align:right;">Profit</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="${cell}${mu(r)}">${investmentBritishDate(r.date)}</td><td style="${cell}font-weight:700;">${invEsc(r.stock)}</td><td style="${cell}text-align:right;${mu(r)}">${r.qty}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyRate)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyAmount)}</td><td style="${cell}">${(r.soldDates&&r.soldDates.length)?r.soldDates.map(d=>investmentBritishDate(d)).join(', '):''}</td><td style="${cell}text-align:right;">${r.qtySold||0}</td><td style="${cell}text-align:right;">${r.sellRate?fmtR(r.sellRate):''}</td><td style="${cell}text-align:right;">${fmtR(r.soldAmount||0)}</td><td style="${cell}text-align:right;font-weight:800;">${r.profit<0?'-':''}${fmtR(Math.abs(r.profit||0))}</td></tr>`).join('')||'<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted)">No investment entries in this date range.</td></tr>'}</tbody><tfoot><tr style="font-weight:800;background:var(--bg);"><td colspan="4" style="padding:6px;text-align:right;">Total</td><td style="padding:6px;text-align:right;">${fmtR(buyTotal)}</td><td colspan="3"></td><td style="padding:6px;text-align:right;">${fmtR(sellTotal)}</td><td style="padding:6px;text-align:right;">${totalProfit<0?'-':''}${fmtR(Math.abs(totalProfit))}</td></tr></tfoot></table></div>
     <div style="font-size:0.68rem;color:var(--muted);margin:6px 2px;">Greyed purchase details = bought before this range; only sales inside the range are counted.</div>
     <button class="stmt-print-btn" onclick="printInvestmentStatement()">🖨️ Save Investment Statement as PDF</button>`;
 }
