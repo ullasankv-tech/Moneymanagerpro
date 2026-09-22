@@ -3110,17 +3110,7 @@ async function appCopyText(t,ta){
 async function silentCopyText(text){
   try{if(window.median&&median.clipboard&&typeof median.clipboard.set==='function'){await median.clipboard.set({data:text});return true;}}catch(e){}
   try{if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return true;}}catch(e){}
-  try{
-    const ta=document.createElement('textarea');
-    ta.value=text;
-    ta.setAttribute('readonly','');
-    ta.style.position='fixed';ta.style.top='-9999px';ta.style.left='-9999px';ta.style.opacity='0';
-    document.body.appendChild(ta);
-    ta.focus();ta.select();ta.setSelectionRange(0,text.length);
-    const ok=document.execCommand('copy');
-    document.body.removeChild(ta);
-    return ok;
-  }catch(e){return false;}
+  return false;
 }
 function showFileFallback(name,text,note){
   const old=document.getElementById('fileFallbackOverlay');if(old)old.remove();
@@ -3145,7 +3135,8 @@ async function exportFile(name,data,mime,opts){
   if(r==='download'){showToast('💾 '+(opts.label||'File')+' saved. Check Downloads.');return;}
   if(opts.silentFallback){
     const ok=await silentCopyText(opts.fallbackText||'');
-    showToast(ok?'📋 '+(opts.label||'Content')+' copied to clipboard! Paste it into Notes, email, or a file manager to keep it safe.':'⚠️ Could not save or copy the '+(opts.label||'file')+'. Please try again.');
+    if(ok){showToast('📋 '+(opts.label||'Content')+' copied to clipboard! Paste it into Notes, email, or a file manager to keep it safe.');return;}
+    showFileFallback(name,opts.fallbackText||'','Automatic copy did not work on this device. Tap Copy to Clipboard below, or select and copy the text manually.');
     return;
   }
   showFileFallback(name,opts.fallbackText||'',(opts.note||'')+(_saveDebug?'  [Debug: '+_saveDebug+']':''));
@@ -3329,7 +3320,7 @@ function downloadFile(name,content,type){
   exportFile(name,content,type,{label:name,fallbackText:content,note:'File saving is not available on this device. Copy the text below and paste it into a file named '+name+'.'});
 }
 async function downloadJSONBackup(name,content){
-  await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,silentFallback:true,medianOpen:false});
+  await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,silentFallback:true,skipMedianDownload:true});
 }
 function importJSON(){
   const file=document.getElementById('importFile').files[0];if(!file)return;
