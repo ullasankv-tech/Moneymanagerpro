@@ -597,7 +597,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     </div>
     <div id="authError" class="error-msg"></div>
     <div id="loginForm">
-      <div class="form-group"><label>Username</label><input type="text" id="loginUser" placeholder="Enter username"/></div>
+      <div class="form-group"><label>Username</label><input type="text" id="loginUser" placeholder="Enter username" style="text-transform:uppercase;"/></div>
       <div class="form-group"><label>Password</label><input type="password" id="loginPass" placeholder="Enter password"/></div>
       <button class="btn-primary" onclick="doLogin()">Sign In →</button>
     </div>
@@ -606,7 +606,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div class="form-group"><label>Phone Number</label><input type="tel" id="regPhone" placeholder="e.g. 9876543210 (optional)" maxlength="15"/></div>
       <div class="form-group"><label>Email Address</label><input type="email" id="regEmail" placeholder="your@email.com (optional)"/></div>
       <div class="form-group"><label>City / Town *</label><input type="text" id="regCity" placeholder="e.g. Thrissur"/></div>
-      <div class="form-group"><label>Username *</label><input type="text" id="regUser" placeholder="Choose a username"/></div>
+      <div class="form-group"><label>Username *</label><input type="text" id="regUser" placeholder="Choose a username" style="text-transform:uppercase;"/></div>
       <div class="form-group"><label>Password *</label><input type="password" id="regPass" placeholder="Min 4 characters"/></div>
       <div class="form-group"><label>Pick Avatar</label><div class="avatar-pick" id="avatarPick"></div></div>
       <div style="font-size:0.68rem;color:var(--muted);margin-bottom:10px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
@@ -626,7 +626,6 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <button class="icon-btn" id="darkToggleBtn" onclick="toggleDark()" title="Toggle Dark Mode">🌙</button>
       <div class="user-chip" id="userChip">
         <div class="user-avatar" id="topAvatar"></div><span id="userChipName" style="font-size:0.78rem;font-weight:700;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-        <span class="user-name" id="topName"></span>
       </div>
       <button class="icon-btn" onclick="doLogout()">⏻</button>
     </div>
@@ -1113,10 +1112,11 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <!-- EXPORT -->
       <div class="panel">
         <h3>📤 Export & Backup</h3>
-        <button class="export-btn" onclick="exportJSON()">💾 Export as JSON (Backup)</button>
-        <div style="font-size:0.7rem;color:var(--muted);margin-top:6px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
-          📱 <strong>About file storage:</strong> Your data is securely saved inside this app on your device using encrypted IndexedDB storage. On Android, this is managed automatically by the system — you cannot set a custom folder path. Use <em>Export as JSON</em> to backup your data to Google Drive, WhatsApp or any folder of your choice.
-        </div>
+        <button class="export-btn" onclick="exportJSON()">💾 Local Backup - JSON</button>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;margin-top:10px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+          <input type="checkbox" id="autoBackupOnLogin" onchange="saveAutoBackupPref()" style="width:16px;height:16px;flex-shrink:0;"/>
+          <span>Automatic Backup to JSON on login</span>
+        </label>
         <div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--border);">
           <div style="font-size:0.88rem;font-weight:700;margin-bottom:10px;">☁️ Cloud Backup</div>
           <button class="export-btn" onclick="backupToFirebase()">☁️ Backup to Cloud</button>
@@ -1671,11 +1671,30 @@ async function loadSettings(){
     isDark=!!settings.dark;
     if(isDark){document.body.classList.add('dark');const dtEl=document.getElementById('darkModeToggle');if(dtEl)dtEl.checked=true;}
     document.getElementById('pinToggle').checked=pinEnabled;
+    const abRec=await dbGet('settings','auto_backup_login');
+    const abEl=document.getElementById('autoBackupOnLogin');
+    if(abEl) abEl.checked = abRec ? abRec.value==='true' : false;
     return{pin,pinEnabled};
   }catch{return{pin:null,pinEnabled:false};}
 }
 async function saveSettings(){
   await dbPut('settings',{key:'app_settings',value:JSON.stringify(settings)});
+}
+async function saveAutoBackupPref(){
+  const el=document.getElementById('autoBackupOnLogin');
+  if(!el)return;
+  await dbPut('settings',{key:'auto_backup_login',value:el.checked?'true':'false'});
+}
+async function runAutoBackupIfEnabled(){
+  try{
+    const r=await dbGet('settings','auto_backup_login');
+    if(!r||r.value!=='true')return;
+    const backupObj=await buildBackupObj();
+    const jsonStr=JSON.stringify(backupObj,null,2);
+    const fname='MoneyManager-'+new Date().toISOString().split('T')[0]+'.json';
+    showToast('💾 Auto-backup: '+fname,2500);
+    await downloadJSONBackup(fname,jsonStr);
+  }catch(e){console.warn('Auto-backup failed',e);}
 }
 
 // ── PIN helpers ──
@@ -1815,7 +1834,7 @@ async function doRegister(){
   const phone   = document.getElementById('regPhone').value.trim();
   const email   = document.getElementById('regEmail').value.trim();
   const city    = document.getElementById('regCity').value.trim();
-  const user    = document.getElementById('regUser').value.trim().toLowerCase();
+  const user    = document.getElementById('regUser').value.trim().toUpperCase();
   const pass    = document.getElementById('regPass').value;
   if(!name||!city||!user||!pass) return showError('Please fill all required fields.');
   if(pass.length<4) return showError('Password min 4 characters.');
@@ -1862,7 +1881,7 @@ function doLogin(){
   var userEl = document.getElementById('loginUser');
   var passEl = document.getElementById('loginPass');
   if(!userEl||!passEl){ showError('Form error. Please reload.'); return; }
-  var user = userEl.value.trim().toLowerCase();
+  var user = userEl.value.trim().toUpperCase();
   var pass = passEl.value;
   if(!user||!pass){ showError('Enter username & password.'); return; }
 
@@ -1911,10 +1930,10 @@ function showApp(){
   document.getElementById('pinScreen').style.display='none';
   document.getElementById('loginScreen').classList.remove('active');
   document.getElementById('appScreen').classList.add('active');
-  document.getElementById('topName').textContent=currentUser.name.split(' ')[0];
   const chipName=document.getElementById('userChipName');
-  if(chipName) chipName.textContent=currentUser.name.split(' ')[0];
+  if(chipName) chipName.textContent=currentUser.username;
   document.getElementById('topAvatar').textContent=currentUser.avatar;
+  runAutoBackupIfEnabled();
   // Load all features
   loadDailyLimit().then(()=>renderDailyLimit());
   loadReminders().then(()=>checkRemindersDueToday());
@@ -3025,7 +3044,7 @@ async function exportJSON(){
   try{
     const backupObj=await buildBackupObj();
     const jsonStr = JSON.stringify(backupObj, null, 2);
-    const fname   = 'moneypro-backup-'+currentUser.username+'-'+new Date().toISOString().split('T')[0]+'.json';
+    const fname   = 'MoneyManager-'+new Date().toISOString().split('T')[0]+'.json';
     // Show in-app export modal — reliable on all platforms
     downloadJSONBackup(fname, jsonStr);
   }catch(e){
@@ -3086,7 +3105,7 @@ async function appSaveFile(name,data,mime,opts){
       let b64;
       if(typeof data==='string'){b64=btoa(unescape(encodeURIComponent(data)));}
       else{let bin='';for(let i=0;i<data.length;i+=0x8000)bin+=String.fromCharCode.apply(null,data.subarray(i,i+0x8000));b64=btoa(bin);}
-      await median.share.downloadFile({url:'data:'+mime+';base64,'+b64,open:opts.medianOpen!==false});
+      await median.share.downloadFile({url:'data:'+mime+';base64,'+b64,open:opts.medianOpen!==false,filename:name,title:name});
       return 'shared';
     }catch(e){console.warn('Median downloadFile failed, falling back:',e);}
   }
@@ -3780,9 +3799,18 @@ function deleteRepayment(loanId,repayId){
 }
 
 function closeLoan(id){
-  if(!confirm('Mark this loan as closed/settled?'))return;
   const loan=loans.find(l=>l.id===id);
-  if(loan){loan.status='closed';saveData();renderLoans();renderLoanReport();showToast('✅ Loan closed!');}
+  if(!loan)return;
+  const outstanding=getLoanOutstanding(loan);
+  const msg=outstanding>0
+    ? `Mark this loan as closed/settled? The outstanding balance of ${fmt(outstanding)} will be recorded as a final settlement entry.`
+    : 'Mark this loan as closed/settled?';
+  if(!confirm(msg))return;
+  if(outstanding>0){
+    loan.repayments.push({id:Date.now(),amount:outstanding,date:new Date().toISOString().split('T')[0],note:'Loan Closed/Settled'});
+  }
+  loan.status='closed';
+  saveData();renderLoans();renderLoanReport();showToast('✅ Loan closed!');
 }
 function deleteLoan(id){
   if(!confirm('Delete this loan record permanently?'))return;
