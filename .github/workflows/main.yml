@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -35,7 +35,7 @@ jobs:
           if [ -f sw.js ]; then cp sw.js www/sw.js; fi
           if [ -d icons ]; then cp -r icons www/icons; fi
 
-      - name: Install Capacitor 7
+      - name: Install Capacitor 6
         run: |
           npm init -y
           npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7
