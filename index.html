@@ -1581,7 +1581,17 @@ function clearCryptoKey(){ _cryptoKey = null; }
 
 // ── saveData: persist all in-memory arrays to IndexedDB ──
 async function saveData(){
-  if(!db||!currentUser)return;
+  if(!currentUser)return;
+  if(!db){
+    // IndexedDB wasn't open (WebView storage hiccup, permission issue, etc.)
+    // Try once to reopen it before giving up, instead of silently losing this save.
+    try{ db=await initDB(); }catch(e){}
+  }
+  if(!db){
+    console.error('saveData: IndexedDB unavailable — data was NOT saved!');
+    showToast('⚠️ Storage error — this change was NOT saved! Please restart the app.',4000);
+    return;
+  }
   try{
     const u=currentUser.username;
     // Encrypt each record individually before storing
@@ -1618,7 +1628,15 @@ async function saveData(){
 
 // ── loadData: load all records from IndexedDB into memory ──
 async function loadData(){
-  if(!db||!currentUser)return;
+  if(!currentUser)return;
+  if(!db){
+    try{ db=await initDB(); }catch(e){}
+  }
+  if(!db){
+    console.error('loadData: IndexedDB unavailable — cannot load saved data!');
+    showToast('⚠️ Storage error — could not load your saved data! Please restart the app.',4500);
+    return;
+  }
   try{
     const u=currentUser.username;
     // Helper: decrypt a store's records for current user
@@ -3203,18 +3221,43 @@ function safeFileName(s){return String(s||'').replace(/[^\w.\-]+/g,'_');}
 // ══════════════════════════════════════════════════════
 const WHATSAPP_ICON_SVG='<svg viewBox="0 0 32 32" width="16" height="16" style="flex-shrink:0;"><path fill="#fff" d="M16.004 3C9.376 3 4 8.373 4 15c0 2.386.7 4.61 1.912 6.482L4 29l7.72-1.877A11.94 11.94 0 0 0 16.004 27C22.63 27 28 21.627 28 15S22.63 3 16.004 3zm7.03 17.03c-.297.837-1.47 1.564-2.404 1.767-.638.137-1.472.246-4.278-.917-3.59-1.486-5.9-5.14-6.08-5.38-.178-.24-1.455-1.938-1.455-3.698 0-1.76.913-2.622 1.24-2.98.33-.36.72-.45.96-.45.238 0 .478.002.688.013.222.012.518-.084.81.618.297.716 1.01 2.474 1.098 2.654.089.18.148.395.03.635-.12.24-.18.39-.357.6-.178.21-.373.47-.533.63-.178.18-.363.375-.156.735.208.36.923 1.523 1.98 2.467 1.362 1.215 2.51 1.592 2.87 1.77.36.18.57.15.78-.09.208-.24.892-1.04 1.13-1.398.238-.36.477-.3.804-.18.328.12 2.08.982 2.437 1.16.357.18.596.27.685.42.09.15.09.868-.207 1.705z"/></svg>';
 function shareBtnWA(onclick,label){return `<button type="button" class="stmt-print-btn" style="background:linear-gradient(135deg,#25D366,#128C7E);" onclick="${onclick}">${WHATSAPP_ICON_SVG}<span>${label||'Send to WhatsApp (PDF)'}</span></button>`;}
-async function shareToWhatsApp(name,pdfBytes,label,fallbackText){
+async function shareToWhatsApp(name,pdfBytes,label,plainText){
+  // Try a real PDF file attachment first (works on some devices/browsers).
   try{
-    await exportFile(name,pdfBytes,'application/pdf',{
-      label:label||'PDF',
-      skipMedianDownload:true,
-      fallbackText:fallbackText||'',
-      note:'Direct sharing is not available on this device. Copy the statement text below and paste it into WhatsApp, or save the PDF and attach it manually.'
-    });
+    const blob=new Blob([pdfBytes],{type:'application/pdf'});
+    const file=new File([blob],name,{type:'application/pdf'});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:label||name});
+      showToast('✅ Shared successfully!');
+      return;
+    }
   }catch(e){
-    console.error('WhatsApp share error',e);
-    showToast('⚠️ Could not prepare PDF: '+(e&&e.message?e.message:'error'));
+    if(e&&e.name==='AbortError')return; // user cancelled the share sheet
   }
+  // Median/GoNative's WebView doesn't support attaching a file via the Web Share
+  // API (confirmed: canShare({files}) fails there), and Median's own bridge has no
+  // file-attach-to-app method — only downloadFile (Open-with, not Share-to-app) and
+  // sharePage (text/link via the native Share sheet). So send the statement as
+  // formatted text via sharePage, which reliably opens WhatsApp as a target.
+  await shareTextViaWhatsApp(plainText||'',label);
+}
+async function shareTextViaWhatsApp(text,label){
+  try{
+    if(window.median&&median.share&&typeof median.share.sharePage==='function'){
+      await median.share.sharePage({text:text});
+      showToast('✅ Opened share sheet — pick WhatsApp to send!');
+      return;
+    }
+  }catch(e){console.warn('Median sharePage failed:',e);}
+  try{
+    if(navigator.share){
+      await navigator.share({text:text,title:label||'Statement'});
+      showToast('✅ Opened share sheet — pick WhatsApp to send!');
+      return;
+    }
+  }catch(e){if(e&&e.name==='AbortError')return;}
+  const ok=await silentCopyText(text);
+  showToast(ok?'📋 Statement copied! Paste it into WhatsApp to send.':'⚠️ Could not share automatically — please try again.');
 }
 
 // ══════════════════════════════════════════════════════
