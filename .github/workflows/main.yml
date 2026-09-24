@@ -35,10 +35,10 @@ jobs:
           if [ -f sw.js ]; then cp sw.js www/sw.js; fi
           if [ -d icons ]; then cp -r icons www/icons; fi
 
-      - name: Install Capacitor 7
+      - name: Install Capacitor 6
         run: |
           npm init -y
-          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6
 
       - name: Initialize Capacitor (non-interactive)
         run: |
