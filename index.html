@@ -3221,25 +3221,67 @@ function safeFileName(s){return String(s||'').replace(/[^\w.\-]+/g,'_');}
 // ══════════════════════════════════════════════════════
 const WHATSAPP_ICON_SVG='<svg viewBox="0 0 32 32" width="16" height="16" style="flex-shrink:0;"><path fill="#fff" d="M16.004 3C9.376 3 4 8.373 4 15c0 2.386.7 4.61 1.912 6.482L4 29l7.72-1.877A11.94 11.94 0 0 0 16.004 27C22.63 27 28 21.627 28 15S22.63 3 16.004 3zm7.03 17.03c-.297.837-1.47 1.564-2.404 1.767-.638.137-1.472.246-4.278-.917-3.59-1.486-5.9-5.14-6.08-5.38-.178-.24-1.455-1.938-1.455-3.698 0-1.76.913-2.622 1.24-2.98.33-.36.72-.45.96-.45.238 0 .478.002.688.013.222.012.518-.084.81.618.297.716 1.01 2.474 1.098 2.654.089.18.148.395.03.635-.12.24-.18.39-.357.6-.178.21-.373.47-.533.63-.178.18-.363.375-.156.735.208.36.923 1.523 1.98 2.467 1.362 1.215 2.51 1.592 2.87 1.77.36.18.57.15.78-.09.208-.24.892-1.04 1.13-1.398.238-.36.477-.3.804-.18.328.12 2.08.982 2.437 1.16.357.18.596.27.685.42.09.15.09.868-.207 1.705z"/></svg>';
 function shareBtnWA(onclick,label){return `<button type="button" class="stmt-print-btn" style="background:linear-gradient(135deg,#25D366,#128C7E);" onclick="${onclick}">${WHATSAPP_ICON_SVG}<span>${label||'Send to WhatsApp (PDF)'}</span></button>`;}
-async function shareToWhatsApp(name,pdfBytes,label,plainText){
-  // Try a real PDF file attachment first (works on some devices/browsers).
+async function shareToWhatsApp(name, pdfBytes, label, plainText){
+  // ── METHOD 1 (tried first): Standard Web Share API with the actual file ──
+  // This is the ONLY method that produces Android's real "Share via..." sheet
+  // with WhatsApp listed as a destination. Works in real Chrome / TWA builds,
+  // and on any browser that supports the Web Share API's file-sharing level.
   try{
-    const blob=new Blob([pdfBytes],{type:'application/pdf'});
-    const file=new File([blob],name,{type:'application/pdf'});
-    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:label||name});
+    const blob = new Blob([pdfBytes], {type:'application/pdf'});
+    const file = new File([blob], name, {type:'application/pdf'});
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title: label || name});
       showToast('✅ Shared successfully!');
       return;
     }
   }catch(e){
-    if(e&&e.name==='AbortError')return; // user cancelled the share sheet
+    if(e && e.name === 'AbortError') return; // user cancelled — don't fall through
   }
-  // Median/GoNative's WebView doesn't support attaching a file via the Web Share
-  // API (confirmed: canShare({files}) fails there), and Median's own bridge has no
-  // file-attach-to-app method — only downloadFile (Open-with, not Share-to-app) and
-  // sharePage (text/link via the native Share sheet). So send the statement as
-  // formatted text via sharePage, which reliably opens WhatsApp as a target.
-  await shareTextViaWhatsApp(plainText||'',label);
+
+  // ── METHOD 2: Median native downloadFile with open:true ──
+  // NOTE: this opens Android's "Open with" (view) chooser, not "Share via" (send)
+  // — WhatsApp registers to receive shares, not to open/view PDFs, so it will
+  // usually NOT appear here. Kept only as a way to at least get the file saved or
+  // opened on Median builds if the Web Share API above isn't available there.
+  if(window.median && median.share && typeof median.share.downloadFile === 'function'){
+    let b64 = '';
+    const chunk = 0x8000;
+    for(let i = 0; i < pdfBytes.length; i += chunk){
+      b64 += String.fromCharCode.apply(null, pdfBytes.subarray(i, i + chunk));
+    }
+    b64 = btoa(b64);
+    const dataUri = 'data:application/pdf;base64,' + b64;
+    try{
+      await median.share.downloadFile({
+        url: dataUri,
+        open: true,
+        filename: name,
+        title: name
+      });
+      showToast('📥 PDF opened — use its share/print button to send via WhatsApp');
+      return;
+    }catch(e){
+      console.warn('Median downloadFile failed:', e);
+    }
+  }
+
+  // ── METHOD 3: Save file + trigger browser download via a temporary anchor ──
+  try{
+    const blob = new Blob([pdfBytes], {type:'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    showToast('📥 PDF saved to Downloads. Open it and share to WhatsApp.');
+    return;
+  }catch(e){}
+
+  // ── FINAL FALLBACK: text share (only if everything else failed) ──
+  await shareTextViaWhatsApp(plainText || '', label);
 }
 async function shareTextViaWhatsApp(text,label){
   try{
@@ -5765,14 +5807,12 @@ function renderPremiumBadge(){
 // ══════════════════════════════════════════════════════
 // SERVICE WORKER REGISTRATION
 // ══════════════════════════════════════════════════════
-// Only register SW in real browsers — NOT in Android WebView/Median
-// WebView does not support Service Workers and throws errors
+// Only register SW in real browsers — NOT in legacy embedded WebViews (old GoNative/
+// Median-style wrappers). Reuses the same precise detection used everywhere else in
+// the app (APP_IS_WEBVIEW), instead of a separate looser regex — a real Trusted Web
+// Activity (TWA) build is just Chrome under the hood and should register normally.
 function isWebView(){
-  var ua = navigator.userAgent||'';
-  // Detect Android WebView — it contains 'wv' or 'WebView'
-  return /wv/.test(ua) || /Android.*Version\/[\d.]+.*Chrome\/[\d.]+ Mobile/.test(ua)
-      || (typeof Android !== 'undefined')
-      || window.location.protocol === 'file:';
+  return APP_IS_WEBVIEW || window.location.protocol==='file:';
 }
 if('serviceWorker' in navigator && !isWebView()){
   window.addEventListener('load',()=>{
