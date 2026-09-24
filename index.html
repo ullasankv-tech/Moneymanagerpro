@@ -391,6 +391,8 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .health-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .health-title{font-size:0.88rem;font-weight:800;opacity:0.9;}
 .health-score-ring{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;border:4px solid rgba(255,255,255,0.2);position:relative;flex-shrink:0;}
+@keyframes healthDangerBlink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.health-danger-blink{animation:healthDangerBlink 1s infinite;}
 .health-score-num{font-size:1.4rem;font-weight:900;line-height:1;}
 .health-score-lbl{font-size:0.52rem;opacity:0.8;font-weight:700;}
 .health-grade{font-size:0.72rem;font-weight:800;padding:3px 10px;border-radius:20px;margin-top:4px;}
@@ -452,6 +454,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .networth-item-name{font-size:0.72rem;opacity:0.85;}
 .networth-item-val{font-size:0.75rem;font-weight:700;}
 .networth-add-btn{width:100%;margin-top:10px;padding:9px;background:rgba(255,255,255,0.12);border:1.5px dashed rgba(255,255,255,0.3);border-radius:10px;color:#fff;font-size:0.78rem;font-weight:700;cursor:pointer;font-family:var(--font);}
+.bs-action-btn{flex:1;padding:11px;border:1.5px dashed;border-radius:12px;font-size:0.8rem;font-weight:800;cursor:pointer;font-family:var(--font);}
 .nw-form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
 
 /* ── SMS AUTO-READ ── */
@@ -866,7 +869,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div class="panel" style="margin-top:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <h3 style="margin-bottom:0;">📒 Ledger Statement</h3>
-          <button class="ledger-print-btn" onclick="exportLedgerStatement()">📤 Export</button>
+          <button class="ledger-print-btn" style="background:linear-gradient(135deg,#25D366,#128C7E);display:flex;align-items:center;gap:6px;" onclick="shareLedgerToWhatsApp()"><svg viewBox="0 0 32 32" width="14" height="14" style="flex-shrink:0;"><path fill="#fff" d="M16.004 3C9.376 3 4 8.373 4 15c0 2.386.7 4.61 1.912 6.482L4 29l7.72-1.877A11.94 11.94 0 0 0 16.004 27C22.63 27 28 21.627 28 15S22.63 3 16.004 3zm7.03 17.03c-.297.837-1.47 1.564-2.404 1.767-.638.137-1.472.246-4.278-.917-3.59-1.486-5.9-5.14-6.08-5.38-.178-.24-1.455-1.938-1.455-3.698 0-1.76.913-2.622 1.24-2.98.33-.36.72-.45.96-.45.238 0 .478.002.688.013.222.012.518-.084.81.618.297.716 1.01 2.474 1.098 2.654.089.18.148.395.03.635-.12.24-.18.39-.357.6-.178.21-.373.47-.533.63-.178.18-.363.375-.156.735.208.36.923 1.523 1.98 2.467 1.362 1.215 2.51 1.592 2.87 1.77.36.18.57.15.78-.09.208-.24.892-1.04 1.13-1.398.238-.36.477-.3.804-.18.328.12 2.08.982 2.437 1.16.357.18.596.27.685.42.09.15.09.868-.207 1.705z"/></svg>Export to WhatsApp</button>
         </div>
         <!-- Person selector tabs -->
         <div class="ledger-person-tabs" id="ledgerPersonTabs"></div>
@@ -951,31 +954,39 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div id="smsEmptyMsg" style="text-align:center;font-size:0.75rem;color:#888;padding:8px;">Bank SMS transactions will appear here for quick approval</div>
       </div>
 
-      <!-- Net Worth Summary Card -->
-      <div class="networth-card">
-        <div class="networth-total">
-          <div class="networth-total-label">💎 Total Net Worth</div>
-          <div class="networth-total-amount" id="nwTotal">₹0</div>
-          <div style="font-size:0.72rem;opacity:0.6;margin-top:4px;" id="nwSubtitle">Assets − Liabilities</div>
+      <!-- Balance Sheet -->
+      <div class="statement-header">
+        <h2>💎 Balance Sheet</h2>
+        <p style="font-size:0.88rem;margin-top:4px;opacity:0.9;" id="nwUserName"></p>
+        <p style="font-size:0.8rem;opacity:0.85;margin-top:3px;" id="nwAsOnDate"></p>
+      </div>
+      <div class="ie-statement">
+        <div class="ie-side ie-debit">
+          <div class="ie-head"><span>Liabilities</span><span>Amount</span></div>
+          <div class="ie-body" id="nwLiabilitiesList"></div>
+          <div class="ie-total"><span>Total</span><span id="nwLiabilitiesTotal">₹0</span></div>
         </div>
-        <div class="networth-cols">
-          <div>
-            <div class="networth-col-title" style="color:#69db7c;">✅ Assets</div>
-            <div id="nwAssetsList"></div>
-            <button class="networth-add-btn" onclick="openAddNetWorth('asset')">+ Add Asset</button>
-            <div style="margin-top:8px;font-size:0.78rem;font-weight:800;color:#69db7c;" id="nwAssetsTotal">₹0</div>
-          </div>
-          <div>
-            <div class="networth-col-title" style="color:#ff6b6b;">❌ Liabilities</div>
-            <div id="nwLiabilitiesList"></div>
-            <button class="networth-add-btn" onclick="openAddNetWorth('liability')">+ Add Liability</button>
-            <div style="margin-top:8px;font-size:0.78rem;font-weight:800;color:#ff6b6b;" id="nwLiabilitiesTotal">₹0</div>
-          </div>
+        <div class="ie-side ie-credit">
+          <div class="ie-head"><span>Assets</span><span>Amount</span></div>
+          <div class="ie-body" id="nwAssetsList"></div>
+          <div class="ie-total"><span>Total</span><span id="nwAssetsTotal">₹0</span></div>
         </div>
       </div>
+      <div class="stmt-summary-box">
+        <div class="stmt-summary-row"><span class="stmt-summary-label">✅ Total Assets</span><span class="stmt-summary-val" style="color:#00897b;" id="nwAssetsSummary">₹0</span></div>
+        <div class="stmt-summary-row"><span class="stmt-summary-label">❌ Total Liabilities</span><span class="stmt-summary-val" style="color:#e53935;" id="nwLiabSummary">₹0</span></div>
+        <div class="stmt-summary-row"><span class="stmt-summary-label" style="font-size:0.95rem;">💎 Net Worth</span><span class="stmt-summary-val" style="font-size:1.05rem;" id="nwTotal">₹0</span></div>
+      </div>
+
+      <!-- Add Asset / Add Liability — placed below the balance sheet -->
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button class="bs-action-btn" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;" onclick="openAddNetWorth('asset')">➕ Add Asset</button>
+        <button class="bs-action-btn" style="background:#ffebee;border-color:#ef9a9a;color:#c62828;" onclick="openAddNetWorth('liability')">➕ Add Liability</button>
+      </div>
+      <button class="stmt-print-btn" style="background:linear-gradient(135deg,#25D366,#128C7E);" onclick="shareNetWorthToWhatsApp()"><svg viewBox="0 0 32 32" width="16" height="16" style="flex-shrink:0;"><path fill="#fff" d="M16.004 3C9.376 3 4 8.373 4 15c0 2.386.7 4.61 1.912 6.482L4 29l7.72-1.877A11.94 11.94 0 0 0 16.004 27C22.63 27 28 21.627 28 15S22.63 3 16.004 3zm7.03 17.03c-.297.837-1.47 1.564-2.404 1.767-.638.137-1.472.246-4.278-.917-3.59-1.486-5.9-5.14-6.08-5.38-.178-.24-1.455-1.938-1.455-3.698 0-1.76.913-2.622 1.24-2.98.33-.36.72-.45.96-.45.238 0 .478.002.688.013.222.012.518-.084.81.618.297.716 1.01 2.474 1.098 2.654.089.18.148.395.03.635-.12.24-.18.39-.357.6-.178.21-.373.47-.533.63-.178.18-.363.375-.156.735.208.36.923 1.523 1.98 2.467 1.362 1.215 2.51 1.592 2.87 1.77.36.18.57.15.78-.09.208-.24.892-1.04 1.13-1.398.238-.36.477-.3.804-.18.328.12 2.08.982 2.437 1.16.357.18.596.27.685.42.09.15.09.868-.207 1.705z"/></svg><span>Send Balance Sheet - WhatsApp (PDF)</span></button>
 
       <!-- Net Worth Tips -->
-      <div class="panel">
+      <div class="panel" style="margin-top:14px;">
         <h3>📈 Net Worth Growth Tips</h3>
         <div id="nwTips" style="font-size:0.8rem;color:var(--muted);line-height:1.7;"></div>
       </div>
@@ -1208,6 +1219,16 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
   </div>
   <div style="margin-top:16px;">
     <button onclick="showUpgradeModal()" style="background:linear-gradient(135deg,#f9ca24,#f0932b);border:none;border-radius:20px;padding:10px 24px;color:#fff;font-size:0.82rem;font-weight:800;cursor:pointer;font-family:var(--font);">⭐ Go Premium — No Ads Ever ₹199</button>
+  </div>
+</div>
+
+<!-- ALARM POPUP MODAL (daily spending limit / bill reminders) -->
+<div class="modal-overlay" id="alarmPopupModal">
+  <div class="modal-sheet" style="text-align:center;">
+    <div id="alarmPopupIcon" style="font-size:3rem;margin-bottom:6px;">🚨</div>
+    <div id="alarmPopupTitle" style="font-size:1.05rem;font-weight:900;color:#e53935;margin-bottom:6px;">Alert</div>
+    <div id="alarmPopupMsg" style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;"></div>
+    <button class="modal-close" onclick="closeModal('alarmPopupModal')" style="background:#e53935;color:#fff;border-color:#e53935;">OK, Got It</button>
   </div>
 </div>
 
@@ -1560,7 +1581,17 @@ function clearCryptoKey(){ _cryptoKey = null; }
 
 // ── saveData: persist all in-memory arrays to IndexedDB ──
 async function saveData(){
-  if(!db||!currentUser)return;
+  if(!currentUser)return;
+  if(!db){
+    // IndexedDB wasn't open (WebView storage hiccup, permission issue, etc.)
+    // Try once to reopen it before giving up, instead of silently losing this save.
+    try{ db=await initDB(); }catch(e){}
+  }
+  if(!db){
+    console.error('saveData: IndexedDB unavailable — data was NOT saved!');
+    showToast('⚠️ Storage error — this change was NOT saved! Please restart the app.',4000);
+    return;
+  }
   try{
     const u=currentUser.username;
     // Encrypt each record individually before storing
@@ -1597,7 +1628,15 @@ async function saveData(){
 
 // ── loadData: load all records from IndexedDB into memory ──
 async function loadData(){
-  if(!db||!currentUser)return;
+  if(!currentUser)return;
+  if(!db){
+    try{ db=await initDB(); }catch(e){}
+  }
+  if(!db){
+    console.error('loadData: IndexedDB unavailable — cannot load saved data!');
+    showToast('⚠️ Storage error — could not load your saved data! Please restart the app.',4500);
+    return;
+  }
   try{
     const u=currentUser.username;
     // Helper: decrypt a store's records for current user
@@ -2717,7 +2756,10 @@ function renderStatement(){
       <div class="stmt-summary-row"><span class="stmt-summary-label" style="font-size:0.95rem;">⚖️ Closing Balance</span><span class="stmt-summary-val" style="font-size:1.05rem;">${balance>=0?'Surplus: ':'Deficit: '}${fmtR(Math.abs(balance))}</span></div>
     </div>
     <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin:8px 0 12px;">The balance is automatically added to the smaller side so that Debit and Credit totals are equal.</div>
-    <button class="stmt-print-btn" onclick="printStatement()">🖨️ Print / Save as PDF</button>`;
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="stmt-print-btn" style="margin-top:0;flex:1;" onclick="printStatement()">🖨️ Save as PDF</button>
+      <button class="stmt-print-btn" style="margin-top:0;flex:1;background:linear-gradient(135deg,#25D366,#128C7E);" onclick="shareIEStatementToWhatsApp()">${WHATSAPP_ICON_SVG}<span>WhatsApp</span></button>
+    </div>`;
 }
 
 // INVESTMENTS
@@ -3170,6 +3212,65 @@ async function exportFile(name,data,mime,opts){
 }
 function safeFileName(s){return String(s||'').replace(/[^\w.\-]+/g,'_');}
 
+// ══════════════════════════════════════════════════════
+// SHARE TO WHATSAPP (PDF) — reuses the proven appSaveFile
+// navigator.share() path (skipping Median's downloadFile,
+// which only opens a viewer chooser, not the app share sheet)
+// so the native Android share sheet opens with WhatsApp as
+// a pickable target.
+// ══════════════════════════════════════════════════════
+const WHATSAPP_ICON_SVG='<svg viewBox="0 0 32 32" width="16" height="16" style="flex-shrink:0;"><path fill="#fff" d="M16.004 3C9.376 3 4 8.373 4 15c0 2.386.7 4.61 1.912 6.482L4 29l7.72-1.877A11.94 11.94 0 0 0 16.004 27C22.63 27 28 21.627 28 15S22.63 3 16.004 3zm7.03 17.03c-.297.837-1.47 1.564-2.404 1.767-.638.137-1.472.246-4.278-.917-3.59-1.486-5.9-5.14-6.08-5.38-.178-.24-1.455-1.938-1.455-3.698 0-1.76.913-2.622 1.24-2.98.33-.36.72-.45.96-.45.238 0 .478.002.688.013.222.012.518-.084.81.618.297.716 1.01 2.474 1.098 2.654.089.18.148.395.03.635-.12.24-.18.39-.357.6-.178.21-.373.47-.533.63-.178.18-.363.375-.156.735.208.36.923 1.523 1.98 2.467 1.362 1.215 2.51 1.592 2.87 1.77.36.18.57.15.78-.09.208-.24.892-1.04 1.13-1.398.238-.36.477-.3.804-.18.328.12 2.08.982 2.437 1.16.357.18.596.27.685.42.09.15.09.868-.207 1.705z"/></svg>';
+function shareBtnWA(onclick,label){return `<button type="button" class="stmt-print-btn" style="background:linear-gradient(135deg,#25D366,#128C7E);" onclick="${onclick}">${WHATSAPP_ICON_SVG}<span>${label||'Send to WhatsApp (PDF)'}</span></button>`;}
+async function shareToWhatsApp(name,pdfBytes,label,fallbackText){
+  try{
+    await exportFile(name,pdfBytes,'application/pdf',{
+      label:label||'PDF',
+      skipMedianDownload:true,
+      fallbackText:fallbackText||'',
+      note:'Direct sharing is not available on this device. Copy the statement text below and paste it into WhatsApp, or save the PDF and attach it manually.'
+    });
+  }catch(e){
+    console.error('WhatsApp share error',e);
+    showToast('⚠️ Could not prepare PDF: '+(e&&e.message?e.message:'error'));
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// ALARM POPUP — used for daily spending limit breaches and
+// bill reminders due today. Plays a short beeping tone via
+// the Web Audio API (no external sound file needed) and
+// shows a blocking modal until dismissed.
+// ══════════════════════════════════════════════════════
+function playAlarmSound(){
+  try{
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(!Ctx)return;
+    const ctx=new Ctx();
+    const beep=(startAt)=>{
+      const osc=ctx.createOscillator(),gain=ctx.createGain();
+      osc.type='square';osc.frequency.value=880;
+      osc.connect(gain);gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.0001,startAt);
+      gain.gain.exponentialRampToValueAtTime(0.25,startAt+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001,startAt+0.28);
+      osc.start(startAt);osc.stop(startAt+0.3);
+    };
+    const now=ctx.currentTime;
+    beep(now);beep(now+0.4);beep(now+0.8);
+    setTimeout(()=>{try{ctx.close();}catch(e){}},1500);
+  }catch(e){console.warn('Alarm sound failed',e);}
+}
+function showAlarmPopup(title,message,emoji){
+  const el=document.getElementById('alarmPopupModal');
+  if(!el)return;
+  document.getElementById('alarmPopupIcon').textContent=emoji||'🚨';
+  document.getElementById('alarmPopupTitle').textContent=title||'Alert';
+  document.getElementById('alarmPopupMsg').textContent=message||'';
+  openModal('alarmPopupModal');
+  playAlarmSound();
+  if(navigator.vibrate)try{navigator.vibrate([300,150,300,150,300]);}catch(e){}
+}
+
 // ── Minimal PDF writer (text + tables, no external libraries) ──
 const PDF_WR=[].concat([278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278],Array(10).fill(556),[278,278,584,584,584,556,1015],[667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611],[278,278,278,469,556,333],[556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500],[334,260,334,584]);
 const PDF_WB=[].concat([278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278],Array(10).fill(556),[333,333,584,584,584,611,975],[722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611],[333,278,333,584,556,333],[556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500],[389,280,389,584]);
@@ -3341,6 +3442,12 @@ function printStatement(){
     }else{
       const r=buildIEPdf();savePdfDoc(r.pdf,r.name,'Statement PDF');
     }
+  }catch(e){console.error('PDF error',e);showToast('⚠️ Could not create PDF: '+(e&&e.message?e.message:'error'));}
+}
+function shareIEStatementToWhatsApp(){
+  try{
+    const r=buildIEPdf();
+    shareToWhatsApp(r.name,r.pdf.save(),'Statement PDF',r.pdf.plain.join('\n'));
   }catch(e){console.error('PDF error',e);showToast('⚠️ Could not create PDF: '+(e&&e.message?e.message:'error'));}
 }
 function downloadFile(name,content,type){
@@ -4176,6 +4283,46 @@ function exportLedgerStatement(){
   downloadFile(fname, csv, 'text/csv');
 }
 
+function buildLedgerPdf(){
+  const personLoans = loans.filter(l=>l.person===ledgerActivePerson);
+  const entries = [];
+  personLoans.forEach(loan=>{
+    const isGiven = loan.type==='given';
+    entries.push({date:loan.date, details:isGiven?'Loan Given':'Loan Taken', debit:isGiven?loan.amount:0, credit:isGiven?0:loan.amount});
+    (loan.repayments||[]).forEach(r=>{
+      entries.push({date:r.date, details:isGiven?'Repayment Received':'Repayment Made', debit:isGiven?0:r.amount, credit:isGiven?r.amount:0});
+    });
+  });
+  entries.sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const dl=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'';
+  const p=new PdfBuilder(false);
+  p.heading('Ledger Statement',16,true);
+  p.heading(ledgerActivePerson||'',12,true);
+  p.heading(((currentUser&&currentUser.name)||'')+'   |   Generated: '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}),8,false);
+  p.gap(8);
+  const fr=[.18,.34,.16,.16,.16],al=['l','l','r','r','r'],hd=['Date','Particulars','Debit (Dr)','Credit (Cr)','Balance'],ho={bold:true,fill:PDF_HEAD_FILL,head:true};
+  p.row(hd,fr,al,ho);p.header={cells:hd,fr:fr,al:al,o:ho};
+  let balance=0;
+  entries.forEach(e=>{
+    balance+=e.debit-e.credit;
+    p.row([dl(e.date),e.details,e.debit?pdfMoney(e.debit):'',e.credit?pdfMoney(e.credit):'',pdfMoney(Math.abs(balance))+' '+(balance>=0?'Dr':'Cr')],fr,al);
+  });
+  if(!entries.length)p.row(['No ledger entries for this person.'],[1],['l']);
+  return {pdf:p,name:'Ledger-Statement-'+safeFileName(ledgerActivePerson)+'-'+new Date().toISOString().split('T')[0]+'.pdf'};
+}
+function shareLedgerToWhatsApp(){
+  if(!ledgerActivePerson){ showToast('⚠️ Select a person first'); return; }
+  const personLoans = loans.filter(l=>l.person===ledgerActivePerson);
+  if(!personLoans.length){ showToast('⚠️ No data to export'); return; }
+  try{
+    const r=buildLedgerPdf();
+    shareToWhatsApp(r.name,r.pdf.save(),'Ledger Statement PDF',r.pdf.plain.join('\n'));
+  }catch(e){
+    console.error('Ledger PDF error',e);
+    showToast('⚠️ Could not create PDF: '+(e&&e.message?e.message:'error'));
+  }
+}
+
 // ═══════════════════════════════════════
 // KEYBOARD & INIT
 // ═══════════════════════════════════════
@@ -4269,6 +4416,10 @@ function renderHealthScore(){
   gradeEl.textContent=h.grade;
   gradeEl.style.background=h.gradeColor+'22';
   gradeEl.style.color=h.gradeColor;
+  // Danger zone (score < 40, "Needs Work") — blink the score & grade to draw attention
+  const isDanger=h.total<40;
+  document.getElementById('healthScoreNum').classList.toggle('health-danger-blink',isDanger);
+  gradeEl.classList.toggle('health-danger-blink',isDanger);
   // bars
   setTimeout(()=>{
     document.getElementById('hb1').style.width=Math.min(100,h.savingsPct)+'%';
@@ -4287,12 +4438,15 @@ function renderHealthScore(){
 // FEATURE 2: DAILY SPENDING LIMIT
 // ══════════════════════════════════════════════════════
 let dailyLimit=0;
+const DAILY_LIMIT_DEFAULT=1000;
+let _dailyLimitAlertedOn=null; // date-string guard so the alarm popup fires only once per day
 
 async function loadDailyLimit(){
   try{
     const r=await dbGet('settings','daily_limit_'+currentUser.username);
-    dailyLimit=r?parseFloat(r.value):0;
-  }catch{dailyLimit=0;}
+    if(r){ dailyLimit=parseFloat(r.value); }
+    else{ dailyLimit=DAILY_LIMIT_DEFAULT; await saveDailyLimit(DAILY_LIMIT_DEFAULT); }
+  }catch{dailyLimit=DAILY_LIMIT_DEFAULT;}
 }
 async function saveDailyLimit(val){
   dailyLimit=val;
@@ -4316,7 +4470,13 @@ function renderDailyLimit(){
     else if(pct>=80){fillEl.style.background='#ff922b';remainEl.textContent=fmt(remain)+' remaining';}
     else{fillEl.style.background='#00b894';remainEl.textContent=fmt(remain)+' remaining';}
     // Warning
-    if(pct>=100){warnEl.style.display='flex';warnTxt.textContent='Daily limit exceeded! Consider reducing expenses.';}
+    if(pct>=100){
+      warnEl.style.display='flex';warnTxt.textContent='Daily limit exceeded! Consider reducing expenses.';
+      if(_dailyLimitAlertedOn!==today){
+        _dailyLimitAlertedOn=today;
+        showAlarmPopup('Daily Spending Limit Exceeded!','You have spent '+fmt(todayExp)+' today, which is '+fmt(Math.abs(remain))+' over your '+fmt(dailyLimit)+' limit.','⚠️');
+      }
+    }
     else if(pct>=80){warnEl.style.display='flex';warnTxt.textContent='Approaching daily limit — only '+fmt(remain)+' left!';}
     else{warnEl.style.display='none';}
   } else {
@@ -4481,11 +4641,15 @@ async function deleteReminder(id){
 }
 
 // Check reminders on app open — notify if bills due today
+let _billAlarmShownOn=null; // date-string guard so the alarm popup fires only once per day
 function checkRemindersDueToday(){
-  const today=new Date().getDate();
-  const due=reminders.filter(r=>!r.paid&&r.dueDay===today);
-  if(due.length){
-    setTimeout(()=>showToast('🔔 '+due.length+' bill(s) due today! Check Bills tab.'),3000);
+  const todayNum=new Date().getDate();
+  const todayStr=new Date().toISOString().split('T')[0];
+  const due=reminders.filter(r=>!r.paid&&r.dueDay===todayNum);
+  if(due.length && _billAlarmShownOn!==todayStr){
+    _billAlarmShownOn=todayStr;
+    const names=due.map(r=>r.name||r.title||'Bill').join(', ');
+    setTimeout(()=>showAlarmPopup(due.length+' Bill'+(due.length>1?'s':'')+' Due Today!',names+' — due today. Check the Bills tab to mark as paid.','🔔'),1200);
   }
 }
 
@@ -4512,39 +4676,38 @@ function renderNetWorth(){
   const totalAssets= assets.reduce((s,i)=>s+i.amount,0);
   const totalLiab  = liabilities.reduce((s,i)=>s+i.amount,0);
   const netWorth   = totalAssets - totalLiab;
+  // To balance the sheet (Liabilities + Capital = Assets), the net worth
+  // figure is added as a balancing entry to whichever side is smaller —
+  // same convention as the Income & Expenditure statement's Balance c/d.
+  const liabSideTotal = totalLiab + Math.max(0,netWorth);
+  const assetSideTotal = totalAssets + Math.max(0,-netWorth);
 
-  // Total
+  const nameEl=document.getElementById('nwUserName'); if(nameEl) nameEl.textContent=(currentUser&&currentUser.name)||'';
+  const dateEl=document.getElementById('nwAsOnDate'); if(dateEl) dateEl.textContent='📅 As on '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+
+  // Total / Summary
   const nwEl = document.getElementById('nwTotal');
   nwEl.textContent = fmt(netWorth);
-  nwEl.style.color = netWorth >= 0 ? '#69db7c' : '#ff6b6b';
-  document.getElementById('nwSubtitle').textContent =
-    fmt(totalAssets)+' assets  −  '+fmt(totalLiab)+' liabilities';
-  document.getElementById('nwAssetsTotal').textContent = '∑ '+fmt(totalAssets);
-  document.getElementById('nwLiabilitiesTotal').textContent = '∑ '+fmt(totalLiab);
+  document.getElementById('nwAssetsSummary').textContent = fmt(totalAssets);
+  document.getElementById('nwLiabSummary').textContent = fmt(totalLiab);
+  document.getElementById('nwAssetsTotal').textContent = fmt(assetSideTotal);
+  document.getElementById('nwLiabilitiesTotal').textContent = fmt(liabSideTotal);
 
-  // Lists
-  const assetHTML = assets.length
-    ? assets.map(i=>`<div class="networth-item">
-        <span class="networth-item-name">${i.emoji} ${i.name}</span>
-        <div style="display:flex;align-items:center;gap:5px;">
-          <span class="networth-item-val" style="color:#69db7c;">${fmt(i.amount)}</span>
-          <button onclick="deleteNetWorthItem(${i.id})" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:0.75rem;cursor:pointer;">✕</button>
-        </div>
-      </div>`).join('')
-    : '<div style="font-size:0.7rem;opacity:0.5;padding:6px 0;">None added yet</div>';
+  // Lists (styled as ie-entry rows to match the balance-sheet look)
+  const itemRow=(i,color)=>`<div class="ie-entry">
+      <div class="ie-entry-main"><span class="ie-desc">${i.emoji} ${i.name}</span></div>
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span class="ie-amt" style="color:${color};">${fmt(i.amount)}</span>
+        <button onclick="deleteNetWorthItem(${i.id})" style="background:none;border:none;color:var(--muted);font-size:0.75rem;cursor:pointer;">✕</button>
+      </div>
+    </div>`;
+  const assetHTML = assets.length ? assets.map(i=>itemRow(i,'#00897b')).join('') : '<div class="ie-empty">No assets added yet</div>';
+  const liabHTML  = liabilities.length ? liabilities.map(i=>itemRow(i,'#e53935')).join('') : '<div class="ie-empty">No liabilities added yet</div>';
+  const capRow = netWorth>0 ? `<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-desc">Net Worth (Capital)</span></div><span class="ie-amt">${fmt(netWorth)}</span></div>` : '';
+  const deficitRow = netWorth<0 ? `<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-desc">Net Worth (Deficit)</span></div><span class="ie-amt">${fmt(Math.abs(netWorth))}</span></div>` : '';
 
-  const liabHTML = liabilities.length
-    ? liabilities.map(i=>`<div class="networth-item">
-        <span class="networth-item-name">${i.emoji} ${i.name}</span>
-        <div style="display:flex;align-items:center;gap:5px;">
-          <span class="networth-item-val" style="color:#ff6b6b;">${fmt(i.amount)}</span>
-          <button onclick="deleteNetWorthItem(${i.id})" style="background:none;border:none;color:rgba(255,255,255,0.4);font-size:0.75rem;cursor:pointer;">✕</button>
-        </div>
-      </div>`).join('')
-    : '<div style="font-size:0.7rem;opacity:0.5;padding:6px 0;">None added yet</div>';
-
-  document.getElementById('nwAssetsList').innerHTML = assetHTML;
-  document.getElementById('nwLiabilitiesList').innerHTML = liabHTML;
+  document.getElementById('nwAssetsList').innerHTML = assetHTML+deficitRow;
+  document.getElementById('nwLiabilitiesList').innerHTML = liabHTML+capRow;
 
   // Tips
   const tips = [];
@@ -4555,6 +4718,42 @@ function renderNetWorth(){
   if(netWorth > 100000) tips.push('🌟 Great net worth! Consider diversifying into mutual funds or gold.');
   if(!tips.length) tips.push('📊 Track all your assets and liabilities here to see your complete financial picture.');
   document.getElementById('nwTips').innerHTML = tips.map(t=>`<div style="margin-bottom:10px;padding:8px 10px;background:var(--bg);border-radius:8px;border-left:3px solid #4d96ff;">${t}</div>`).join('');
+}
+
+function buildNetWorthPdf(){
+  const assets     = netWorthItems.filter(i=>i.type==='asset');
+  const liabilities= netWorthItems.filter(i=>i.type==='liability');
+  const totalAssets= assets.reduce((s,i)=>s+i.amount,0);
+  const totalLiab  = liabilities.reduce((s,i)=>s+i.amount,0);
+  const netWorth   = totalAssets - totalLiab;
+  const left = liabilities.map(i=>[i.emoji+' '+i.name,pdfMoney(i.amount)]);
+  if(netWorth>0) left.push(['Net Worth (Capital)',pdfMoney(netWorth)]);
+  const right = assets.map(i=>[i.emoji+' '+i.name,pdfMoney(i.amount)]);
+  if(netWorth<0) right.push(['Net Worth (Deficit)',pdfMoney(Math.abs(netWorth))]);
+  const grandTotal = totalLiab+Math.max(0,netWorth);
+  const p=new PdfBuilder(false);
+  p.heading('Balance Sheet',16,true);
+  p.heading((currentUser&&currentUser.name)||'',10,false);
+  p.heading('As on '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}),9,false);
+  p.gap(8);
+  const fr=[.30,.20,.30,.20],al=['l','r','l','r'],hd=['Liabilities','Amount (Rs.)','Assets','Amount (Rs.)'],ho={bold:true,fill:PDF_HEAD_FILL,head:true};
+  p.row(hd,fr,al,ho);p.header={cells:hd,fr:fr,al:al,o:ho};
+  const n=Math.max(left.length,right.length);
+  if(!n)p.row(['No assets or liabilities recorded yet.'],[1],['l']);
+  for(let i=0;i<n;i++){const l=left[i]||['',''],r=right[i]||['',''];p.row([l[0],l[1],r[0],r[1]],fr,al);}
+  p.row(['Total',pdfMoney(grandTotal),'Total',pdfMoney(grandTotal)],fr,al,{bold:true,fill:PDF_TOTAL_FILL});
+  p.gap(12);
+  const sf=[.6,.4],sa=['l','r'];
+  p.row(['Total Assets',pdfMoney(totalAssets)],sf,sa,{bold:true});
+  p.row(['Total Liabilities',pdfMoney(totalLiab)],sf,sa,{bold:true});
+  p.row(['Net Worth',pdfMoney(netWorth)],sf,sa,{bold:true,fill:PDF_TOTAL_FILL});
+  return {pdf:p,name:'Balance-Sheet-'+new Date().toISOString().split('T')[0]+'.pdf'};
+}
+function shareNetWorthToWhatsApp(){
+  try{
+    const r=buildNetWorthPdf();
+    shareToWhatsApp(r.name,r.pdf.save(),'Balance Sheet PDF',r.pdf.plain.join('\n'));
+  }catch(e){console.error('Balance sheet PDF error',e);showToast('⚠️ Could not create PDF: '+(e&&e.message?e.message:'error'));}
 }
 
 function openAddNetWorth(type){
