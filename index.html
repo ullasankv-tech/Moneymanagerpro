@@ -1581,17 +1581,7 @@ function clearCryptoKey(){ _cryptoKey = null; }
 
 // ── saveData: persist all in-memory arrays to IndexedDB ──
 async function saveData(){
-  if(!currentUser)return;
-  if(!db){
-    // IndexedDB wasn't open (WebView storage hiccup, permission issue, etc.)
-    // Try once to reopen it before giving up, instead of silently losing this save.
-    try{ db=await initDB(); }catch(e){}
-  }
-  if(!db){
-    console.error('saveData: IndexedDB unavailable — data was NOT saved!');
-    showToast('⚠️ Storage error — this change was NOT saved! Please restart the app.',4000);
-    return;
-  }
+  if(!db||!currentUser)return;
   try{
     const u=currentUser.username;
     // Encrypt each record individually before storing
@@ -1628,15 +1618,7 @@ async function saveData(){
 
 // ── loadData: load all records from IndexedDB into memory ──
 async function loadData(){
-  if(!currentUser)return;
-  if(!db){
-    try{ db=await initDB(); }catch(e){}
-  }
-  if(!db){
-    console.error('loadData: IndexedDB unavailable — cannot load saved data!');
-    showToast('⚠️ Storage error — could not load your saved data! Please restart the app.',4500);
-    return;
-  }
+  if(!db||!currentUser)return;
   try{
     const u=currentUser.username;
     // Helper: decrypt a store's records for current user
