@@ -7,8 +7,8 @@ const ASSETS = [
   BASE,
   BASE + 'index.html',
   BASE + 'manifest.json',
-  BASE + 'resources/icon-192.png',
-  BASE + 'resources/icon-512.png'
+  BASE + 'resources/icon.png',
+  BASE + 'resources/icon.png'
 ];
 
 self.addEventListener('install', event => {
