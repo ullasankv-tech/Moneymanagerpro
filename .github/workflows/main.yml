@@ -50,10 +50,10 @@ jobs:
           
       - name: Add biometric permission
         run: |
-         MANIFEST="android/app/src/main/AndroidManifest.xml"
-         if ! grep -q "USE_BIOMETRIC" "$MANIFEST"; then
-          sed -i 's|</application>|    <uses-permission android:name="android.permission.USE_BIOMETRIC" />\n</application>|' "$MANIFEST"
-         fi
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "USE_BIOMETRIC" "$MANIFEST"; then
+            sed -i 's|</application>|    <uses-permission android:name="android.permission.USE_BIOMETRIC" />\n</application>|' "$MANIFEST"
+          fi
 
       - name: Generate app icons
         run: |
