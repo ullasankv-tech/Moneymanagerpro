@@ -7,6 +7,7 @@ on:
     paths:
       - 'index.html'
       - 'manifest.json'
+      - 'resources/**'
       - '.github/workflows/main.yml'
 
 jobs:
@@ -39,12 +40,22 @@ jobs:
         run: |
           npm init -y
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6
+          npm install @capacitor/assets@3 --save-dev
 
       - name: Initialize Capacitor (non-interactive)
         run: |
           npx cap init "Money Manager Pro" com.ullasankv.moneymanagerpro --web-dir www
           npx cap add android
           npx cap sync android
+
+      - name: Generate app icons
+        run: |
+          if [ -f resources/icon.png ]; then
+            echo "✅ Found resources/icon.png — generating icons..."
+            npx @capacitor/assets generate --android --iconBackgroundColor '#1565c0' --iconBackgroundColorDark '#0d47a1'
+          else
+            echo "⚠️ WARNING: resources/icon.png not found — APK will use default Capacitor icon"
+          fi
 
       - name: Add FileProvider paths for file sharing
         run: |
