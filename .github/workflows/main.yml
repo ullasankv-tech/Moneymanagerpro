@@ -50,7 +50,7 @@ jobs:
 
       - name: Generate app icons
         run: |
-          if [ -f resources/icon-512.png ]; then
+          if [ -f resources/icon.png ]; then
             echo "✅ Found resources/icon.png — generating icons..."
             npx @capacitor/assets generate --android --iconBackgroundColor '#1565c0' --iconBackgroundColorDark '#0d47a1'
           else
