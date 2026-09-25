@@ -43,7 +43,6 @@ jobs:
           npm install @capacitor/assets@3 --save-dev
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @aparajita/capacitor-biometric-auth@7
       
-
       - name: Initialize Capacitor (non-interactive)
         run: |
           npx cap init "Money Manager Pro" com.ullasankv.moneymanagerpro --web-dir www
