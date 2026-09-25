@@ -869,7 +869,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div class="panel" style="margin-top:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <h3 style="margin-bottom:0;">📒 Ledger Statement</h3>
-          <button class="ledger-print-btn" style="background:linear-gradient(135deg,#25D366,#128C7E);display:flex;align-items:center;gap:6px;" onclick="shareLedgerToWhatsApp()"><svg viewBox="0 0 32 32" width="14" height="14" style="flex-shrink:0;"><path fill="#fff" d="M16.004 3C9.376 3 4 8.373 4 15c0 2.386.7 4.61 1.912 6.482L4 29l7.72-1.877A11.94 11.94 0 0 0 16.004 27C22.63 27 28 21.627 28 15S22.63 3 16.004 3zm7.03 17.03c-.297.837-1.47 1.564-2.404 1.767-.638.137-1.472.246-4.278-.917-3.59-1.486-5.9-5.14-6.08-5.38-.178-.24-1.455-1.938-1.455-3.698 0-1.76.913-2.622 1.24-2.98.33-.36.72-.45.96-.45.238 0 .478.002.688.013.222.012.518-.084.81.618.297.716 1.01 2.474 1.098 2.654.089.18.148.395.03.635-.12.24-.18.39-.357.6-.178.21-.373.47-.533.63-.178.18-.363.375-.156.735.208.36.923 1.523 1.98 2.467 1.362 1.215 2.51 1.592 2.87 1.77.36.18.57.15.78-.09.208-.24.892-1.04 1.13-1.398.238-.36.477-.3.804-.18.328.12 2.08.982 2.437 1.16.357.18.596.27.685.42.09.15.09.868-.207 1.705z"/></svg>Export</button>
+          <button class="ledger-print-btn" onclick="shareLedgerToWhatsApp()">💾 Save / Share PDF</button>
         </div>
         <!-- Person selector tabs -->
         <div class="ledger-person-tabs" id="ledgerPersonTabs"></div>
@@ -983,7 +983,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <button class="bs-action-btn" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;" onclick="openAddNetWorth('asset')">➕ Add Asset</button>
         <button class="bs-action-btn" style="background:#ffebee;border-color:#ef9a9a;color:#c62828;" onclick="openAddNetWorth('liability')">➕ Add Liability</button>
       </div>
-      <button class="stmt-print-btn" style="background:linear-gradient(135deg,#25D366,#128C7E);" onclick="shareNetWorthToWhatsApp()"><svg viewBox="0 0 32 32" width="16" height="16" style="flex-shrink:0;"><path fill="#fff" d="M16.004 3C9.376 3 4 8.373 4 15c0 2.386.7 4.61 1.912 6.482L4 29l7.72-1.877A11.94 11.94 0 0 0 16.004 27C22.63 27 28 21.627 28 15S22.63 3 16.004 3zm7.03 17.03c-.297.837-1.47 1.564-2.404 1.767-.638.137-1.472.246-4.278-.917-3.59-1.486-5.9-5.14-6.08-5.38-.178-.24-1.455-1.938-1.455-3.698 0-1.76.913-2.622 1.24-2.98.33-.36.72-.45.96-.45.238 0 .478.002.688.013.222.012.518-.084.81.618.297.716 1.01 2.474 1.098 2.654.089.18.148.395.03.635-.12.24-.18.39-.357.6-.178.21-.373.47-.533.63-.178.18-.363.375-.156.735.208.36.923 1.523 1.98 2.467 1.362 1.215 2.51 1.592 2.87 1.77.36.18.57.15.78-.09.208-.24.892-1.04 1.13-1.398.238-.36.477-.3.804-.18.328.12 2.08.982 2.437 1.16.357.18.596.27.685.42.09.15.09.868-.207 1.705z"/></svg><span>Send Balance Sheet (PDF)</span></button>
+      <button class="stmt-print-btn" onclick="shareNetWorthToWhatsApp()">💾 Save / Share as PDF</button>
 
       <!-- Net Worth Tips -->
       <div class="panel" style="margin-top:14px;">
@@ -2756,10 +2756,7 @@ function renderStatement(){
       <div class="stmt-summary-row"><span class="stmt-summary-label" style="font-size:0.95rem;">⚖️ Closing Balance</span><span class="stmt-summary-val" style="font-size:1.05rem;">${balance>=0?'Surplus: ':'Deficit: '}${fmtR(Math.abs(balance))}</span></div>
     </div>
     <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin:8px 0 12px;">The balance is automatically added to the smaller side so that Debit and Credit totals are equal.</div>
-    <div style="display:flex;gap:8px;margin-top:12px;">
-      <button class="stmt-print-btn" style="margin-top:0;flex:1;" onclick="printStatement()">🖨️ Save as PDF</button>
-      <button class="stmt-print-btn" style="margin-top:0;flex:1;background:linear-gradient(135deg,#25D366,#128C7E);" onclick="shareIEStatementToWhatsApp()">${WHATSAPP_ICON_SVG}<span>Share</span></button>
-    </div>`;
+    <button class="stmt-print-btn" onclick="printStatement()">🖨️ Save / Share as PDF</button>`;
 }
 
 // INVESTMENTS
