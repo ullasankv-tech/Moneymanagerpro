@@ -47,6 +47,14 @@ jobs:
           npx cap init "Money Manager Pro" com.ullasankv.moneymanagerpro --web-dir www
           npx cap add android
           npx cap sync android
+      - name: Add biometric permission
+        run: |
+           MANIFEST="android/app/src/main/AndroidManifest.xml"
+           if ! grep -q "USE_BIOMETRIC" "$MANIFEST"; then
+            # Insert <uses-permission> as a direct child of <manifest>, right after <manifest ...>
+              sed -i '0,/<manifest /s//<manifest /' "$MANIFEST"
+              sed -i 's|<application|<uses-permission android:name="android.permission.USE_BIOMETRIC" />\n    <application|' "$MANIFEST"
+            fi
           
       - name: Add biometric permission
         run: |
