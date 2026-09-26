@@ -22,14 +22,28 @@
   --income:#00b894;--expense:#ff6b6b;--c3:#00b894;--c4:#4d96ff;--c5:#ff922b;--c6:#cc5de8;
   --c2:#ffd93d;--c1:#ff6b6b;
   --bg:#f0fff8;--surface:#fff;--border:#d8f0e8;--text:#1a2e1a;--muted:#6b8f6b;
+  --bevel-light:rgba(255,255,255,0.85);--bevel-dark:rgba(20,50,30,0.28);
   --shadow:0 4px 24px rgba(0,0,0,0.08);--shadow-lg:0 8px 40px rgba(0,0,0,0.14);
   --safe-top:env(safe-area-inset-top);--safe-bottom:env(safe-area-inset-bottom);
   --font:system-ui,-apple-system,sans-serif;
 }
 [data-theme="dark"]{
   --bg:#0d1f0d;--surface:#1a2e1a;--border:#2a4a2a;--text:#e0f0e0;--muted:#6b8f6b;
+  --bevel-light:rgba(255,255,255,0.08);--bevel-dark:rgba(0,0,0,0.55);
 }
 html,body{height:100%;overflow:hidden;font-family:var(--font);}
+/* Bevel & sunken 3D styling, app-wide.
+   Cards/panels = raised/embossed bevel (light edge top-left, dark edge bottom-right).
+   Text/input fields = sunken bevel (the reverse, recessed inward — the classic
+   carved-in text-box look). */
+.panel,.chart-container,.stat-card,.daily-limit-card,.balance-card,.health-card{
+  border:1.5px solid var(--border)!important;
+  box-shadow:-1px -1px 3px var(--bevel-light) inset,2px 2px 5px var(--bevel-dark) inset,var(--shadow)!important;
+}
+.form-input,.form-select,.note-input,.amount-input,.notes-editor,input[type="text"],input[type="number"],input[type="date"],input[type="password"],input[type="email"],textarea{
+  border:1.5px solid var(--border);
+  box-shadow:2px 2px 5px var(--bevel-dark) inset,-1px -1px 2px var(--bevel-light) inset;
+}
 body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;transition:background 0.3s,color 0.3s;}
 
 /* SCREENS */
@@ -727,7 +741,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
       <!-- ADD TRANSACTION -->
       <div class="panel">
-        <h3>➕ Add Transaction</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;"><h3 style="margin-bottom:0;">➕ Add Transaction</h3><button type="button" onclick="openInvestmentCalculator()" title="Calculator" aria-label="Calculator" style="width:42px;height:38px;border:none;border-radius:10px;background:linear-gradient(135deg,#4d96ff,#cc5de8);cursor:pointer;box-shadow:0 3px 8px rgba(77,150,255,.35);display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="2" width="16" height="20" rx="3" fill="#fff"/><rect x="6.5" y="4.5" width="11" height="4.2" rx="1" fill="#4d96ff"/><circle cx="7.6" cy="12.3" r="1.35" fill="#cc5de8"/><circle cx="12" cy="12.3" r="1.35" fill="#cc5de8"/><circle cx="16.4" cy="12.3" r="1.35" fill="#cc5de8"/><circle cx="7.6" cy="16.6" r="1.35" fill="#4d96ff"/><circle cx="12" cy="16.6" r="1.35" fill="#4d96ff"/><circle cx="16.4" cy="16.6" r="1.35" fill="#4d96ff"/><circle cx="7.6" cy="20" r="1.35" fill="#4d96ff"/><circle cx="12" cy="20" r="1.35" fill="#4d96ff"/><circle cx="16.4" cy="20" r="1.35" fill="#4d96ff"/></svg></button></div>
         <div class="type-toggle">
           <button class="type-btn income active" id="incomeBtn" onclick="setType('income')">↑ Income</button>
           <button class="type-btn expense" id="expenseBtn" onclick="setType('expense')">↓ Expense</button>
@@ -1060,7 +1074,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
     <div id="tab-investments" style="display:none">
   <div class="panel">
-    <h3>📈 Investment Data Input</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;"><h3 style="margin-bottom:0;">📈 Investment Data Input</h3><button type="button" onclick="openInvestmentCalculator()" title="Calculator" aria-label="Calculator" style="width:42px;height:38px;border:none;border-radius:10px;background:linear-gradient(135deg,#4d96ff,#cc5de8);cursor:pointer;box-shadow:0 3px 8px rgba(77,150,255,.35);display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="2" width="16" height="20" rx="3" fill="#fff"/><rect x="6.5" y="4.5" width="11" height="4.2" rx="1" fill="#4d96ff"/><circle cx="7.6" cy="12.3" r="1.35" fill="#cc5de8"/><circle cx="12" cy="12.3" r="1.35" fill="#cc5de8"/><circle cx="16.4" cy="12.3" r="1.35" fill="#cc5de8"/><circle cx="7.6" cy="16.6" r="1.35" fill="#4d96ff"/><circle cx="12" cy="16.6" r="1.35" fill="#4d96ff"/><circle cx="16.4" cy="16.6" r="1.35" fill="#4d96ff"/><circle cx="7.6" cy="20" r="1.35" fill="#4d96ff"/><circle cx="12" cy="20" r="1.35" fill="#4d96ff"/><circle cx="16.4" cy="20" r="1.35" fill="#4d96ff"/></svg></button></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
       <button type="button" onclick="openInvestmentPurchaseModal()" style="padding:14px 10px;background:#1565c0;border:none;border-radius:12px;color:#fff;font-weight:800;cursor:pointer;font-family:var(--font);">➕ Purchase</button>
       <button type="button" onclick="openInvestmentSaleModal()" style="padding:14px 10px;background:#2e7d32;border:none;border-radius:12px;color:#fff;font-weight:800;cursor:pointer;font-family:var(--font);">📉 Sale</button>
@@ -1180,8 +1194,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         </label>
         <div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--border);">
           <div style="font-size:0.88rem;font-weight:700;margin-bottom:10px;">☁️ Cloud Backup</div>
-          <button class="export-btn" onclick="backupToFirebase()">☁️ Backup to Cloud</button>
-          <button class="export-btn" onclick="restoreFromFirebase()" style="margin-top:8px;">☁️ Restore from Cloud</button>
+          <div style="display:flex;gap:8px;">
+            <button class="export-btn" style="margin-bottom:0;flex:1;width:auto;" onclick="backupToFirebase()">☁️ Backup to Cloud</button>
+            <button class="export-btn" style="margin-bottom:0;flex:1;width:auto;" onclick="restoreFromFirebase()">☁️ Restore from Cloud</button>
+          </div>
         </div>
         <div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--border);">
           <div style="font-size:0.88rem;font-weight:700;margin-bottom:10px;">📥 Restore</div>
@@ -3234,6 +3250,46 @@ async function saveInvestments(){
 }
 async function loadInvestments(){if(!db||!currentUser)return;const u=currentUser.username,all=await dbGetAll('investments');investments=(await Promise.all(all.filter(x=>x._user===u).map(async x=>{try{return x._enc?JSON.parse(await decryptData(x._enc)):x;}catch{return x;}}))).map(normalizeInvestment);}
 
+// ── Investment page calculator ──
+function openInvestmentCalculator(){
+  let modal=document.getElementById('investmentCalculatorModal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='investmentCalculatorModal';
+    modal.className='modal-overlay open';
+    modal.innerHTML=`<div class="modal-sheet" style="max-width:380px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
+        <h3 style="margin:0;">🧮 Calculator</h3>
+        <button type="button" class="modal-close" onclick="closeInvestmentCalculator()" style="margin:0;width:auto;padding:7px 11px;">✕</button>
+      </div>
+      <input id="investmentCalcDisplay" class="form-input" type="text" inputmode="decimal" readonly style="font-size:1.35rem;text-align:right;font-weight:800;padding:14px;margin-bottom:10px;background:var(--bg);" value="">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;">
+        ${['7','8','9','÷','4','5','6','×','1','2','3','−','0','.','⌫','+','C','(',')','='].map(k=>`<button type="button" onclick="investmentCalcKey('${k}')" style="padding:13px 6px;border:1.5px solid var(--border);border-radius:10px;background:${k==='='?'#1565c0':'var(--bg)'};color:${k==='='?'#fff':'var(--text)'};font-size:1rem;font-weight:800;cursor:pointer;">${k}</button>`).join('')}
+      </div>
+      <button type="button" class="modal-close" onclick="closeInvestmentCalculator()">Close</button>
+    </div>`;
+    document.body.appendChild(modal);
+  }else modal.classList.add('open');
+  const d=document.getElementById('investmentCalcDisplay');if(d)d.focus();
+}
+function closeInvestmentCalculator(){const m=document.getElementById('investmentCalculatorModal');if(m)m.classList.remove('open');}
+function investmentCalcKey(key){
+  const d=document.getElementById('investmentCalcDisplay');if(!d)return;
+  if(key==='C'){d.value='';return;}
+  if(key==='⌫'){d.value=d.value.slice(0,-1);return;}
+  if(key==='='){
+    try{
+      const expr=d.value.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+      if(!/^[0-9+\-*/().\s]+$/.test(expr))throw new Error('Invalid');
+      const result=Function('"use strict";return ('+expr+')')();
+      d.value=Number.isFinite(result)?String(Number(result.toFixed(10))):'Error';
+    }catch(e){d.value='Error';}
+    return;
+  }
+  if(d.value==='Error')d.value='';
+  d.value+=key;
+}
+
 // ── Base screen ──
 function renderInvestments(){
   const list=document.getElementById('investmentList'),summary=document.getElementById('investmentSummary');if(!list)return;
@@ -3287,7 +3343,7 @@ function renderInvestmentDateWise(){
   invReportDefaults();
   const rows=investmentStatementRows(invFrom,invTo);
   const buyTotal=rows.filter(r=>r.bought).reduce((s,r)=>s+Number(r.buyAmount||0),0),sellTotal=rows.reduce((s,r)=>s+Number(r.soldAmount||0),0),totalProfit=rows.reduce((s,r)=>s+Number(r.profit||0),0);
-  const cell='padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap;';
+  const cell='padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;';
   const mu=r=>r.bought?'':'color:var(--muted);';
   rc.innerHTML=`<div class="date-filter-row">
       <input type="date" class="date-filter-input" id="inv-from" value="${invFrom}"/>
@@ -3295,7 +3351,7 @@ function renderInvestmentDateWise(){
       <input type="date" class="date-filter-input" id="inv-to" value="${invTo}"/>
       <button class="date-filter-btn" onclick="applyInvestmentFilter()">Go</button>
     </div><div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;text-align:center;">Investment Statement: ${investmentBritishDate(invFrom)} to ${investmentBritishDate(invTo)} · change dates &amp; tap Go</div>
-    <div style="overflow-x:auto;background:var(--surface);border-radius:12px;border:1px solid var(--border);"><table style="width:max-content;min-width:0;border-collapse:collapse;font-size:.72rem;"><thead><tr style="background:#e3f2fd;color:#1a2e1a;"><th style="${cell}text-align:left;">Date</th><th style="${cell}text-align:left;">Scrip</th><th style="${cell}text-align:right;">Qty</th><th style="${cell}text-align:right;">Buy_Rate</th><th style="${cell}text-align:right;">Amount</th><th style="${cell}text-align:left;">Date_sold</th><th style="${cell}text-align:right;">Sell_qty</th><th style="${cell}text-align:right;">Sell_rate</th><th style="${cell}text-align:right;">Sell_Amt</th><th style="${cell}text-align:right;">Profit</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="${cell}${mu(r)}">${investmentBritishDate(r.date)}</td><td style="${cell}font-weight:700;">${invEsc(r.stock)}</td><td style="${cell}text-align:right;${mu(r)}">${r.qty}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyRate)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyAmount)}</td><td style="${cell}">${(r.soldDates&&r.soldDates.length)?r.soldDates.map(d=>investmentBritishDate(d)).join(', '):''}</td><td style="${cell}text-align:right;">${r.qtySold||0}</td><td style="${cell}text-align:right;">${r.sellRate?fmtR(r.sellRate):''}</td><td style="${cell}text-align:right;">${fmtR(r.soldAmount||0)}</td><td style="${cell}text-align:right;font-weight:800;">${r.profit<0?'-':''}${fmtR(Math.abs(r.profit||0))}</td></tr>`).join('')||'<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted)">No investment entries in this date range.</td></tr>'}</tbody><tfoot><tr style="font-weight:800;background:var(--bg);"><td colspan="4" style="padding:6px;text-align:right;">Total</td><td style="padding:6px;text-align:right;">${fmtR(buyTotal)}</td><td colspan="3"></td><td style="padding:6px;text-align:right;">${fmtR(sellTotal)}</td><td style="padding:6px;text-align:right;">${totalProfit<0?'-':''}${fmtR(Math.abs(totalProfit))}</td></tr></tfoot></table></div>
+    <div class="investment-report-table-wrap" style="overflow:auto;background:var(--surface);border-radius:12px;border:1px solid var(--border);max-height:64vh;-webkit-overflow-scrolling:touch;"><table style="width:max-content;min-width:0;border-collapse:collapse;font-size:.85rem;"><thead><tr style="background:#e3f2fd;color:#1a2e1a;"><th style="${cell}text-align:left;">Date</th><th style="${cell}text-align:left;">Scrip</th><th style="${cell}text-align:right;">Qty</th><th style="${cell}text-align:right;">Buy_Rate</th><th style="${cell}text-align:right;">Amount</th><th style="${cell}text-align:left;">Date_sold</th><th style="${cell}text-align:right;">Sell_qty</th><th style="${cell}text-align:right;">Sell_rate</th><th style="${cell}text-align:right;">Sell_Amt</th><th style="${cell}text-align:right;">Profit</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="${cell}${mu(r)}">${investmentBritishDate(r.date)}</td><td style="${cell}font-weight:700;">${invEsc(r.stock)}</td><td style="${cell}text-align:right;${mu(r)}">${r.qty}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyRate)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyAmount)}</td><td style="${cell}">${(r.soldDates&&r.soldDates.length)?r.soldDates.map(d=>investmentBritishDate(d)).join(', '):''}</td><td style="${cell}text-align:right;">${r.qtySold||0}</td><td style="${cell}text-align:right;">${r.sellRate?fmtR(r.sellRate):''}</td><td style="${cell}text-align:right;">${fmtR(r.soldAmount||0)}</td><td style="${cell}text-align:right;font-weight:800;">${r.profit<0?'-':''}${fmtR(Math.abs(r.profit||0))}</td></tr>`).join('')||'<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted)">No investment entries in this date range.</td></tr>'}</tbody><tfoot><tr style="font-weight:800;background:var(--bg);"><td colspan="4" style="padding:9px 10px;text-align:right;">Total</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyTotal)}</td><td colspan="3"></td><td style="padding:9px 10px;text-align:right;">${fmtR(sellTotal)}</td><td style="padding:9px 10px;text-align:right;">${totalProfit<0?'-':''}${fmtR(Math.abs(totalProfit))}</td></tr></tfoot></table></div>
     <div style="font-size:0.68rem;color:var(--muted);margin:6px 2px;">Greyed purchase details = bought before this range; only sales inside the range are counted.</div>
     <button class="stmt-print-btn" onclick="printInvestmentStatement()">🖨️ Save Investment Statement as PDF</button>`;
 }
