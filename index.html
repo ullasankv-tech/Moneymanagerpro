@@ -3661,6 +3661,7 @@ async function applyBackupData(data){
   // Save and refresh
   await saveData();
   await saveCategories();
+  if(data.investments) await saveInvestments();
   // Reload in-memory copies
   await loadReminders();
   await loadNetWorth();
