@@ -120,6 +120,16 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
 .form-select,.form-input{padding:10px 10px;border:2px solid var(--border);border-radius:10px;font-size:0.82rem;font-weight:600;background:var(--bg);color:var(--text);outline:none;width:100%;-webkit-appearance:none;font-family:var(--font);}
 .note-input{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;margin-bottom:10px;font-family:var(--font);}
+.notes-editor-wrap{border:2px solid var(--border);border-radius:12px;background:var(--bg);overflow:hidden;}
+.notes-toolbar{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:5px 6px;border-bottom:1px solid var(--border);background:var(--surface);}
+.notes-tool{min-width:32px;height:30px;padding:3px 7px;border:1.5px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:0.78rem;font-weight:700;cursor:pointer;font-family:var(--font);}
+.notes-tool:active,.notes-tool.active{background:#e8f4ff;border-color:#4d96ff;color:#1565c0;}
+.notes-font-size{height:30px;padding:2px 5px;border:1.5px solid var(--border);border-radius:7px;background:var(--bg);color:var(--text);font-size:0.72rem;font-family:var(--font);}
+.notes-editor{width:100%;min-height:190px;max-height:48vh;overflow-y:auto;padding:10px 12px;font-size:0.9rem;line-height:1.55;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);box-sizing:border-box;word-break:break-word;}
+.notes-editor:empty:before{content:attr(data-placeholder);color:var(--muted);pointer-events:none;}
+.notes-editor:focus{background:var(--surface);}
+.notes-actions{display:flex;gap:6px;margin-top:6px;}
+.notes-action-btn{flex:1;min-height:38px;padding:7px 8px;border:none;border-radius:10px;color:#fff;font-weight:700;font-size:0.78rem;cursor:pointer;font-family:var(--font);}
 .btn-submit{width:100%;padding:12px;border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.9rem;cursor:pointer;font-family:var(--font);}
 .btn-income{background:linear-gradient(135deg,#00b894,#00cec9);}
 .btn-expense{background:linear-gradient(135deg,#ff6b6b,#ff922b);}
@@ -752,6 +762,41 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           </div>
         </div>
         <div id="recentTxns"></div>
+      </div>
+
+      <!-- NOTES / REMINDERS (per date) -->
+      <div class="panel" id="homeNotesPanel">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;">
+          <h3 style="margin-bottom:0;">📝 Notes</h3>
+          <input type="date" class="form-input" style="width:145px;padding:5px 7px;font-size:0.74rem;" id="homeNotesDate" onchange="onHomeNoteDateChange()"/>
+        </div>
+
+        <!-- Compact rich-text toolbar -->
+        <div class="notes-editor-wrap">
+          <div class="notes-toolbar" role="toolbar" aria-label="Note formatting">
+            <button type="button" class="notes-tool" title="Bold" onmousedown="event.preventDefault();formatHomeNote('bold')"><b>B</b></button>
+            <button type="button" class="notes-tool" title="Italic" onmousedown="event.preventDefault();formatHomeNote('italic')"><i>I</i></button>
+            <button type="button" class="notes-tool" title="Underline" onmousedown="event.preventDefault();formatHomeNote('underline')"><u>U</u></button>
+            <select class="notes-font-size" title="Font size" onchange="formatHomeNote('fontSize',this.value);this.selectedIndex=0">
+              <option value="">Size</option>
+              <option value="2">Small</option>
+              <option value="3">Normal</option>
+              <option value="4">Large</option>
+              <option value="5">Extra</option>
+            </select>
+            <button type="button" class="notes-tool" title="Bulleted list" onmousedown="event.preventDefault();formatHomeNote('insertUnorderedList')">• List</button>
+            <button type="button" class="notes-tool" title="Numbered list" onmousedown="event.preventDefault();formatHomeNote('insertOrderedList')">1. List</button>
+            <button type="button" class="notes-tool" title="Clear formatting" onmousedown="event.preventDefault();formatHomeNote('removeFormat')">Tx</button>
+          </div>
+          <div id="homeNotesText" class="notes-editor" contenteditable="true" role="textbox" aria-multiline="true"
+               data-placeholder="Write a note, reminder, or any general information for this date..."
+               ></div>
+        </div>
+
+        <div class="notes-actions">
+          <button type="button" class="notes-action-btn" style="background:linear-gradient(135deg,#4d96ff,#00b894);" onclick="saveHomeNote()">💾 Save Note</button>
+          <button type="button" class="notes-action-btn" style="background:linear-gradient(135deg,#25D366,#128C7E);" onclick="shareHomeNoteWhatsApp()">💬 WhatsApp</button>
+        </div>
       </div>
     </div>
 
@@ -2068,6 +2113,7 @@ function showApp(){
   loadNetWorth().then(()=>{});
   loadRegister();
   loadSmsSettings();
+  loadHomeNote();
   renderHealthScore();
   // Show onboarding on first launch
   setTimeout(checkOnboarding, 800);
@@ -2220,6 +2266,215 @@ function setType(type){
   document.getElementById('submitBtn').className=`btn-submit btn-${type}`;
   document.getElementById('submitBtn').textContent=`+ Add ${type.charAt(0).toUpperCase()+type.slice(1)}`;
   updateCategories();
+}
+// ═══════════════════════════════════════
+// HOME NOTES — free-form notes/reminders, saved per-user AND per-date (a
+// small daily journal), with a PDF export that uses the same reliable
+// savePdfDoc() save/share mechanism already used by the General Report,
+// Ledger Statement and Balance Sheet.
+// ═══════════════════════════════════════
+function homeNoteSelectedDate(){
+  const dateEl=document.getElementById('homeNotesDate');
+  return (dateEl && dateEl.value) || new Date().toISOString().split('T')[0];
+}
+function noteHtmlFromPlainText(text){
+  return String(text||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\r?\n/g,'<br>');
+}
+function notePlainText(){
+  const el=document.getElementById('homeNotesText');
+  if(!el)return '';
+  return (el.innerText||el.textContent||'').replace(/\u00a0/g,' ').trim();
+}
+function noteHtml(){
+  const el=document.getElementById('homeNotesText');
+  return el ? el.innerHTML : '';
+}
+function formatHomeNote(command,value){
+  const el=document.getElementById('homeNotesText');
+  if(!el)return;
+  el.focus();
+  try{document.execCommand(command,false,value||null);}catch(e){}
+  updateNotesToolbar();
+}
+function updateNotesToolbar(){
+  document.querySelectorAll('#homeNotesPanel .notes-tool').forEach(btn=>btn.classList.remove('active'));
+  const commands=['bold','italic','underline'];
+  const buttons=document.querySelectorAll('#homeNotesPanel .notes-tool');
+  commands.forEach((cmd,i)=>{
+    try{if(document.queryCommandState(cmd) && buttons[i])buttons[i].classList.add('active');}catch(e){}
+  });
+}
+function attachNotesEditorEvents(){
+  const el=document.getElementById('homeNotesText');
+  if(!el||el.dataset.eventsAttached==='1')return;
+  el.dataset.eventsAttached='1';
+  ['keyup','mouseup','focus'].forEach(ev=>el.addEventListener(ev,updateNotesToolbar));
+  el.addEventListener('input',()=>{ updateNotesToolbar(); scheduleHomeNoteAutoSave(); });
+}
+let homeNoteLoadedDate='';
+let homeNoteAutoSaveTimer=null;
+async function loadHomeNote(){
+  const dateEl=document.getElementById('homeNotesDate');
+  if(dateEl && !dateEl.value) dateEl.value=new Date().toISOString().split('T')[0];
+  attachNotesEditorEvents();
+  await loadHomeNoteForDate(homeNoteSelectedDate());
+}
+async function loadHomeNoteForDate(date){
+  try{
+    const r=await dbGet('settings','home_note_'+currentUser.username+'_'+date);
+    const el=document.getElementById('homeNotesText');
+    if(!el)return;
+    const stored=r ? (r.value||'') : '';
+    // Backward compatible: existing notes were plain text.
+    el.innerHTML = stored ? (/<[a-z][\s\S]*>/i.test(stored) ? stored : noteHtmlFromPlainText(stored)) : '';
+    homeNoteLoadedDate=date;
+    updateNotesToolbar();
+  }catch(e){
+    homeNoteLoadedDate=date;
+    const el=document.getElementById('homeNotesText');
+    if(el)el.innerHTML='';
+  }
+}
+async function persistCurrentHomeNote(date){
+  const el=document.getElementById('homeNotesText');
+  if(!el || !date || !currentUser)return;
+  const html=el.innerHTML;
+  // Do not create a record for a completely empty note.
+  if(!notePlainText() && !html.replace(/<br\s*\/?>(?:\s*)/gi,'').trim()){
+    await dbDelete('settings','home_note_'+currentUser.username+'_'+date);
+    return;
+  }
+  await dbPut('settings',{key:'home_note_'+currentUser.username+'_'+date,value:html});
+}
+function scheduleHomeNoteAutoSave(){
+  clearTimeout(homeNoteAutoSaveTimer);
+  const date=homeNoteSelectedDate();
+  if(!date || date!==homeNoteLoadedDate)return;
+  homeNoteAutoSaveTimer=setTimeout(async()=>{
+    try{await persistCurrentHomeNote(date);}catch(e){console.warn('Note auto-save failed',e);}
+  },500);
+}
+async function onHomeNoteDateChange(){
+  // Save whatever is currently being edited against the OLD date before loading the NEW date.
+  clearTimeout(homeNoteAutoSaveTimer);
+  const oldDate=homeNoteLoadedDate;
+  const newDate=homeNoteSelectedDate();
+  const el=document.getElementById('homeNotesText');
+  if(oldDate && oldDate!==newDate && el){
+    try{await persistCurrentHomeNote(oldDate);}catch(e){console.warn('Note date-change save failed',e);}
+  }
+  await loadHomeNoteForDate(newDate);
+}
+async function saveHomeNote(silent){
+  const el=document.getElementById('homeNotesText');
+  if(!el)return;
+  const date=homeNoteSelectedDate();
+  try{
+    await persistCurrentHomeNote(date);
+    homeNoteLoadedDate=date;
+    // Keep the saved note visible for viewing/editing. It is cleared only when the selected date has no saved note.
+    updateNotesToolbar();
+    if(!silent)showToast('📝 Note saved for '+new Date(date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}));
+  }catch(e){
+    console.error('Note save failed',e);
+    if(!silent)showToast('⚠️ Note could not be saved.');
+  }
+}
+function noteHtmlToWhatsAppText(html){
+  const box=document.createElement('div');
+  box.innerHTML=html||'';
+  // Convert common rich-text tags to WhatsApp-friendly Unicode emphasis.
+  function walk(node){
+    if(node.nodeType===Node.TEXT_NODE)return node.nodeValue;
+    if(node.nodeType!==Node.ELEMENT_NODE)return '';
+    const tag=node.tagName.toLowerCase();
+    let content='';
+    node.childNodes.forEach(ch=>content+=walk(ch));
+    if(tag==='br')return '\n';
+    if(tag==='li')return '• '+content.trim()+'\n';
+    if(tag==='b'||tag==='strong')return unicodeBold(content);
+    if(tag==='i'||tag==='em')return unicodeItalic(content);
+    if(tag==='u')return content; // WhatsApp text sharing cannot reliably preserve underline
+    if(tag==='div'||tag==='p'||tag==='h1'||tag==='h2'||tag==='h3')return content+'\n';
+    return content;
+  }
+  let s=walk(box).replace(/\n{3,}/g,'\n\n').trim();
+  return s;
+}
+function unicodeMap(str,base,offset){
+  let out='';
+  for(const ch of str){
+    const cp=ch.codePointAt(0);
+    if(cp>=0x41&&cp<=0x5A)out+=String.fromCodePoint(base+(cp-0x41));
+    else if(cp>=0x61&&cp<=0x7A)out+=String.fromCodePoint(base+26+(cp-0x61));
+    else out+=ch;
+  }
+  return out;
+}
+function unicodeBold(str){
+  // Mathematical Sans-Serif Bold capitals/lowercase; digits remain normal.
+  let out='';
+  for(const ch of String(str)){
+    const cp=ch.codePointAt(0);
+    if(cp>=65&&cp<=90)out+=String.fromCodePoint(0x1D5D4+(cp-65));
+    else if(cp>=97&&cp<=122)out+=String.fromCodePoint(0x1D5EE+(cp-97));
+    else if(cp>=48&&cp<=57)out+=String.fromCodePoint(0x1D7EC+(cp-48));
+    else out+=ch;
+  }
+  return out;
+}
+function unicodeItalic(str){
+  let out='';
+  for(const ch of String(str)){
+    const cp=ch.codePointAt(0);
+    if(cp>=65&&cp<=90)out+=String.fromCodePoint(0x1D434+(cp-65));
+    else if(cp>=97&&cp<=122)out+=String.fromCodePoint(0x1D44E+(cp-97));
+    else out+=ch;
+  }
+  return out;
+}
+async function shareHomeNoteWhatsApp(){
+  try{
+    await saveHomeNote(true);
+    const richText=noteHtmlToWhatsAppText(noteHtml());
+    if(!richText){showToast('⚠️ Write a note first');return;}
+    // Use Android/browser native share sheet. WhatsApp receives the note as text;
+    // bold/italic are represented with Unicode characters so the formatting survives.
+    if(navigator.share){
+      await navigator.share({
+        title:'Notes - '+homeNoteSelectedDate(),
+        text:richText
+      });
+      showToast('✅ Note ready to share');
+      return;
+    }
+    // WhatsApp direct compose fallback. It preserves the text content, but the
+    // Unicode emphasis is what carries bold/italic when supported.
+    const waUrl='https://wa.me/?text='+encodeURIComponent(richText);
+    window.location.href=waUrl;
+  }catch(e){
+    if(e&&e.name==='AbortError')return;
+    console.error('WhatsApp note share error',e);
+    showToast('⚠️ Could not open WhatsApp sharing');
+  }
+}
+function buildNotePdf(){
+  // Kept for backward compatibility with old saved data/functions elsewhere.
+  const date=homeNoteSelectedDate();
+  const text=notePlainText();
+  const p=new PdfBuilder(false);
+  p.heading('Notes',16,true);
+  p.heading((currentUser&&currentUser.name)||'',10,false);
+  p.heading('Date: '+new Date(date+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}),9,false);
+  p.gap(10);
+  if(!text)p.row(['No notes written for this date.'],[1],['l']);
+  else text.split('\n').forEach(line=>{if(line.trim()==='')p.gap(8);else p.row([line],[1],['l']);});
+  return {pdf:p,name:'Notes-'+date+'.pdf'};
+}
+function shareHomeNotePdf(){
+  showToast('PDF sharing has been replaced by WhatsApp note sharing');
 }
 function addTransaction(){
   const amount=parseFloat(document.getElementById('txnAmount').value);
@@ -3144,7 +3399,7 @@ function saveEdit(){
 // ═══════════════════════════════════════
 async function buildBackupObj(){
   // Decrypt and read all settings-stored modules
-  let remindersData=[],netWorthData=[],registerData=[],dailyLimitVal=0;
+  let remindersData=[],netWorthData=[],registerData=[],dailyLimitVal=0,homeNotesData=[];
   try{
     const r1=await dbGet('settings','reminders_'+currentUser.username);
     if(r1){ const dec=await decryptData(r1.value); remindersData=JSON.parse(dec); }
@@ -3154,6 +3409,12 @@ async function buildBackupObj(){
     if(r3){ const dec=await decryptData(r3.value); registerData=JSON.parse(dec); }
     const r4=await dbGet('settings','daily_limit_'+currentUser.username);
     if(r4) dailyLimitVal=parseFloat(r4.value)||0;
+    const allSettings=await dbGetAll('settings');
+    const notePrefix='home_note_'+currentUser.username+'_';
+    homeNotesData=allSettings.filter(x=>typeof x.key==='string'&&x.key.startsWith(notePrefix)).map(x=>({
+      date:x.key.slice(notePrefix.length),
+      html:x.value||''
+    })).filter(x=>x.date);
   }catch(e){ console.log('export module read',e); }
 
   return {
@@ -3168,7 +3429,8 @@ async function buildBackupObj(){
     reminders:remindersData,
     netWorth:netWorthData,
     register:registerData,
-    dailyLimit:dailyLimitVal
+    dailyLimit:dailyLimitVal,
+    homeNotes:homeNotesData
   };
 }
 async function exportJSON(){
@@ -3638,36 +3900,75 @@ async function downloadJSONBackup(name,content){
   await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,silentFallback:true,skipMedianDownload:true});
 }
 async function applyBackupData(data){
-  if(!data.transactions && !data.loans && !data.register){
+  if(!data || (!data.transactions && !data.loans && !data.register && !data.homeNotes && !data.investments)){
     throw new Error('Invalid backup data');
   }
-  // Core data
-  if(data.transactions) transactions=data.transactions;
-  if(data.budgets)      budgets=data.budgets;
-  if(data.goals)        goals=data.goals;
-  if(data.emis)         emis=data.emis;
-  if(data.recurringTxns) recurringTxns=data.recurringTxns;
-  if(data.INCOME_CATS)  INCOME_CATS=data.INCOME_CATS;
+  if(!currentUser) throw new Error('No active user');
+
+  // Replace the in-memory data with the backup contents. Missing collections are intentionally flushed.
+  transactions = Array.isArray(data.transactions) ? data.transactions : [];
+  budgets = data.budgets && typeof data.budgets==='object' ? data.budgets : {};
+  goals = Array.isArray(data.goals) ? data.goals : [];
+  emis = Array.isArray(data.emis) ? data.emis : [];
+  recurringTxns = Array.isArray(data.recurringTxns) ? data.recurringTxns : [];
+  loans = Array.isArray(data.loans) ? data.loans : [];
+  investments = Array.isArray(data.investments) ? data.investments : [];
+  if(data.INCOME_CATS) INCOME_CATS=data.INCOME_CATS;
   if(data.EXPENSE_CATS) EXPENSE_CATS=data.EXPENSE_CATS;
   if(data.INVESTMENT_CATS) INVESTMENT_CATS=data.INVESTMENT_CATS;
-  if(data.investments) investments=data.investments;
-  // Loans
-  if(data.loans)        loans=data.loans;
-  // Settings-stored modules
-  if(data.reminders)    await dbPut('settings',{key:'reminders_'+currentUser.username,  value:JSON.stringify(data.reminders)});
-  if(data.netWorth)     await dbPut('settings',{key:'networth_'+currentUser.username,    value:JSON.stringify(data.netWorth)});
-  if(data.register)     await dbPut('settings',{key:'register_'+currentUser.username,    value:JSON.stringify(data.register)});
-  if(data.dailyLimit)   await dbPut('settings',{key:'daily_limit_'+currentUser.username, value:String(data.dailyLimit)});
-  // Save and refresh
+
+  // Settings-stored modules are replaced too, so stale rows/items cannot remain on screen.
+  reminders = Array.isArray(data.reminders) ? data.reminders : [];
+  netWorthItems = Array.isArray(data.netWorth) ? data.netWorth : [];
+  regSheets = Array.isArray(data.register) ? data.register : [];
+  if(!regSheets.length && typeof createDefaultSheets==='function') createDefaultSheets();
+  regActiveSheetId = regSheets.length ? regSheets[0].id : null;
+  dailyLimit = Number(data.dailyLimit)||0;
+
+  // Persist the complete replacement set. saveData clears and rewrites the main tables;
+  // saveInvestments does the same for the investment table.
   await saveData();
+  await saveInvestments();
   await saveCategories();
-  if(data.investments) await saveInvestments();
-  // Reload in-memory copies
+  await saveReminders();
+  await saveNetWorth();
+  await saveRegister();
+  await dbPut('settings',{key:'daily_limit_'+currentUser.username,value:String(dailyLimit)});
+
+  // Remove all existing notes for this user, then restore every date-wise note from the backup.
+  const allSettings=await dbGetAll('settings');
+  const notePrefix='home_note_'+currentUser.username+'_';
+  for(const r of allSettings){
+    if(typeof r.key==='string'&&r.key.startsWith(notePrefix)) await dbDelete('settings',r.key);
+  }
+  if(Array.isArray(data.homeNotes)){
+    for(const n of data.homeNotes){
+      if(n && n.date) await dbPut('settings',{key:notePrefix+n.date,value:n.html||''});
+    }
+  }
+
+  // Reload from IndexedDB so every visible table is populated from the restored data,
+  // rather than relying only on the in-memory arrays.
+  await loadData();
+  await loadInvestments();
   await loadReminders();
   await loadNetWorth();
   await loadRegister();
-  dailyLimit = data.dailyLimit||0;
+  await loadCategories();
+
   renderAll();
+  renderInvestments();
+  if(typeof renderReport==='function') renderReport();
+  if(typeof renderGoals==='function') renderGoals();
+  if(typeof renderRecurring==='function') renderRecurring();
+  if(typeof renderEmis==='function') renderEmis();
+  if(typeof renderLoans==='function') renderLoans();
+  if(typeof renderLoanReport==='function') renderLoanReport();
+  if(typeof renderReminders==='function') renderReminders();
+  if(typeof renderNetWorth==='function') renderNetWorth();
+  if(typeof renderRegister==='function') renderRegister();
+  if(typeof renderDailyLimit==='function') renderDailyLimit();
+  await loadHomeNote();
 }
 function importJSON(){
   const file=document.getElementById('importFile').files[0];if(!file)return;
@@ -3694,6 +3995,29 @@ async function clearAllData(){
   await dbPut('settings',{key:'networth_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'register_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'daily_limit_'+currentUser.username, value:'0'});
+
+  // Clear all date-wise Notes records for the current user as part of
+  // Settings -> Clear All Data. Notes are stored separately in the
+  // settings store under home_note_<username>_<date>, so saveData()
+  // does not remove them automatically.
+  try{
+    clearTimeout(homeNoteAutoSaveTimer);
+    homeNoteAutoSaveTimer=null;
+    const allSettings=await dbGetAll('settings');
+    const notePrefix='home_note_'+currentUser.username+'_';
+    for(const r of allSettings){
+      if(typeof r.key==='string' && r.key.startsWith(notePrefix)){
+        await dbDelete('settings',r.key);
+      }
+    }
+    homeNoteLoadedDate='';
+    const noteEl=document.getElementById('homeNotesText');
+    if(noteEl)noteEl.innerHTML='';
+  }catch(e){
+    console.error('Notes clear error',e);
+    showToast('⚠️ Could not clear Notes data.');
+  }
+
   renderAll();
   renderInvestments();
   showToast('🗑️ All data cleared!');
