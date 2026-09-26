@@ -39,7 +39,7 @@ jobs:
       - name: Install Capacitor 6
         run: |
           npm init -y
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @capgo/capacitor-native-biometric
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @capgo/capacitor-native-biometric@6.0.5
           npm install @capacitor/assets@3 --save-d
       
       - name: Initialize Capacitor (non-interactive)
