@@ -39,7 +39,7 @@ jobs:
       - name: Install Capacitor 6
         run: |
           npm init -y
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @aparajita/capacitor-biometric-auth@7
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @capgo/capacitor-native-biometric
           npm install @capacitor/assets@3 --save-d
       
       - name: Initialize Capacitor (non-interactive)
@@ -47,6 +47,7 @@ jobs:
           npx cap init "Money Manager Pro" com.ullasankv.moneymanagerpro --web-dir www
           npx cap add android
           npx cap sync android
+          
       - name: Add biometric permission
         run: |
            MANIFEST="android/app/src/main/AndroidManifest.xml"
