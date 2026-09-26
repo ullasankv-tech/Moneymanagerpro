@@ -100,7 +100,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .app-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;padding-bottom:calc(145px + var(--safe-bottom));}
 
 /* BALANCE CARD */
-.balance-card{background:linear-gradient(135deg,#00b894,#00cec9,#4d96ff);border-radius:22px;padding:20px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(0,184,148,0.3);}
+.balance-card{background:linear-gradient(135deg,#1f9d84,#22a1a6,#4a7fc4);border-radius:22px;padding:20px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;box-shadow:0 8px 28px rgba(31,157,132,0.22);}
 .balance-card::before{content:'';position:absolute;top:-30px;right:-30px;width:110px;height:110px;background:rgba(255,255,255,0.1);border-radius:50%;}
 .balance-label{font-size:0.75rem;font-weight:700;opacity:0.85;letter-spacing:0.05em;text-transform:uppercase;}
 .balance-amount{font-size:1.8rem;font-weight:800;margin:4px 0;}
@@ -1080,7 +1080,17 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <button type="button" onclick="openInvestmentSaleModal()" style="padding:14px 10px;background:#2e7d32;border:none;border-radius:12px;color:#fff;font-weight:800;cursor:pointer;font-family:var(--font);">📉 Sale</button>
     </div>
     <div id="investmentSummary"></div>
-    <div id="investmentList"></div>
+    <button type="button" onclick="openInvestmentEntriesModal()" style="width:100%;padding:11px;margin:10px 0 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📋 View Purchase / Sale Entries</button>
+    <div id="investmentReportInline"></div>
+  </div>
+</div>
+
+<!-- INVESTMENT PURCHASE/SALE ENTRIES (moved off the main Investments screen into its own window) -->
+<div class="modal-overlay" id="investmentEntriesModal">
+  <div class="modal-sheet" style="max-width:600px;">
+    <h3 style="margin-bottom:12px;">📋 Purchase / Sale Entries</h3>
+    <div id="investmentList" style="max-height:65vh;overflow-y:auto;"></div>
+    <button class="modal-close" onclick="closeModal('investmentEntriesModal')" style="margin-top:14px;">Close</button>
   </div>
 </div>
 <div id="tab-settings" style="display:none;">
@@ -3295,13 +3305,15 @@ function renderInvestments(){
   const list=document.getElementById('investmentList'),summary=document.getElementById('investmentSummary');if(!list)return;
   investments.forEach(normalizeInvestment);
   const buy=investments.reduce((s,x)=>s+Number(x.buyAmount||0),0),sold=investments.reduce((s,x)=>s+Number(x.soldAmount||0),0),profit=investments.reduce((s,x)=>s+Number(x.profit||0),0);
-  summary.innerHTML=`<div class="report-row"><span class="report-label">Total Buy Amount</span><span class="report-val">${fmt(buy)}</span></div><div class="report-row"><span class="report-label">Total Sell Amount</span><span class="report-val">${fmt(sold)}</span></div><div class="report-row"><span class="report-label">Total Profit / Loss</span><span class="report-val">${profit<0?'-':''}${fmt(Math.abs(profit))}</span></div>`;
+  summary.innerHTML=`<div class="report-row" style="justify-content:center;"><span class="report-val" style="font-size:1.3rem;">${fmt(buy)}</span></div><div class="report-row" style="justify-content:center;"><span class="report-val" style="font-size:1.3rem;">${fmt(sold)}</span></div><div style="padding:10px 0;text-align:center;border-bottom:1.5px solid var(--border);"><a href="https://www.nseindia.com" target="_blank" rel="noopener noreferrer" style="color:#1565c0;font-weight:700;font-size:0.85rem;text-decoration:none;">www.nseindia.com</a></div><div class="report-row"><span class="report-label">Total Profit / Loss</span><span class="report-val">${profit<0?'-':''}${fmt(Math.abs(profit))}</span></div>`;
   list.innerHTML=investments.length?investments.map(x=>{
     const bal=Number(invBalanceQty(x).toFixed(4));
     const sales=(x.sales||[]).map(z=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 10px;margin:2px 0 0 14px;background:#e8f5e9;border-radius:8px;font-size:.74rem;color:#1b5e20;"><span>📉 ${invEsc(z.date)} · ${z.qty} @ ${fmtR(z.rate)} = ${fmtR(z.qty*z.rate)}</span><span style="white-space:nowrap;"><button type="button" onclick="editInvestmentSale(${x.id},${z.id})">✏️</button> <button type="button" onclick="deleteInvestmentSale(${x.id},${z.id})">🗑️</button></span></div>`).join('');
     return `<div style="margin-bottom:8px;"><div class="txn-item"><div class="txn-icon income">📈</div><div class="txn-body"><div class="txn-title">${invEsc(x.stock)}</div><div class="txn-meta">${invEsc(x.date)} · Qty ${x.qty} @ ${fmtR(x.buyRate)} · Sold ${x.qtySold||0} · Bal ${bal}</div></div><div><div class="txn-amount ${x.profit>=0?'income':'expense'}">${x.profit<0?'-':''}${fmtR(Math.abs(x.profit||0))}</div><button type="button" onclick="editInvestment(${x.id})">✏️ Edit</button><button type="button" onclick="deleteInvestment(${x.id})">🗑️ Delete</button></div></div>${sales}</div>`;
   }).join(''):'<div style="text-align:center;padding:20px;color:var(--muted)">No investments recorded.</div>';
+  if(document.getElementById('investmentReportInline')) renderInvestmentDateWise('investmentReportInline');
 }
+function openInvestmentEntriesModal(){ renderInvestments(); openModal('investmentEntriesModal'); }
 // Refresh the Investments base screen whenever an input form is dismissed (Save, Cancel, back button)
 ['investmentPurchaseModal','investmentSaleModal'].forEach(id=>{const m=document.getElementById(id);if(!m)return;new MutationObserver(()=>{if(!m.classList.contains('open'))renderInvestments();}).observe(m,{attributes:true,attributeFilter:['class']});});
 function investmentBritishDate(value){
@@ -3332,24 +3344,31 @@ function invReportDefaults(){
   if(!invFrom)invFrom=first||today;
   if(!invTo)invTo=today;
 }
-function applyInvestmentFilter(){
-  invFrom=document.getElementById('inv-from')?.value||'';
-  invTo=document.getElementById('inv-to')?.value||'';
+function applyInvestmentFilter(targetId){
+  targetId=targetId||'reportContent';
+  const fromId=targetId==='reportContent'?'inv-from':'inv-from-'+targetId;
+  const toId=targetId==='reportContent'?'inv-to':'inv-to-'+targetId;
+  invFrom=document.getElementById(fromId)?.value||'';
+  invTo=document.getElementById(toId)?.value||'';
   if(invFrom&&invTo&&invFrom>invTo){showToast('From date cannot be after To date!');return;}
-  renderInvestmentDateWise();
+  renderInvestmentDateWise(targetId);
 }
-function renderInvestmentDateWise(){
-  const rc=document.getElementById('reportContent');
+function renderInvestmentDateWise(targetId){
+  targetId=targetId||'reportContent';
+  const rc=document.getElementById(targetId);
+  if(!rc)return;
   invReportDefaults();
   const rows=investmentStatementRows(invFrom,invTo);
   const buyTotal=rows.filter(r=>r.bought).reduce((s,r)=>s+Number(r.buyAmount||0),0),sellTotal=rows.reduce((s,r)=>s+Number(r.soldAmount||0),0),totalProfit=rows.reduce((s,r)=>s+Number(r.profit||0),0);
   const cell='padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;';
   const mu=r=>r.bought?'':'color:var(--muted);';
+  const fromId=targetId==='reportContent'?'inv-from':'inv-from-'+targetId;
+  const toId=targetId==='reportContent'?'inv-to':'inv-to-'+targetId;
   rc.innerHTML=`<div class="date-filter-row">
-      <input type="date" class="date-filter-input" id="inv-from" value="${invFrom}"/>
+      <input type="date" class="date-filter-input" id="${fromId}" value="${invFrom}"/>
       <span style="font-weight:700;color:var(--muted);font-size:0.8rem;">to</span>
-      <input type="date" class="date-filter-input" id="inv-to" value="${invTo}"/>
-      <button class="date-filter-btn" onclick="applyInvestmentFilter()">Go</button>
+      <input type="date" class="date-filter-input" id="${toId}" value="${invTo}"/>
+      <button class="date-filter-btn" onclick="applyInvestmentFilter('${targetId}')">Go</button>
     </div><div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;text-align:center;">Investment Statement: ${investmentBritishDate(invFrom)} to ${investmentBritishDate(invTo)} · change dates &amp; tap Go</div>
     <div class="investment-report-table-wrap" style="overflow:auto;background:var(--surface);border-radius:12px;border:1px solid var(--border);max-height:64vh;-webkit-overflow-scrolling:touch;"><table style="width:max-content;min-width:0;border-collapse:collapse;font-size:.85rem;"><thead><tr style="background:#e3f2fd;color:#1a2e1a;"><th style="${cell}text-align:left;">Date</th><th style="${cell}text-align:left;">Scrip</th><th style="${cell}text-align:right;">Qty</th><th style="${cell}text-align:right;">Buy_Rate</th><th style="${cell}text-align:right;">Amount</th><th style="${cell}text-align:left;">Date_sold</th><th style="${cell}text-align:right;">Sell_qty</th><th style="${cell}text-align:right;">Sell_rate</th><th style="${cell}text-align:right;">Sell_Amt</th><th style="${cell}text-align:right;">Profit</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="${cell}${mu(r)}">${investmentBritishDate(r.date)}</td><td style="${cell}font-weight:700;">${invEsc(r.stock)}</td><td style="${cell}text-align:right;${mu(r)}">${r.qty}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyRate)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyAmount)}</td><td style="${cell}">${(r.soldDates&&r.soldDates.length)?r.soldDates.map(d=>investmentBritishDate(d)).join(', '):''}</td><td style="${cell}text-align:right;">${r.qtySold||0}</td><td style="${cell}text-align:right;">${r.sellRate?fmtR(r.sellRate):''}</td><td style="${cell}text-align:right;">${fmtR(r.soldAmount||0)}</td><td style="${cell}text-align:right;font-weight:800;">${r.profit<0?'-':''}${fmtR(Math.abs(r.profit||0))}</td></tr>`).join('')||'<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted)">No investment entries in this date range.</td></tr>'}</tbody><tfoot><tr style="font-weight:800;background:var(--bg);"><td colspan="4" style="padding:9px 10px;text-align:right;">Total</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyTotal)}</td><td colspan="3"></td><td style="padding:9px 10px;text-align:right;">${fmtR(sellTotal)}</td><td style="padding:9px 10px;text-align:right;">${totalProfit<0?'-':''}${fmtR(Math.abs(totalProfit))}</td></tr></tfoot></table></div>
     <div style="font-size:0.68rem;color:var(--muted);margin:6px 2px;">Greyed purchase details = bought before this range; only sales inside the range are counted.</div>
