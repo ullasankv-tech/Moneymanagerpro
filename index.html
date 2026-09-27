@@ -847,6 +847,31 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
     <!-- GOALS -->
     <div id="tab-goals" style="display:none;">
+      <!-- SIP CALCULATOR -->
+      <div class="panel">
+        <h3>📈 SIP Calculator</h3>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;">Calculate how much to invest monthly to reach your goal</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div>
+            <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Target Amount (₹)</label>
+            <input type="number" id="sipTarget" placeholder="e.g. 1000000" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;"/>
+          </div>
+          <div>
+            <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Years</label>
+            <input type="number" id="sipYears" placeholder="e.g. 10" min="1" max="50" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;"/>
+          </div>
+          <div>
+            <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Expected Return (% p.a.)</label>
+            <input type="number" id="sipReturn" placeholder="12" value="12" step="0.5" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;"/>
+          </div>
+          <div>
+            <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Already Saved (₹)</label>
+            <input type="number" id="sipSaved" placeholder="0" value="0" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;"/>
+          </div>
+        </div>
+        <button onclick="calcSIP()" style="width:100%;padding:11px;background:linear-gradient(135deg,#cc5de8,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:var(--font);">Calculate Monthly SIP</button>
+        <div id="sipResult" style="display:none;margin-top:12px;padding:14px;background:linear-gradient(135deg,#f3e5f5,#e8f4ff);border-radius:12px;border:2px solid #ce93d8;"></div>
+      </div>
       <div class="panel">
         <h3>🎯 Savings Goals</h3>
         <div id="goalsList"></div>
@@ -1082,6 +1107,68 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <div id="investmentSummary"></div>
     <button type="button" onclick="openInvestmentEntriesModal()" style="width:100%;padding:11px;margin:10px 0 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📋 View Purchase / Sale Entries</button>
     <div id="investmentReportInline"></div>
+
+    <!-- TAX & CAPITAL GAINS CENTER -->
+    <div class="panel" style="margin-top:4px;">
+      <h3>🧾 Tax & Capital Gains</h3>
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:12px;">Educational estimate based on your investment sales. Not tax advice.</p>
+
+      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1.5px solid var(--border);">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;">🧮 Income Tax Estimator</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <button type="button" id="taxRegimeNewBtn" onclick="setTaxRegime('new')" style="flex:1;padding:9px;border-radius:10px;border:2px solid #1565c0;background:#1565c0;color:#fff;font-weight:700;font-size:0.8rem;cursor:pointer;font-family:var(--font);">New Regime</button>
+          <button type="button" id="taxRegimeOldBtn" onclick="setTaxRegime('old')" style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--border);background:var(--bg);color:var(--text);font-weight:700;font-size:0.8rem;cursor:pointer;font-family:var(--font);">Old Regime</button>
+        </div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Annual Income — Salary + Other (before deductions) ₹</label>
+          <input type="number" id="taxAnnualIncome" placeholder="e.g. 900000" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;" onchange="saveTaxSettingsFromUI()"/>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
+          <div>
+            <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Age Group (Old Regime)</label>
+            <select id="taxAgeGroup" style="width:100%;padding:9px;border:2px solid var(--border);border-radius:10px;font-size:0.8rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;" onchange="saveTaxSettingsFromUI()">
+              <option value="below60">Below 60</option>
+              <option value="60to80">60 – 80 yrs</option>
+              <option value="above80">Above 80</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:700;color:var(--muted);padding-bottom:9px;">
+              <input type="checkbox" id="taxIsSalaried" checked onchange="saveTaxSettingsFromUI()" style="width:16px;height:16px;"/> Salaried
+            </label>
+          </div>
+        </div>
+        <div style="font-size:0.68rem;color:var(--muted);">Standard deduction (₹75,000 new / ₹50,000 old) applies only if salaried. Age group affects Old Regime slabs only.</div>
+      </div>
+
+      <div id="taxCenterSummary"></div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1.5px solid var(--border);">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;">📌 Section 80C Tracker</div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Investment / Payment</label>
+          <select id="tax80cType" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;">
+            <option value="">— Select 80C item —</option>
+            <option value="Life insurance premium">Life insurance premium</option>
+            <option value="PPF">PPF</option>
+            <option value="EPF/Employee PF">EPF / Employee PF</option>
+            <option value="ELSS mutual funds">ELSS mutual funds</option>
+            <option value="NSC">NSC</option>
+            <option value="Children tuition fees">Children's tuition fees (eligible conditions)</option>
+            <option value="Home-loan principal repayment">Home-loan principal repayment</option>
+            <option value="5-year tax-saving FD">5-year tax-saving fixed deposit</option>
+            <option value="Sukanya Samriddhi Scheme">Sukanya Samriddhi Scheme</option>
+          </select>
+        </div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Amount (₹)</label>
+          <input type="number" id="tax80cAmount" placeholder="Amount invested / paid" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;"/>
+        </div>
+        <button onclick="add80CEntry()" style="width:100%;padding:10px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">+ Add 80C Entry</button>
+        <div id="tax80cList" style="margin-top:10px;"></div>
+        <div id="tax80cTotal" style="margin-top:8px;font-size:0.85rem;font-weight:800;"></div>
+      </div>
+      <button onclick="openTaxReport()" style="width:100%;padding:11px;margin-top:12px;background:linear-gradient(135deg,#1a1a2e,#1565c0);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">📄 Full Tax Report</button>
+    </div>
   </div>
 </div>
 
@@ -1197,25 +1284,24 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <!-- EXPORT -->
       <div class="panel">
         <h3>📤 Export & Backup</h3>
-        <button class="export-btn" onclick="exportJSON()">💾 Local Backup - JSON</button>
-        <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;margin-top:10px;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button class="export-btn" style="margin-bottom:0;flex:1;width:auto;" onclick="exportJSON()">💾 Local Backup - JSON</button>
+          <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importJSON()"/>
+          <button class="export-btn" style="margin-bottom:0;flex:1;width:auto;" onclick="document.getElementById('importFile').click()">📂 Import JSON Backup</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
           <input type="checkbox" id="autoBackupOnLogin" onchange="saveAutoBackupPref()" style="width:16px;height:16px;flex-shrink:0;"/>
           <span>Automatic Backup to JSON on login</span>
         </label>
-        <div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--border);">
-          <div style="font-size:0.88rem;font-weight:700;margin-bottom:10px;">☁️ Cloud Backup</div>
+        <div style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border);">
+          <div style="font-size:0.88rem;font-weight:700;margin-bottom:8px;">☁️ Cloud Backup</div>
           <div style="display:flex;gap:8px;">
             <button class="export-btn" style="margin-bottom:0;flex:1;width:auto;" onclick="backupToFirebase()">☁️ Backup to Cloud</button>
             <button class="export-btn" style="margin-bottom:0;flex:1;width:auto;" onclick="restoreFromFirebase()">☁️ Restore from Cloud</button>
           </div>
         </div>
-        <div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--border);">
-          <div style="font-size:0.88rem;font-weight:700;margin-bottom:10px;">📥 Restore</div>
-          <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importJSON()"/>
-          <button class="export-btn" onclick="document.getElementById('importFile').click()">📂 Import JSON Backup</button>
-        </div>
-        <div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--border);">
-          <button class="export-btn" onclick="clearAllData()" style="border-color:#ffcdd2;color:#ff6b6b;">🗑️ Clear All Data</button>
+        <div style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border);">
+          <button class="export-btn" onclick="clearAllData()" style="border-color:#ffcdd2;color:#ff6b6b;margin-bottom:0;">🗑️ Clear All Data</button>
         </div>
       </div>
 
@@ -1321,8 +1407,9 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div style="font-size:0.72rem;opacity:0.8;text-align:center;">Lifetime access · Pay once · Use forever</div>
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
         <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>✅</span><span>Zero ads — forever</span></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>🧾</span><span>Full Tax Report & Capital Gains</span></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>📈</span><span>SIP Calculator & Goal Projections</span></div>
         <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>⭐</span><span>Premium badge on your profile</span></div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>🚀</span><span>Priority support</span></div>
         <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>🔓</span><span>All future premium features</span></div>
       </div>
     </div>
@@ -1409,6 +1496,16 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <input type="hidden" id="invPurchaseId">
     <div class="form-group"><label>Purchase Date</label><input type="date" class="form-input" id="invPurchaseDate"></div>
     <div class="form-group"><label>Investment Category</label><select class="form-input" id="invPurchaseCategory"></select></div>
+    <div class="form-group"><label>Asset Type</label>
+      <select class="form-input" id="invPurchaseAssetType">
+        <option value="equity">Equity / Stocks</option>
+        <option value="equity_mf">Equity Mutual Fund</option>
+        <option value="debt_mf">Debt Mutual Fund</option>
+        <option value="gold">Gold / SGB / Gold ETF</option>
+        <option value="crypto">Crypto / VDA</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
     <div class="form-group"><label>Scrip</label><input type="text" class="form-input" id="invPurchaseStock" placeholder="e.g. RELIANCE"></div>
     <div class="form-group"><label>Quantity</label><input type="number" class="form-input" id="invPurchaseQty" min="0.0001" step="0.0001" oninput="calcInvestmentPurchase()"></div>
     <div class="form-group"><label>Buy Rate</label><input type="number" class="form-input" id="invPurchaseRate" min="0" step="0.01" oninput="calcInvestmentPurchase()"></div>
@@ -2098,6 +2195,8 @@ function doLogin(){
     try{ await loadData(); }catch(e){}
     try{ await loadInvestments(); }catch(e){}
     try{ await loadCategories(); }catch(e){}
+    try{ if(typeof load80C==='function') await load80C(); }catch(e){}
+    try{ if(typeof loadTaxSettings==='function') await loadTaxSettings(); }catch(e){}
     try{
       var ps = await loadSettings();
       if(ps && ps.pin && ps.pinEnabled){ showPinScreen('check'); }
@@ -2571,6 +2670,560 @@ function renderGoals(){
   }).join('');
   document.getElementById('st-goals').textContent=goals.length;
 }
+
+// ═══════════════════════════════════════
+// SIP CALCULATOR
+// ═══════════════════════════════════════
+function calcSIP(){
+  const target = parseFloat(document.getElementById('sipTarget').value) || 0;
+  const years  = parseFloat(document.getElementById('sipYears').value) || 0;
+  const rate   = parseFloat(document.getElementById('sipReturn').value) || 12;
+  const saved  = parseFloat(document.getElementById('sipSaved').value) || 0;
+  const box = document.getElementById('sipResult');
+  if(target <= 0 || years <= 0){
+    showToast('⚠️ Enter target amount and years');
+    return;
+  }
+  const months = years * 12;
+  const r = rate / 12 / 100;
+  // Future value of already saved amount
+  const fvSaved = saved * Math.pow(1 + r, months);
+  const remaining = Math.max(0, target - fvSaved);
+  let sip = 0;
+  if(r === 0){
+    sip = remaining / months;
+  } else {
+    // SIP formula: SIP = FV * r / ((1+r)^n - 1)
+    sip = remaining * r / (Math.pow(1 + r, months) - 1);
+  }
+  const totalInvest = sip * months + saved;
+  const wealthGain = target - totalInvest;
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div style="text-align:center;margin-bottom:10px;">
+      <div style="font-size:0.75rem;color:#6a1b9a;font-weight:700;">REQUIRED MONTHLY SIP</div>
+      <div style="font-size:1.6rem;font-weight:900;color:#4a148c;">${fmt(Math.ceil(sip))}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.78rem;">
+      <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;">
+        <div style="color:var(--muted);font-weight:600;">Total Invested</div>
+        <div style="font-weight:800;">${fmt(Math.round(totalInvest))}</div>
+      </div>
+      <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;">
+        <div style="color:var(--muted);font-weight:600;">Est. Wealth Gain</div>
+        <div style="font-weight:800;color:#00b894;">${fmt(Math.round(Math.max(0, target - totalInvest)))}</div>
+      </div>
+    </div>
+    <div style="font-size:0.68rem;color:var(--muted);margin-top:8px;text-align:center;">Assuming ${rate}% p.a. compounded monthly · For education only</div>
+  `;
+}
+
+// ═══════════════════════════════════════
+// TAX & CAPITAL GAINS + 80C
+// ═══════════════════════════════════════
+let tax80cEntries = [];
+
+async function load80C(){
+  try{
+    const r = await dbGet('settings','tax80c_'+currentUser.username);
+    if(r){ const dec = await decryptData(r.value); tax80cEntries = JSON.parse(dec); }
+    else tax80cEntries = [];
+  }catch{ tax80cEntries = []; }
+}
+async function save80C(){
+  const enc = await encryptData(JSON.stringify(tax80cEntries));
+  await dbPut('settings',{key:'tax80c_'+currentUser.username, value:enc});
+}
+
+// --- Income Tax Regime Settings ---
+let taxSettings = {regime:'new', income:0, age:'below60', salaried:true};
+const TAX_SETTINGS_DEFAULT = {regime:'new', income:0, age:'below60', salaried:true};
+
+async function loadTaxSettings(){
+  try{
+    const r = await dbGet('settings','taxSettings_'+currentUser.username);
+    if(r){ const dec = await decryptData(r.value); taxSettings = Object.assign({}, TAX_SETTINGS_DEFAULT, JSON.parse(dec)); }
+    else taxSettings = Object.assign({}, TAX_SETTINGS_DEFAULT);
+  }catch{ taxSettings = Object.assign({}, TAX_SETTINGS_DEFAULT); }
+}
+async function saveTaxSettings(){
+  const enc = await encryptData(JSON.stringify(taxSettings));
+  await dbPut('settings',{key:'taxSettings_'+currentUser.username, value:enc});
+}
+function updateRegimeButtons(r){
+  const nb=document.getElementById('taxRegimeNewBtn'), ob=document.getElementById('taxRegimeOldBtn');
+  if(!nb||!ob) return;
+  if(r==='old'){
+    ob.style.background='#1565c0'; ob.style.color='#fff'; ob.style.borderColor='#1565c0';
+    nb.style.background='var(--bg)'; nb.style.color='var(--text)'; nb.style.borderColor='var(--border)';
+  } else {
+    nb.style.background='#1565c0'; nb.style.color='#fff'; nb.style.borderColor='#1565c0';
+    ob.style.background='var(--bg)'; ob.style.color='var(--text)'; ob.style.borderColor='var(--border)';
+  }
+}
+function setTaxRegime(r){
+  taxSettings.regime = r;
+  updateRegimeButtons(r);
+  saveTaxSettingsFromUI();
+}
+async function saveTaxSettingsFromUI(){
+  const inc=document.getElementById('taxAnnualIncome'), age=document.getElementById('taxAgeGroup'), sal=document.getElementById('taxIsSalaried');
+  if(inc) taxSettings.income = parseFloat(inc.value)||0;
+  if(age) taxSettings.age = age.value;
+  if(sal) taxSettings.salaried = !!sal.checked;
+  await saveTaxSettings();
+  renderTaxCenter();
+}
+function applyTaxSettingsToUI(){
+  const inc=document.getElementById('taxAnnualIncome'), age=document.getElementById('taxAgeGroup'), sal=document.getElementById('taxIsSalaried');
+  if(inc) inc.value = taxSettings.income || '';
+  if(age) age.value = taxSettings.age || 'below60';
+  if(sal) sal.checked = taxSettings.salaried !== false;
+  updateRegimeButtons(taxSettings.regime||'new');
+}
+
+// Computes estimated income tax for FY 2026-27, given realized capital gains
+// broken down by category. gains = {stcgEquity, ltcgEquity, stcgOther, ltcgOther, cryptoGains}
+// stcgOther/ltcgOther cover debt MF (always slab-taxed), gold, and other assets.
+function calcIncomeTax(gains){
+  const s = taxSettings || TAX_SETTINGS_DEFAULT;
+  const regime = s.regime === 'old' ? 'old' : 'new';
+  const grossIncome = Math.max(0, s.income||0);
+  const c80Total = Math.min(150000, (tax80cEntries||[]).reduce((t,e)=>t+e.amount,0));
+  const c80Applied = regime === 'old' ? c80Total : 0;
+
+  const stdDeduction = s.salaried ? (regime==='new' ? 75000 : 50000) : 0;
+  const stcgOther = Math.max(0, gains.stcgOther||0);
+  let normalIncome = Math.max(0, grossIncome - stdDeduction) + stcgOther;
+  normalIncome = Math.max(0, normalIncome - c80Applied);
+
+  let slabs, basicExemption;
+  if(regime==='new'){
+    slabs = [[400000,0],[400000,0.05],[400000,0.10],[400000,0.15],[400000,0.20],[400000,0.25],[Infinity,0.30]];
+    basicExemption = 400000;
+  } else if(s.age==='above80'){
+    slabs = [[500000,0],[500000,0.20],[Infinity,0.30]];
+    basicExemption = 500000;
+  } else if(s.age==='60to80'){
+    slabs = [[300000,0],[200000,0.05],[500000,0.20],[Infinity,0.30]];
+    basicExemption = 300000;
+  } else {
+    slabs = [[250000,0],[250000,0.05],[500000,0.20],[Infinity,0.30]];
+    basicExemption = 250000;
+  }
+
+  function slabTax(amount){
+    let remaining = amount, tax = 0;
+    for(const [width, rate] of slabs){
+      if(remaining<=0) break;
+      const chunk = Math.min(remaining, width);
+      tax += chunk*rate;
+      remaining -= chunk;
+    }
+    return tax;
+  }
+
+  // Unused basic exemption (resident individuals) can offset capital gains,
+  // applied to other-asset LTCG first, then equity LTCG, then equity STCG.
+  let ltcgOther = Math.max(0, gains.ltcgOther||0);
+  let ltcgEquity = Math.max(0, gains.ltcgEquity||0);
+  let stcgEquity = Math.max(0, gains.stcgEquity||0);
+  let exemptionLeft = Math.max(0, basicExemption - normalIncome);
+  if(exemptionLeft>0 && ltcgOther>0){ const u=Math.min(exemptionLeft,ltcgOther); ltcgOther-=u; exemptionLeft-=u; }
+  if(exemptionLeft>0 && ltcgEquity>0){ const u=Math.min(exemptionLeft,ltcgEquity); ltcgEquity-=u; exemptionLeft-=u; }
+  if(exemptionLeft>0 && stcgEquity>0){ const u=Math.min(exemptionLeft,stcgEquity); stcgEquity-=u; exemptionLeft-=u; }
+
+  const ltcgEquityTaxable = Math.max(0, ltcgEquity - 125000);
+  const cryptoGains = Math.max(0, gains.cryptoGains||0);
+
+  const taxOnNormal = slabTax(normalIncome);
+  const taxOnLtcgEquity = ltcgEquityTaxable * 0.125;
+  const taxOnLtcgOther = ltcgOther * 0.125;
+  const taxOnStcgEquity = stcgEquity * 0.20;
+  const taxOnCrypto = cryptoGains * 0.30;
+
+  const totalTaxableIncome = normalIncome + ltcgEquity + ltcgOther + stcgEquity + cryptoGains;
+  let rebate = 0;
+  if(regime==='new' && totalTaxableIncome <= 1200000) rebate = Math.min(taxOnNormal, 60000);
+  else if(regime==='old' && totalTaxableIncome <= 500000) rebate = Math.min(taxOnNormal, 12500);
+
+  const taxAfterRebate = Math.max(0, taxOnNormal - rebate);
+  const taxBeforeCess = taxAfterRebate + taxOnLtcgEquity + taxOnLtcgOther + taxOnStcgEquity + taxOnCrypto;
+  const cess = taxBeforeCess * 0.04;
+  const totalTax = taxBeforeCess + cess;
+
+  return {regime, normalIncome, stdDeduction, c80Applied, taxOnNormal, rebate, taxAfterRebate,
+    ltcgEquityTaxable, taxOnLtcgEquity, ltcgOther, taxOnLtcgOther, stcgEquity, taxOnStcgEquity,
+    cryptoGains, taxOnCrypto, cess, totalTax, totalTaxableIncome, basicExemption};
+}
+
+function renderTaxCenter(){
+  const el = document.getElementById('taxCenterSummary');
+  if(!el) return;
+  const now = new Date();
+  const fyStart = now.getMonth() >= 3 ? new Date(now.getFullYear(), 3, 1) : new Date(now.getFullYear()-1, 3, 1);
+  const fyStartStr = fyStart.toISOString().split('T')[0];
+
+  let stcg = 0, ltcg = 0, cryptoGains = 0, totalRealized = 0;
+  const byType = {};
+  (investments||[]).forEach(inv=>{
+    normalizeInvestment(inv);
+    const at = inv.assetType || 'equity';
+    if(!byType[at]) byType[at] = {stcg:0, ltcg:0, special:0};
+    (inv.sales||[]).forEach(s=>{
+      if(!s.date || s.date < fyStartStr) return;
+      const profit = (s.qty * s.rate) - (s.qty * (inv.buyRate||0));
+      totalRealized += profit;
+      if(at === 'crypto'){
+        cryptoGains += profit;
+        byType[at].special += profit;
+      } else if(invIsLTCG(at, inv.date, s.date)){
+        ltcg += profit;
+        byType[at].ltcg += profit;
+      } else {
+        stcg += profit;
+        byType[at].stcg += profit;
+      }
+    });
+  });
+
+  const typeOrder = ['equity','equity_mf','debt_mf','gold','crypto','other'];
+  const typeRows = typeOrder.filter(t=>byType[t] && (byType[t].stcg||byType[t].ltcg||byType[t].special)).map(t=>{
+    const b = byType[t];
+    if(t==='crypto'){
+      return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.75rem;">
+        <span>${invAssetTypeLabel(t)}</span>
+        <span style="font-weight:800;color:${b.special>=0?'#00b894':'#ff6b6b'};">${b.special<0?'-':''}${fmt(Math.abs(b.special))} <span style="font-weight:600;color:var(--muted);font-size:0.65rem;">(special)</span></span>
+      </div>`;
+    }
+    return `<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.75rem;">
+      <span style="flex:1;">${invAssetTypeLabel(t)}</span>
+      <span style="font-weight:700;color:#e65100;">ST ${b.stcg<0?'-':''}${fmt(Math.abs(b.stcg))}</span>
+      <span style="font-weight:700;color:#2e7d32;">LT ${b.ltcg<0?'-':''}${fmt(Math.abs(b.ltcg))}</span>
+    </div>`;
+  }).join('') || '<div style="font-size:0.75rem;color:var(--muted);padding:6px 0;">No sales this FY</div>';
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <div style="background:#fff3e0;border-radius:12px;padding:12px;text-align:center;">
+        <div style="font-size:0.68rem;font-weight:700;color:#e65100;">STCG</div>
+        <div style="font-size:1.1rem;font-weight:900;color:${stcg>=0?'#e65100':'#c62828'};">${stcg<0?'-':''}${fmt(Math.abs(stcg))}</div>
+      </div>
+      <div style="background:#e8f5e9;border-radius:12px;padding:12px;text-align:center;">
+        <div style="font-size:0.68rem;font-weight:700;color:#2e7d32;">LTCG</div>
+        <div style="font-size:1.1rem;font-weight:900;color:${ltcg>=0?'#2e7d32':'#c62828'};">${ltcg<0?'-':''}${fmt(Math.abs(ltcg))}</div>
+      </div>
+    </div>
+    ${cryptoGains ? `<div style="background:#f3e5f5;border-radius:10px;padding:8px 10px;margin-bottom:10px;text-align:center;font-size:0.78rem;">
+      Crypto gains (special regime): <strong style="color:${cryptoGains>=0?'#6a1b9a':'#c62828'};">${cryptoGains<0?'-':''}${fmt(Math.abs(cryptoGains))}</strong>
+    </div>` : ''}
+    <div style="background:var(--bg);border-radius:10px;padding:10px;text-align:center;border:1.5px solid var(--border);margin-bottom:10px;">
+      <span style="font-size:0.78rem;font-weight:700;">Realized P/L (this FY)</span>
+      <span style="font-size:1rem;font-weight:900;margin-left:8px;color:${totalRealized>=0?'#00b894':'#ff6b6b'};">${totalRealized<0?'-':''}${fmt(Math.abs(totalRealized))}</span>
+    </div>
+    <div style="border:1.5px solid var(--border);border-radius:10px;padding:8px 10px;">
+      <div style="font-size:0.72rem;font-weight:800;color:var(--muted);margin-bottom:4px;text-transform:uppercase;">By Asset Type</div>
+      ${typeRows}
+    </div>
+    ${renderIncomeTaxCardHtml(byType)}
+  `;
+  applyTaxSettingsToUI();
+  render80CList();
+}
+
+function taxGainsFromByType(byType){
+  const b = byType || {};
+  const g = t => (b[t] || {stcg:0, ltcg:0, special:0});
+  return {
+    stcgEquity: g('equity').stcg + g('equity_mf').stcg,
+    ltcgEquity: g('equity').ltcg + g('equity_mf').ltcg,
+    stcgOther: g('debt_mf').stcg + g('debt_mf').ltcg + g('gold').stcg + g('other').stcg,
+    ltcgOther: g('gold').ltcg + g('other').ltcg,
+    cryptoGains: g('crypto').special
+  };
+}
+
+function renderIncomeTaxCardHtml(byType){
+  const gains = taxGainsFromByType(byType);
+  const calc = calcIncomeTax(gains);
+  const rows = [];
+  rows.push(`<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:4px;"><span>Tax on income (after rebate)</span><span style="font-weight:800;">${fmt(calc.taxAfterRebate)}</span></div>`);
+  if(calc.taxOnStcgEquity) rows.push(`<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:4px;"><span>STCG (equity) @20%</span><span style="font-weight:800;">${fmt(calc.taxOnStcgEquity)}</span></div>`);
+  if(calc.taxOnLtcgEquity) rows.push(`<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:4px;"><span>LTCG (equity) @12.5%</span><span style="font-weight:800;">${fmt(calc.taxOnLtcgEquity)}</span></div>`);
+  if(calc.taxOnLtcgOther) rows.push(`<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:4px;"><span>LTCG (gold/other) @12.5%</span><span style="font-weight:800;">${fmt(calc.taxOnLtcgOther)}</span></div>`);
+  if(calc.taxOnCrypto) rows.push(`<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:4px;"><span>Crypto / VDA @30%</span><span style="font-weight:800;">${fmt(calc.taxOnCrypto)}</span></div>`);
+  rows.push(`<div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:4px;"><span>Health &amp; Education Cess @4%</span><span style="font-weight:800;">${fmt(calc.cess)}</span></div>`);
+  const rebateRow = calc.rebate ? `<div style="display:flex;justify-content:space-between;font-size:0.7rem;opacity:0.8;margin-bottom:4px;"><span>Section 87A rebate applied</span><span>-${fmt(calc.rebate)}</span></div>` : '';
+  const regimeNote = calc.regime==='new'
+    ? 'Section 80C is not deductible under the New Regime.'
+    : `Section 80C deduction of ${fmt(calc.c80Applied)} applied against income.`;
+  return `
+    <div style="margin-top:12px;padding-top:12px;border-top:1.5px solid var(--border);">
+      <div style="font-size:0.72rem;font-weight:800;color:var(--muted);margin-bottom:6px;text-transform:uppercase;">Estimated Tax Payable — ${calc.regime==='new'?'New':'Old'} Regime</div>
+      <div style="background:linear-gradient(135deg,#1a1a2e,#1565c0);border-radius:12px;padding:12px;color:#fff;">
+        ${rows.join('')}
+        ${rebateRow}
+        <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:6px;border-top:1px solid rgba(255,255,255,0.25);font-size:0.95rem;font-weight:900;"><span>Total Tax Payable</span><span>${fmt(calc.totalTax)}</span></div>
+      </div>
+      <div style="font-size:0.68rem;color:var(--muted);margin-top:6px;">${regimeNote} Surcharge (applicable above ₹50L) not included. Educational estimate only — not tax advice.</div>
+    </div>
+  `;
+}
+
+
+function render80CList(){
+  const list = document.getElementById('tax80cList');
+  const totalEl = document.getElementById('tax80cTotal');
+  if(!list) return;
+  const total = tax80cEntries.reduce((s,e)=>s+e.amount,0);
+  const limit = 150000;
+  list.innerHTML = tax80cEntries.length ? tax80cEntries.map(e=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
+      <span>${e.note||'80C'} · ${fmt(e.amount)}</span>
+      <button onclick="delete80C(${e.id})" style="background:#ffebee;border:none;border-radius:6px;color:#e53935;font-size:0.7rem;padding:3px 8px;cursor:pointer;font-weight:700;">✕</button>
+    </div>`).join('') : '<div style="font-size:0.75rem;color:var(--muted);padding:6px 0;">No 80C entries yet</div>';
+  if(totalEl){
+    const remaining = Math.max(0, limit - total);
+    totalEl.innerHTML = `Total 80C: <span style="color:#1565c0;">${fmt(total)}</span> / ₹1,50,000 &nbsp;·&nbsp; Remaining: <span style="color:${remaining>0?'#00b894':'#ff6b6b'};">${fmt(remaining)}</span>`;
+  }
+}
+
+async function add80CEntry(){
+  const typeEl = document.getElementById('tax80cType');
+  const note = (typeEl && typeEl.value) ? typeEl.value.trim() : '';
+  const amount = parseFloat(document.getElementById('tax80cAmount').value)||0;
+  if(!note){ showToast('⚠️ Please select an 80C item'); return; }
+  if(amount <= 0){ showToast('⚠️ Enter a valid amount'); return; }
+  tax80cEntries.push({id:Date.now(), amount, note, date: new Date().toISOString().split('T')[0]});
+  await save80C();
+  if(typeEl) typeEl.value = '';
+  document.getElementById('tax80cAmount').value = '';
+  render80CList();
+  showToast('✅ 80C entry added');
+}
+
+async function delete80C(id){
+  tax80cEntries = tax80cEntries.filter(e=>e.id!==id);
+  await save80C();
+  render80CList();
+  showToast('🗑️ Removed');
+}
+
+function openTaxReport(){
+  const now = new Date();
+  const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear()-1;
+  const fyLabel = 'FY ' + fyStartYear + '-' + String(fyStartYear+1).slice(-2);
+  const fyStartStr = new Date(fyStartYear, 3, 1).toISOString().split('T')[0];
+
+  const stcgRows = [], ltcgRows = [];
+  let stcg=0, ltcg=0;
+  const byTypeReport = {};
+  (investments||[]).forEach(inv=>{
+    if(typeof normalizeInvestment==='function') normalizeInvestment(inv);
+    const at = inv.assetType || 'equity';
+    if(!byTypeReport[at]) byTypeReport[at] = {stcg:0, ltcg:0, special:0};
+    (inv.sales||[]).forEach(s=>{
+      if(!s.date || s.date < fyStartStr) return;
+      const buyAmt = s.qty * (inv.buyRate||0);
+      const sellAmt = s.qty * s.rate;
+      const profit = sellAmt - buyAmt;
+      const row = {scrip: inv.stock||'-', type: invAssetTypeLabel(at), buyDate: inv.date, sellDate: s.date, qty: s.qty, buyAmt, sellAmt, profit, assetType: at};
+      if(at === 'crypto'){ /* special regime — show under STCG table with type label; exclude from STCG/LTCG totals */ stcgRows.push(row); byTypeReport[at].special += profit; }
+      else if(invIsLTCG(at, inv.date, s.date)){ ltcg += profit; ltcgRows.push(row); byTypeReport[at].ltcg += profit; }
+      else { stcg += profit; stcgRows.push(row); byTypeReport[at].stcg += profit; }
+    });
+  });
+  const incomeTaxCalc = calcIncomeTax(taxGainsFromByType(byTypeReport));
+
+  const c80 = (tax80cEntries||[]).reduce((s,e)=>s+e.amount,0);
+  const c80Remain = Math.max(0, 150000 - c80);
+  const userName = (currentUser && currentUser.name) || 'User';
+  const genDate = now.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+
+  const rowHtml = (rows) => rows.length ? rows.map(r=>`
+    <tr>
+      <td style="padding:7px 6px;border-bottom:1px solid var(--border);font-size:0.72rem;">${r.scrip}</td>
+      <td style="padding:7px 6px;border-bottom:1px solid var(--border);font-size:0.68rem;color:var(--muted);">${r.type||'-'}</td>
+      <td style="padding:7px 6px;border-bottom:1px solid var(--border);font-size:0.72rem;white-space:nowrap;">${r.buyDate||'-'}</td>
+      <td style="padding:7px 6px;border-bottom:1px solid var(--border);font-size:0.72rem;white-space:nowrap;">${r.sellDate||'-'}</td>
+      <td style="padding:7px 6px;border-bottom:1px solid var(--border);font-size:0.72rem;text-align:right;">${r.qty}</td>
+      <td style="padding:7px 6px;border-bottom:1px solid var(--border);font-size:0.72rem;text-align:right;">${fmt(r.buyAmt)}</td>
+      <td style="padding:7px 6px;border-bottom:1px solid var(--border);font-size:0.72rem;text-align:right;">${fmt(r.sellAmt)}</td>
+      <td style="padding:7px 6px;border-bottom:1px solid var(--border);font-size:0.72rem;text-align:right;font-weight:800;color:${r.profit>=0?'#00b894':'#ff6b6b'};">${r.profit<0?'-':''}${fmt(Math.abs(r.profit))}</td>
+    </tr>`).join('') : `<tr><td colspan="8" style="padding:12px;text-align:center;color:var(--muted);font-size:0.75rem;">No entries in this category</td></tr>`;
+
+  const c80Html = (tax80cEntries||[]).length ? (tax80cEntries||[]).map(e=>`
+    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:0.8rem;">
+      <span>${e.note||'80C'}</span>
+      <span style="font-weight:800;">${fmt(e.amount)}</span>
+    </div>`).join('') : '<div style="padding:10px 0;color:var(--muted);font-size:0.78rem;text-align:center;">No 80C entries recorded</div>';
+
+  document.getElementById('taxReportContent').innerHTML = `
+    <div style="text-align:center;margin-bottom:14px;">
+      <div style="font-size:1.15rem;font-weight:900;">📄 Full Tax Report</div>
+      <div style="font-size:0.82rem;font-weight:700;margin-top:4px;">${userName}</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">${fyLabel} · Generated ${genDate}</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#1a1a2e,#1565c0);border-radius:14px;padding:14px;color:#fff;margin-bottom:14px;">
+      <div style="font-size:0.72rem;opacity:0.85;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Summary</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><div style="font-size:0.68rem;opacity:0.8;">STCG (≤ 1 year)</div><div style="font-size:1.05rem;font-weight:900;">${stcg<0?'-':''}${fmt(Math.abs(stcg))}</div></div>
+        <div><div style="font-size:0.68rem;opacity:0.8;">LTCG (> 1 year)</div><div style="font-size:1.05rem;font-weight:900;">${ltcg<0?'-':''}${fmt(Math.abs(ltcg))}</div></div>
+        <div><div style="font-size:0.68rem;opacity:0.8;">Section 80C Claimed</div><div style="font-size:1.05rem;font-weight:900;">${fmt(c80)}</div></div>
+        <div><div style="font-size:0.68rem;opacity:0.8;">80C Remaining</div><div style="font-size:1.05rem;font-weight:900;">${fmt(c80Remain)}</div></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.85rem;font-weight:800;margin-bottom:8px;color:#e65100;">📉 Short-term Capital Gains (STCG)</div>
+      <div style="overflow-x:auto;border:1.5px solid var(--border);border-radius:10px;">
+        <table style="width:100%;border-collapse:collapse;min-width:480px;">
+          <thead><tr style="background:#fff3e0;">
+            <th style="padding:8px 6px;text-align:left;font-size:0.68rem;">Scrip</th>
+            <th style="padding:8px 6px;text-align:left;font-size:0.68rem;">Type</th>
+            <th style="padding:8px 6px;text-align:left;font-size:0.68rem;">Buy</th>
+            <th style="padding:8px 6px;text-align:left;font-size:0.68rem;">Sell</th>
+            <th style="padding:8px 6px;text-align:right;font-size:0.68rem;">Qty</th>
+            <th style="padding:8px 6px;text-align:right;font-size:0.68rem;">Buy Amt</th>
+            <th style="padding:8px 6px;text-align:right;font-size:0.68rem;">Sell Amt</th>
+            <th style="padding:8px 6px;text-align:right;font-size:0.68rem;">P/L</th>
+          </tr></thead>
+          <tbody>${rowHtml(stcgRows)}</tbody>
+          <tfoot><tr style="background:#fff8e1;font-weight:800;">
+            <td colspan="7" style="padding:8px 6px;font-size:0.78rem;text-align:right;">Total STCG</td>
+            <td style="padding:8px 6px;font-size:0.78rem;text-align:right;color:${stcg>=0?'#00b894':'#ff6b6b'};">${stcg<0?'-':''}${fmt(Math.abs(stcg))}</td>
+          </tr></tfoot>
+        </table>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.85rem;font-weight:800;margin-bottom:8px;color:#2e7d32;">📈 Long-term Capital Gains (LTCG)</div>
+      <div style="overflow-x:auto;border:1.5px solid var(--border);border-radius:10px;">
+        <table style="width:100%;border-collapse:collapse;min-width:480px;">
+          <thead><tr style="background:#e8f5e9;">
+            <th style="padding:8px 6px;text-align:left;font-size:0.68rem;">Scrip</th>
+            <th style="padding:8px 6px;text-align:left;font-size:0.68rem;">Type</th>
+            <th style="padding:8px 6px;text-align:left;font-size:0.68rem;">Buy</th>
+            <th style="padding:8px 6px;text-align:left;font-size:0.68rem;">Sell</th>
+            <th style="padding:8px 6px;text-align:right;font-size:0.68rem;">Qty</th>
+            <th style="padding:8px 6px;text-align:right;font-size:0.68rem;">Buy Amt</th>
+            <th style="padding:8px 6px;text-align:right;font-size:0.68rem;">Sell Amt</th>
+            <th style="padding:8px 6px;text-align:right;font-size:0.68rem;">P/L</th>
+          </tr></thead>
+          <tbody>${rowHtml(ltcgRows)}</tbody>
+          <tfoot><tr style="background:#e8f5e9;font-weight:800;">
+            <td colspan="7" style="padding:8px 6px;font-size:0.78rem;text-align:right;">Total LTCG</td>
+            <td style="padding:8px 6px;font-size:0.78rem;text-align:right;color:${ltcg>=0?'#00b894':'#ff6b6b'};">${ltcg<0?'-':''}${fmt(Math.abs(ltcg))}</td>
+          </tr></tfoot>
+        </table>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.85rem;font-weight:800;margin-bottom:8px;color:#1565c0;">📌 Section 80C Deductions</div>
+      <div style="border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;">
+        ${c80Html}
+        <div style="display:flex;justify-content:space-between;padding-top:10px;margin-top:6px;border-top:2px solid var(--border);font-weight:800;font-size:0.85rem;">
+          <span>Total Claimed / Limit</span>
+          <span>${fmt(c80)} / ₹1,50,000</span>
+        </div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;text-align:right;">Remaining headroom: ${fmt(c80Remain)}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.85rem;font-weight:800;margin-bottom:8px;color:#1a1a2e;">🧮 Estimated Income Tax — ${incomeTaxCalc.regime==='new'?'New':'Old'} Regime</div>
+      <div style="border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.8rem;"><span>Tax on income (after 87A rebate)</span><span style="font-weight:800;">${fmt(incomeTaxCalc.taxAfterRebate)}</span></div>
+        ${incomeTaxCalc.taxOnStcgEquity?`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.8rem;"><span>STCG (equity) @20%</span><span style="font-weight:800;">${fmt(incomeTaxCalc.taxOnStcgEquity)}</span></div>`:''}
+        ${incomeTaxCalc.taxOnLtcgEquity?`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.8rem;"><span>LTCG (equity) @12.5%</span><span style="font-weight:800;">${fmt(incomeTaxCalc.taxOnLtcgEquity)}</span></div>`:''}
+        ${incomeTaxCalc.taxOnLtcgOther?`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.8rem;"><span>LTCG (gold/other) @12.5%</span><span style="font-weight:800;">${fmt(incomeTaxCalc.taxOnLtcgOther)}</span></div>`:''}
+        ${incomeTaxCalc.taxOnCrypto?`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.8rem;"><span>Crypto / VDA @30%</span><span style="font-weight:800;">${fmt(incomeTaxCalc.taxOnCrypto)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.8rem;"><span>Health &amp; Education Cess @4%</span><span style="font-weight:800;">${fmt(incomeTaxCalc.cess)}</span></div>
+        ${incomeTaxCalc.rebate?`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:0.72rem;color:var(--muted);"><span>Section 87A rebate applied</span><span>-${fmt(incomeTaxCalc.rebate)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:6px;border-top:2px solid var(--border);font-weight:900;font-size:0.9rem;"><span>Total Tax Payable</span><span>${fmt(incomeTaxCalc.totalTax)}</span></div>
+      </div>
+    </div>
+    <div style="background:#fff8e1;border-radius:10px;padding:10px 12px;font-size:0.7rem;color:#6d4c41;line-height:1.5;">
+      ⚠️ <strong>Disclaimer:</strong> Educational estimate based on data in the app (1-year holding rule for STCG/LTCG, tax regime and income entered by you). Surcharge on very high incomes not included. Not tax advice. Consult a CA before filing.
+    </div>
+  `;
+  openModal('taxReportModal');
+}
+
+function printTaxReport(){
+  try{
+    const now = new Date();
+    const fyStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear()-1;
+    const fyLabel = 'FY ' + fyStartYear + '-' + String(fyStartYear+1).slice(-2);
+    const fyStartStr = new Date(fyStartYear, 3, 1).toISOString().split('T')[0];
+    let stcg=0, ltcg=0;
+    const stcgRows=[], ltcgRows=[];
+    const byTypePdf = {};
+    (investments||[]).forEach(inv=>{
+      if(typeof normalizeInvestment==='function') normalizeInvestment(inv);
+      const at = inv.assetType || 'equity';
+      if(!byTypePdf[at]) byTypePdf[at] = {stcg:0, ltcg:0, special:0};
+      (inv.sales||[]).forEach(s=>{
+        if(!s.date || s.date < fyStartStr) return;
+        const buyAmt = s.qty * (inv.buyRate||0);
+        const sellAmt = s.qty * s.rate;
+        const profit = sellAmt - buyAmt;
+        const row = [(inv.stock||'-'), invAssetTypeLabel(at), inv.date||'', s.date||'', String(s.qty), pdfMoney(buyAmt), pdfMoney(sellAmt), pdfMoney(profit)];
+        if(at === 'crypto'){ stcgRows.push(row); byTypePdf[at].special += profit; }
+        else if(invIsLTCG(at, inv.date, s.date)){ ltcg += profit; ltcgRows.push(row); byTypePdf[at].ltcg += profit; }
+        else { stcg += profit; stcgRows.push(row); byTypePdf[at].stcg += profit; }
+      });
+    });
+    const incomeTaxCalcPdf = calcIncomeTax(taxGainsFromByType(byTypePdf));
+    const c80 = (tax80cEntries||[]).reduce((s,e)=>s+e.amount,0);
+    const p = new PdfBuilder(false);
+    p.heading('Full Tax Report', 16, true);
+    p.heading(((currentUser&&currentUser.name)||'') + '  |  ' + fyLabel, 10, false);
+    p.heading('Generated: ' + now.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}), 8, false);
+    p.gap(8);
+    p.heading('Summary', 11, true);
+    p.row(['STCG (≤1 yr)', pdfMoney(stcg), 'LTCG (>1 yr)', pdfMoney(ltcg)], [0.25,0.25,0.25,0.25], ['l','r','l','r'], {bold:true});
+    p.row(['Section 80C Claimed', pdfMoney(c80), '80C Limit', 'Rs. 1,50,000'], [0.25,0.25,0.25,0.25], ['l','r','l','r']);
+    p.gap(10);
+    const fr=[0.14,0.14,0.11,0.11,0.08,0.14,0.14,0.14], al=['l','l','l','l','r','r','r','r'];
+    const hd=['Scrip','Type','Buy Date','Sell Date','Qty','Buy Amt','Sell Amt','P/L'];
+    const ho={bold:true,fill:PDF_HEAD_FILL,head:true};
+    p.heading('Short-term Capital Gains (STCG)', 11, true);
+    p.row(hd, fr, al, ho); p.header={cells:hd,fr:fr,al:al,o:ho};
+    if(stcgRows.length) stcgRows.forEach(r=>p.row(r,fr,al));
+    else p.row(['No STCG entries'],[1],['l']);
+    p.row(['Total STCG','','','','','','',pdfMoney(stcg)],fr,al,{bold:true,fill:PDF_TOTAL_FILL});
+    p.gap(10);
+    p.heading('Long-term Capital Gains (LTCG)', 11, true);
+    p.row(hd, fr, al, ho); p.header={cells:hd,fr:fr,al:al,o:ho};
+    if(ltcgRows.length) ltcgRows.forEach(r=>p.row(r,fr,al));
+    else p.row(['No LTCG entries'],[1],['l']);
+    p.row(['Total LTCG','','','','','','',pdfMoney(ltcg)],fr,al,{bold:true,fill:PDF_TOTAL_FILL});
+    p.gap(10);
+    p.heading('Section 80C Deductions', 11, true);
+    if((tax80cEntries||[]).length){
+      (tax80cEntries||[]).forEach(e=>p.row([e.note||'80C', pdfMoney(e.amount)],[0.65,0.35],['l','r']));
+    } else {
+      p.row(['No 80C entries recorded'],[1],['l']);
+    }
+    p.row(['Total 80C Claimed', pdfMoney(c80)],[0.65,0.35],['l','r'],{bold:true,fill:PDF_TOTAL_FILL});
+    p.gap(10);
+    p.heading('Estimated Income Tax — ' + (incomeTaxCalcPdf.regime==='new'?'New':'Old') + ' Regime', 11, true);
+    p.row(['Tax on income (after 87A rebate)', pdfMoney(incomeTaxCalcPdf.taxAfterRebate)],[0.65,0.35],['l','r']);
+    if(incomeTaxCalcPdf.taxOnStcgEquity) p.row(['STCG (equity) @20%', pdfMoney(incomeTaxCalcPdf.taxOnStcgEquity)],[0.65,0.35],['l','r']);
+    if(incomeTaxCalcPdf.taxOnLtcgEquity) p.row(['LTCG (equity) @12.5%', pdfMoney(incomeTaxCalcPdf.taxOnLtcgEquity)],[0.65,0.35],['l','r']);
+    if(incomeTaxCalcPdf.taxOnLtcgOther) p.row(['LTCG (gold/other) @12.5%', pdfMoney(incomeTaxCalcPdf.taxOnLtcgOther)],[0.65,0.35],['l','r']);
+    if(incomeTaxCalcPdf.taxOnCrypto) p.row(['Crypto / VDA @30%', pdfMoney(incomeTaxCalcPdf.taxOnCrypto)],[0.65,0.35],['l','r']);
+    p.row(['Health & Education Cess @4%', pdfMoney(incomeTaxCalcPdf.cess)],[0.65,0.35],['l','r']);
+    if(incomeTaxCalcPdf.rebate) p.row(['Section 87A rebate applied', '-'+pdfMoney(incomeTaxCalcPdf.rebate)],[0.65,0.35],['l','r']);
+    p.row(['Total Tax Payable', pdfMoney(incomeTaxCalcPdf.totalTax)],[0.65,0.35],['l','r'],{bold:true,fill:PDF_TOTAL_FILL});
+    p.gap(8);
+    p.heading('Disclaimer: Educational estimate only, based on the tax regime and income you entered. Surcharge on very high incomes not included. Not tax advice. Consult a CA before filing.', 7, false);
+    savePdfDoc(p, 'Tax-Report-'+fyLabel.replace(/\s+/g,'')+'.pdf', 'Tax Report PDF');
+  }catch(e){
+    console.error('Tax PDF error', e);
+    showToast('⚠️ Could not create PDF: '+(e&&e.message?e.message:'error'));
+  }
+}
+
 
 // ═══════════════════════════════════════
 // RECURRING
@@ -3152,24 +3805,36 @@ function normalizeInvestment(x){
     // Older records stored one sale inside the purchase: split it into its own sale entry
     x.sales=Number(x.qtySold)>0?[{id:newInvSaleId(),date:x.saleDate||x.date,qty:Number(x.qtySold),rate:Number(x.sellRate||0)}]:[];
   }
+  if(!x.assetType) x.assetType='equity';
   return recalcInvestment(x);
+}
+function invAssetTypeLabel(t){
+  return ({equity:'Equity / Stocks',equity_mf:'Equity Mutual Fund',debt_mf:'Debt Mutual Fund',gold:'Gold / SGB / Gold ETF',crypto:'Crypto / VDA',other:'Other'})[t]||'Equity / Stocks';
+}
+function invIsLTCG(assetType, buyDate, sellDate){
+  const days=(new Date(sellDate)-new Date(buyDate))/(1000*60*60*24);
+  if(assetType==='crypto') return false; // no LTCG benefit
+  if(assetType==='equity'||assetType==='equity_mf') return days>365;
+  if(assetType==='debt_mf') return false; // treat as STCG / slab for simplicity
+  // gold, other: 24 months
+  return days>730;
 }
 function invBalanceQty(p,exceptSaleId){return Number(p.qty||0)-(p.sales||[]).reduce((s,z)=>z.id===exceptSaleId?s:s+Number(z.qty||0),0);}
 
 // ── Purchase entry ──
-function clearInvestmentPurchaseForm(){['invPurchaseId','invPurchaseDate','invPurchaseStock','invPurchaseQty','invPurchaseRate','invPurchaseAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});setInvestmentCategoryOptions();document.getElementById('investmentPurchaseModalTitle').textContent='📈 Investment Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Save Purchase';}
+function clearInvestmentPurchaseForm(){['invPurchaseId','invPurchaseDate','invPurchaseStock','invPurchaseQty','invPurchaseRate','invPurchaseAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const at=document.getElementById('invPurchaseAssetType');if(at)at.value='equity';setInvestmentCategoryOptions();document.getElementById('investmentPurchaseModalTitle').textContent='📈 Investment Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Save Purchase';}
 function openInvestmentPurchaseModal(){clearInvestmentPurchaseForm();openModal('investmentPurchaseModal');}
 function calcInvestmentPurchase(){const q=Number(document.getElementById('invPurchaseQty').value||0),r=Number(document.getElementById('invPurchaseRate').value||0);document.getElementById('invPurchaseAmount').value=q&&r>=0?(q*r).toFixed(2):'';}
 async function saveInvestmentPurchase(){
   const btn=document.getElementById('investmentPurchaseSaveBtn');
   if(btn.disabled)return;
-  const id=Number(document.getElementById('invPurchaseId').value||0),date=document.getElementById('invPurchaseDate').value,category=document.getElementById('invPurchaseCategory').value,stock=document.getElementById('invPurchaseStock').value.trim(),qty=Number(document.getElementById('invPurchaseQty').value||0),buyRate=Number(document.getElementById('invPurchaseRate').value||0);
+  const id=Number(document.getElementById('invPurchaseId').value||0),date=document.getElementById('invPurchaseDate').value,category=document.getElementById('invPurchaseCategory').value,assetType=document.getElementById('invPurchaseAssetType')?.value||'equity',stock=document.getElementById('invPurchaseStock').value.trim(),qty=Number(document.getElementById('invPurchaseQty').value||0),buyRate=Number(document.getElementById('invPurchaseRate').value||0);
   if(!date||!stock||qty<=0||buyRate<0){showToast('Enter valid purchase details!');return;}
   const old=id?investments.find(x=>x.id===id):null;
   if(id&&!old){showToast('⚠️ Investment record not found!');return;}
   if(old&&qty<Number(old.qtySold||0)-1e-9){showToast('Quantity cannot be less than already sold quantity ('+old.qtySold+')!');return;}
   btn.disabled=true;
-  const item=old?{...old,date,category,stock,qty,buyRate}:{id:Date.now(),date,category,stock,qty,buyRate,sales:[],createdAt:Date.now()};
+  const item=old?{...old,date,category,assetType,stock,qty,buyRate}:{id:Date.now(),date,category,assetType,stock,qty,buyRate,sales:[],createdAt:Date.now()};
   recalcInvestment(item);
   const prev=investments.slice();
   if(old)investments[investments.findIndex(x=>x.id===id)]=item;else investments.unshift(item);
@@ -3184,7 +3849,7 @@ async function saveInvestmentPurchase(){
     showToast('⚠️ Could not save purchase: '+(e&&e.name?e.name:'error'));
   }finally{btn.disabled=false;}
 }
-function editInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;clearInvestmentPurchaseForm();document.getElementById('invPurchaseId').value=x.id;document.getElementById('invPurchaseDate').value=x.date;document.getElementById('invPurchaseCategory').value=x.category||INVESTMENT_CATS[0]?.name||'';document.getElementById('invPurchaseStock').value=x.stock;document.getElementById('invPurchaseQty').value=x.qty;document.getElementById('invPurchaseRate').value=x.buyRate;calcInvestmentPurchase();document.getElementById('investmentPurchaseModalTitle').textContent='✏️ Edit Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Update Purchase';openModal('investmentPurchaseModal');}
+function editInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;clearInvestmentPurchaseForm();document.getElementById('invPurchaseId').value=x.id;document.getElementById('invPurchaseDate').value=x.date;document.getElementById('invPurchaseCategory').value=x.category||INVESTMENT_CATS[0]?.name||'';const at=document.getElementById('invPurchaseAssetType');if(at)at.value=x.assetType||'equity';document.getElementById('invPurchaseStock').value=x.stock;document.getElementById('invPurchaseQty').value=x.qty;document.getElementById('invPurchaseRate').value=x.buyRate;calcInvestmentPurchase();document.getElementById('investmentPurchaseModalTitle').textContent='✏️ Edit Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Update Purchase';openModal('investmentPurchaseModal');}
 async function deleteInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;const n=(x.sales||[]).length;if(!confirm('Delete purchase of '+x.stock+(n?' and its '+n+' sale entr'+(n>1?'ies':'y'):'')+'?'))return;const prev=investments.slice();investments=investments.filter(i=>i.id!==id);try{await saveInvestments();showToast('🗑️ Deleted!');}catch(e){investments=prev;showToast('⚠️ Could not delete.');}renderInvestments();}
 
 // ── Sale entry (separate from purchase) ──
@@ -3303,15 +3968,16 @@ function investmentCalcKey(key){
 // ── Base screen ──
 function renderInvestments(){
   const list=document.getElementById('investmentList'),summary=document.getElementById('investmentSummary');if(!list)return;
+  if(typeof renderTaxCenter==='function') try{renderTaxCenter();}catch(e){}
   investments.forEach(normalizeInvestment);
   const buy=investments.reduce((s,x)=>s+Number(x.buyAmount||0),0),sold=investments.reduce((s,x)=>s+Number(x.soldAmount||0),0),profit=investments.reduce((s,x)=>s+Number(x.profit||0),0);
-  summary.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1.5px solid var(--border);">
-      <span style="font-size:1.2rem;font-weight:800;color:#1565c0;">${fmt(buy)}</span>
-      <span style="font-size:1.2rem;font-weight:800;color:#2e7d32;">${fmt(sold)}</span>
+  summary.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1.5px solid var(--border);">
+      <span style="font-size:0.95rem;font-weight:800;color:#1565c0;">${fmt(buy)}</span>
+      <span style="font-size:0.95rem;font-weight:800;color:#2e7d32;">${fmt(sold)}</span>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1.5px solid var(--border);">
-      <span style="font-size:1rem;font-weight:800;">Total Profit / Loss</span>
-      <span style="font-size:1.3rem;font-weight:900;color:${profit>=0?'#00b894':'#ff6b6b'};">${profit<0?'-':''}${fmt(Math.abs(profit))}</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1.5px solid var(--border);">
+      <span style="font-size:0.85rem;font-weight:800;">Total Profit / Loss</span>
+      <span style="font-size:0.95rem;font-weight:900;color:${profit>=0?'#00b894':'#ff6b6b'};">${profit<0?'-':''}${fmt(Math.abs(profit))}</span>
     </div>
     <div style="padding:10px 0;text-align:center;border-bottom:1.5px solid var(--border);">
       <a href="https://www.nseindia.com" target="_blank" rel="noopener noreferrer" style="color:#1565c0;font-weight:700;font-size:0.85rem;text-decoration:none;">www.nseindia.com</a>
@@ -4040,6 +4706,8 @@ async function applyBackupData(data){
   await loadNetWorth();
   await loadRegister();
   await loadCategories();
+  if(typeof load80C==='function') await load80C();
+  if(typeof loadTaxSettings==='function') await loadTaxSettings();
 
   renderAll();
   renderInvestments();
@@ -4131,7 +4799,7 @@ function showTab(tab,pushHistory=true){
   // Show/hide premium strip
   const strip=document.getElementById('premiumStrip');
   if(strip) strip.style.display=(!currentUser||isPremium())?'none':'flex';
-  if(tab==='investments') renderInvestments();
+  if(tab==='investments'){renderInvestments();renderTaxCenter();}
 }
 function renderAll(){renderHome();renderMiniChart();checkBudgetAlert();renderHealthScore();renderDailyLimit();if(document.getElementById("nav-loans").classList.contains("active"))checkLoanOverdue();}
 
@@ -6406,6 +7074,8 @@ window.onload=async()=>{
       await loadData();
       await loadInvestments();
       await loadCategories();
+      if(typeof load80C==='function') await load80C();
+      if(typeof loadTaxSettings==='function') await loadTaxSettings();
       const{pin,pinEnabled}=await loadSettings();
       if(pin&&pinEnabled){ showPinScreen('check'); }
       else{ showApp(); }
@@ -6711,6 +7381,18 @@ window.onload=async()=>{
       <button onclick="addRegColumn()" style="width:100%;padding:10px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">+ Add Column</button>
     </div>
     <button class="modal-close" onclick="closeModal('manageColumnsModal');renderRegisterGrid();" style="margin-top:10px;">Done</button>
+  </div>
+</div>
+
+
+<!-- FULL TAX REPORT MODAL -->
+<div class="modal-overlay" id="taxReportModal">
+  <div class="modal-sheet" style="max-height:90vh;overflow-y:auto;">
+    <div id="taxReportContent"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button onclick="printTaxReport()" style="flex:1;padding:12px;background:linear-gradient(135deg,#1a1a2e,#1565c0);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">🖨️ Print / Save PDF</button>
+      <button class="modal-close" onclick="closeModal('taxReportModal')" style="flex:1;margin-top:0;">Close</button>
+    </div>
   </div>
 </div>
 
