@@ -3305,7 +3305,17 @@ function renderInvestments(){
   const list=document.getElementById('investmentList'),summary=document.getElementById('investmentSummary');if(!list)return;
   investments.forEach(normalizeInvestment);
   const buy=investments.reduce((s,x)=>s+Number(x.buyAmount||0),0),sold=investments.reduce((s,x)=>s+Number(x.soldAmount||0),0),profit=investments.reduce((s,x)=>s+Number(x.profit||0),0);
-  summary.innerHTML=`<div class="report-row" style="justify-content:center;"><span class="report-val" style="font-size:1.3rem;">${fmt(buy)}</span></div><div class="report-row" style="justify-content:center;"><span class="report-val" style="font-size:1.3rem;">${fmt(sold)}</span></div><div style="padding:10px 0;text-align:center;border-bottom:1.5px solid var(--border);"><a href="https://www.nseindia.com" target="_blank" rel="noopener noreferrer" style="color:#1565c0;font-weight:700;font-size:0.85rem;text-decoration:none;">www.nseindia.com</a></div><div class="report-row"><span class="report-label">Total Profit / Loss</span><span class="report-val">${profit<0?'-':''}${fmt(Math.abs(profit))}</span></div>`;
+  summary.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1.5px solid var(--border);">
+      <span style="font-size:1.2rem;font-weight:800;color:#1565c0;">${fmt(buy)}</span>
+      <span style="font-size:1.2rem;font-weight:800;color:#2e7d32;">${fmt(sold)}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1.5px solid var(--border);">
+      <span style="font-size:1rem;font-weight:800;">Total Profit / Loss</span>
+      <span style="font-size:1.3rem;font-weight:900;color:${profit>=0?'#00b894':'#ff6b6b'};">${profit<0?'-':''}${fmt(Math.abs(profit))}</span>
+    </div>
+    <div style="padding:10px 0;text-align:center;border-bottom:1.5px solid var(--border);">
+      <a href="https://www.nseindia.com" target="_blank" rel="noopener noreferrer" style="color:#1565c0;font-weight:700;font-size:0.85rem;text-decoration:none;">www.nseindia.com</a>
+    </div>`;
   list.innerHTML=investments.length?investments.map(x=>{
     const bal=Number(invBalanceQty(x).toFixed(4));
     const sales=(x.sales||[]).map(z=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 10px;margin:2px 0 0 14px;background:#e8f5e9;border-radius:8px;font-size:.74rem;color:#1b5e20;"><span>📉 ${invEsc(z.date)} · ${z.qty} @ ${fmtR(z.rate)} = ${fmtR(z.qty*z.rate)}</span><span style="white-space:nowrap;"><button type="button" onclick="editInvestmentSale(${x.id},${z.id})">✏️</button> <button type="button" onclick="deleteInvestmentSale(${x.id},${z.id})">🗑️</button></span></div>`).join('');
