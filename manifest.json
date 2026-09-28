@@ -21,9 +21,9 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/moneymanagerpro/resources/icon.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "/moneymanagerpro/resources/icon1.jpg",
+      "sizes": "1024x1024"
+      "type": "image/jpg",
       "purpose": "any maskable"
     }
   ],
