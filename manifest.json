@@ -15,9 +15,9 @@
   ],
   "icons": [
     {
-      "src": "/moneymanagerpro/resources/icon1.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "/moneymanagerpro/resources/icon.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpg",
       "purpose": "any maskable"
     },
     {
