@@ -5,7 +5,7 @@ const ASSETS_TO_CACHE = [
   './manifest.json',
   './resources/icon-192.png',
   './resources/icon-512.png',
-  './resources/icon-1024.png',
+  './resources/icon-1240.png',
   './resources/screenshot1.png'
 ];
 
