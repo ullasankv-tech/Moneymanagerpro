@@ -45,9 +45,9 @@
   ],
   "screenshots": [
     {
-      "src": "resources/screenshot1.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
+      "src": "resources/screenshot1.jpg",
+      "sizes": "1080x2134",
+      "type": "image/jpg",
       "form_factor": "narrow",
       "label": "Home Screen"
     }
