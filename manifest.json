@@ -11,6 +11,7 @@
   "lang": "en-IN",
   "dir": "ltr",
   "categories": ["finance", "productivity"],
+  "id": "/?app=money-manager",
   "icons": [
     {
       "src": "resources/icon-192.png",
