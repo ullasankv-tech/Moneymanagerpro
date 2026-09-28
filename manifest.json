@@ -37,8 +37,8 @@
       "purpose": "maskable"
     },
     {
-      "src": "resources/icon-1024.png",
-      "sizes": "1024x1024",
+      "src": "resources/icon-1240.png",
+      "sizes": "1240x1240",
       "type": "image/png",
       "purpose": "any"
     }
