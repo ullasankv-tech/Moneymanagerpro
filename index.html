@@ -739,6 +739,18 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         </div>
       </div>
 
+      <!-- SMART QUICK-ADD -->
+      <div class="panel">
+        <h3 style="margin-bottom:4px;">⚡ Smart Quick-Add</h3>
+        <div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;">Type or speak: <em>Petrol 250 yesterday</em> · <em>Salary 45000 on 1st</em></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="qaInput" placeholder="e.g. Lunch 120" maxlength="120" onkeydown="if(event.key==='Enter')qaSubmit()" style="flex:1;min-width:0;padding:11px;border:2px solid var(--border);border-radius:12px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);"/>
+          <button id="qaMic" type="button" onclick="qaVoice()" aria-label="Speak entry" style="width:46px;border:2px solid var(--border);border-radius:12px;background:var(--surface);font-size:1.1rem;cursor:pointer;">🎤</button>
+          <button type="button" onclick="qaSubmit()" style="padding:0 16px;border:none;border-radius:12px;background:linear-gradient(135deg,#4d96ff,#cc5de8);color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">Go</button>
+        </div>
+        <div id="qaCard" style="display:none;margin-top:12px;padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:14px;"></div>
+      </div>
+
       <!-- ADD TRANSACTION -->
       <div class="panel">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;"><h3 style="margin-bottom:0;">➕ Add Transaction</h3><button type="button" onclick="openInvestmentCalculator()" title="Calculator" aria-label="Calculator" style="width:42px;height:38px;border:none;border-radius:10px;background:linear-gradient(135deg,#4d96ff,#cc5de8);cursor:pointer;box-shadow:0 3px 8px rgba(77,150,255,.35);display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="2" width="16" height="20" rx="3" fill="#fff"/><rect x="6.5" y="4.5" width="11" height="4.2" rx="1" fill="#4d96ff"/><circle cx="7.6" cy="12.3" r="1.35" fill="#cc5de8"/><circle cx="12" cy="12.3" r="1.35" fill="#cc5de8"/><circle cx="16.4" cy="12.3" r="1.35" fill="#cc5de8"/><circle cx="7.6" cy="16.6" r="1.35" fill="#4d96ff"/><circle cx="12" cy="16.6" r="1.35" fill="#4d96ff"/><circle cx="16.4" cy="16.6" r="1.35" fill="#4d96ff"/><circle cx="7.6" cy="20" r="1.35" fill="#4d96ff"/><circle cx="12" cy="20" r="1.35" fill="#4d96ff"/><circle cx="16.4" cy="20" r="1.35" fill="#4d96ff"/></svg></button></div>
@@ -924,7 +936,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       </div>
 
       <!-- ADD BUTTON -->
-      <button onclick="openLoanModal()" style="width:100%;padding:12px;background:linear-gradient(135deg,#4d96ff,#cc5de8);border:none;border-radius:14px;color:#fff;font-weight:700;font-size:0.9rem;cursor:pointer;margin-bottom:16px;font-family:var(--font);">+ Add New Loan</button>
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <button onclick="openLoanModal()" style="flex:1;padding:12px;background:linear-gradient(135deg,#4d96ff,#cc5de8);border:none;border-radius:14px;color:#fff;font-weight:700;font-size:0.9rem;cursor:pointer;font-family:var(--font);">+ Add New Loan</button>
+        <button onclick="openLoanHistory()" style="padding:12px 18px;background:var(--surface);border:2px solid #1565c0;border-radius:14px;color:#1565c0;font-weight:700;font-size:0.9rem;cursor:pointer;font-family:var(--font);">History</button>
+      </div>
 
       <!-- LENT SECTION -->
       <div style="margin-bottom:18px;">
@@ -1213,38 +1228,14 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <button onclick="resetCategories()" style="width:100%;padding:10px;background:none;border:2px solid var(--border);border-radius:10px;color:var(--muted);font-weight:700;font-size:0.8rem;cursor:pointer;margin-top:12px;font-family:var(--font);">🔄 Reset to Default</button>
       </div>
 
-      <!-- ENCRYPTION STATUS -->
+      <!-- QUICK LINKS -->
       <div class="panel">
-        <h3>🔐 Data Security</h3>
-        <div style="background:linear-gradient(135deg,#e8f5e9,#f3e5f5);border-radius:14px;padding:14px;border:2px solid #c8e6c9;margin-bottom:12px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="font-size:2rem;">🔐</div>
-            <div>
-              <div style="font-size:0.85rem;font-weight:800;color:#1b5e20;">AES-256-GCM Encryption Active</div>
-              <div style="font-size:0.72rem;color:#388e3c;margin-top:2px;">All your data is encrypted with military-grade AES-256 encryption. Even if someone accesses your phone storage, they cannot read your data without your password.</div>
-            </div>
-          </div>
-          <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-            <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:7px;text-align:center;">
-              <div style="font-size:0.65rem;color:#555;font-weight:700;">ALGORITHM</div>
-              <div style="font-size:0.75rem;font-weight:800;color:#1b5e20;">AES-256-GCM</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:7px;text-align:center;">
-              <div style="font-size:0.65rem;color:#555;font-weight:700;">KEY DERIVATION</div>
-              <div style="font-size:0.75rem;font-weight:800;color:#1b5e20;">PBKDF2 / SHA-256</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:7px;text-align:center;">
-              <div style="font-size:0.65rem;color:#555;font-weight:700;">ITERATIONS</div>
-              <div style="font-size:0.75rem;font-weight:800;color:#1b5e20;">200,000</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:7px;text-align:center;">
-              <div style="font-size:0.65rem;color:#555;font-weight:700;">KEY STORAGE</div>
-              <div style="font-size:0.75rem;font-weight:800;color:#1b5e20;">Memory Only</div>
-            </div>
-          </div>
-        </div>
-        <div style="font-size:0.72rem;color:var(--muted);line-height:1.6;padding:8px;background:var(--bg);border-radius:8px;">
-          💡 <strong>Tip:</strong> Your encryption key is derived from your password. Never share your password with anyone. If you forget your password, data cannot be recovered.
+        <h3>⚡ Quick Link - SIP Calculator</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button onclick="showTab('reminders')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">🔔 Bill Reminders</button>
+          <button onclick="showTab('budget')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">💹 Budget Planner</button>
+          <button onclick="showTab('goals')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">🎯 Savings Goals</button>
+          <button onclick="showTab('register')" style="padding:12px;background:#e8f4ff;border:2px solid #4d96ff;border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:#1565c0;font-family:var(--font);">📋 Daily Register</button>
         </div>
       </div>
 
@@ -1305,14 +1296,38 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         </div>
       </div>
 
-      <!-- QUICK LINKS -->
+      <!-- ENCRYPTION STATUS -->
       <div class="panel">
-        <h3>⚡ Quick Links</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button onclick="showTab('reminders')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">🔔 Bill Reminders</button>
-          <button onclick="showTab('budget')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">💹 Budget Planner</button>
-          <button onclick="showTab('goals')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">🎯 Savings Goals</button>
-          <button onclick="showTab('register')" style="padding:12px;background:#e8f4ff;border:2px solid #4d96ff;border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:#1565c0;font-family:var(--font);">📋 Daily Register</button>
+        <h3>🔐 Data Security</h3>
+        <div style="background:linear-gradient(135deg,#e8f5e9,#f3e5f5);border-radius:14px;padding:14px;border:2px solid #c8e6c9;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="font-size:2rem;">🔐</div>
+            <div>
+              <div style="font-size:0.85rem;font-weight:800;color:#1b5e20;">AES-256-GCM Encryption Active</div>
+              <div style="font-size:0.72rem;color:#388e3c;margin-top:2px;">All your data is encrypted with military-grade AES-256 encryption. Even if someone accesses your phone storage, they cannot read your data without your password.</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:7px;text-align:center;">
+              <div style="font-size:0.65rem;color:#555;font-weight:700;">ALGORITHM</div>
+              <div style="font-size:0.75rem;font-weight:800;color:#1b5e20;">AES-256-GCM</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:7px;text-align:center;">
+              <div style="font-size:0.65rem;color:#555;font-weight:700;">KEY DERIVATION</div>
+              <div style="font-size:0.75rem;font-weight:800;color:#1b5e20;">PBKDF2 / SHA-256</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:7px;text-align:center;">
+              <div style="font-size:0.65rem;color:#555;font-weight:700;">ITERATIONS</div>
+              <div style="font-size:0.75rem;font-weight:800;color:#1b5e20;">200,000</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.7);border-radius:8px;padding:7px;text-align:center;">
+              <div style="font-size:0.65rem;color:#555;font-weight:700;">KEY STORAGE</div>
+              <div style="font-size:0.75rem;font-weight:800;color:#1b5e20;">Memory Only</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--muted);line-height:1.6;padding:8px;background:var(--bg);border-radius:8px;">
+          💡 <strong>Tip:</strong> Your encryption key is derived from your password. Never share your password with anyone. If you forget your password, data cannot be recovered.
         </div>
       </div>
 
@@ -2614,6 +2629,220 @@ function addTransaction(){
   showToast(currentType==='income'?'💰 Income added!':'💸 Expense recorded!');
   checkBudgetAlert();
 }
+// ═══════════════════════════════════════
+// SMART QUICK-ADD — type or speak an entry in plain words
+// ═══════════════════════════════════════
+const QA_KEYWORDS={
+  expense:{
+    Food:['food','lunch','dinner','breakfast','tea','coffee','snack','snacks','restaurant','hotel','biryani','meal','juice','cafe'],
+    Transport:['bus','auto','taxi','cab','uber','ola','metro','train','ticket','rickshaw'],
+    Fuel:['petrol','diesel','fuel'],
+    Groceries:['grocery','groceries','vegetable','vegetables','fruit','fruits','milk','rice','supermarket','provisions'],
+    Shopping:['shopping','amazon','flipkart','mall'],
+    Medical:['medicine','medicines','pharmacy','doctor','hospital','clinic','medical'],
+    Health:['gym','health','yoga'],
+    Education:['school','fees','fee','tuition','course','book','books','college'],
+    Entertainment:['movie','cinema','netflix','game','games','concert'],
+    Bills:['electricity','current','water','bill','bills','kseb'],
+    Mobile:['recharge','mobile','phone'],
+    Internet:['wifi','broadband','internet'],
+    Insurance:['insurance','premium','lic'],
+    Clothing:['clothes','clothing','shirt','dress','saree','shoes'],
+    Household:['household','furniture','repair','plumber'],
+    Travel:['flight','trip','travel','tour'],
+    Rent:['rent']
+  },
+  income:{
+    Salary:['salary','salaries','wages','payroll'],
+    Business:['business','sales','sale'],
+    Freelance:['freelance','project','client'],
+    'Rent Received':['tenant'],
+    Gift:['gift'],
+    Commission:['commission'],
+    Interest:['interest','dividend'],
+    Bonus:['bonus']
+  }
+};
+const QA_INCOME_WORDS=['salary','received','receive','got','earned','earn','income','credited','bonus','interest','commission','dividend','refund','sold','cashback','wages'];
+let _qaPending=null;
+
+function qaEsc(w){return w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function qaHas(text,w){return new RegExp('(^|[^a-z0-9])'+qaEsc(w)+'([^a-z0-9]|$)','i').test(text);}
+function qaLocalISO(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+function qaParseDate(text){
+  const now=new Date(), today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const ago=n=>{const x=new Date(today);x.setDate(x.getDate()-n);return x;};
+  const MONTHS=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const DAYS=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const mon='(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*';
+  let t=text,date=null,m;
+  const take=()=>{t=t.replace(m[0],' ');};
+  if((m=t.match(/\bday before yesterday\b/i))){date=ago(2);take();}
+  else if((m=t.match(/\byesterday\b/i))){date=ago(1);take();}
+  else if((m=t.match(/\btoday\b/i))){date=today;take();}
+  else if((m=t.match(/\b(\d{1,2})\s*days?\s*ago\b/i))){date=ago(+m[1]);take();}
+  else if((m=t.match(new RegExp('\\b(?:(last)\\s+)?('+DAYS.join('|')+')\\b','i')))){
+    const idx=DAYS.indexOf(m[2].toLowerCase());
+    let diff=(today.getDay()-idx+7)%7;
+    if(m[1]&&diff===0)diff=7;
+    date=ago(diff);take();
+  }
+  else if((m=t.match(new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+'+mon+'\\b(?:\\s+(\\d{4}))?','i')))||
+          (m=t.match(new RegExp('\\b'+mon+'\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?:\\s*,?\\s+(\\d{4}))?','i')))){
+    const isDayFirst=/^\d/.test(m[1]);
+    const day=+(isDayFirst?m[1]:m[2]);
+    const mi=MONTHS.indexOf((isDayFirst?m[2]:m[1]).toLowerCase());
+    let yr=m[3]?+m[3]:today.getFullYear();
+    let d=new Date(yr,mi,day);
+    if(!m[3]&&d>today)d=new Date(yr-1,mi,day);
+    if(d.getDate()===day){date=d;take();}
+  }
+  else if((m=t.match(/\b(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b/))){
+    const day=+m[1],mo=+m[2]-1;let yr=m[3]?(m[3].length===2?2000+ +m[3]:+m[3]):today.getFullYear();
+    let d=new Date(yr,mo,day);
+    if(!m[3]&&d>today)d=new Date(yr-1,mo,day);
+    if(mo>=0&&mo<12&&d.getDate()===day){date=d;take();}
+  }
+  else if((m=t.match(/\b(\d{1,2})(?:st|nd|rd|th)\b/i))){
+    const day=+m[1];
+    let d=new Date(today.getFullYear(),today.getMonth(),day);
+    if(d>today)d=new Date(today.getFullYear(),today.getMonth()-1,day);
+    if(d.getDate()===day&&day>=1){date=d;take();}
+  }
+  return {date:date||today,text:t,found:!!date};
+}
+
+function qaParseAmount(text){
+  const re=/(₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|lakhs?|lacs?|crores?|cr)?(?![a-z])/gi;
+  const found=[];let m;
+  while((m=re.exec(text))){
+    let n=parseFloat(m[2].replace(/,/g,''));
+    if(!isFinite(n)||n<=0)continue;
+    const u=(m[3]||'').toLowerCase();
+    if(u==='k'||u==='thousand')n*=1000;
+    else if(u.startsWith('lakh')||u.startsWith('lac'))n*=100000;
+    else if(u.startsWith('cr'))n*=10000000;
+    found.push({n:Math.round(n*100)/100,cur:!!m[1]});
+  }
+  if(!found.length)return 0;
+  const withCur=found.find(f=>f.cur);
+  if(withCur)return withCur.n;
+  return found.reduce((a,b)=>b.n>a.n?b:a).n;
+}
+
+function qaParse(input){
+  const raw=(input||'').trim();
+  if(!raw)return null;
+  const d=qaParseDate(raw);
+  const amount=qaParseAmount(d.text);
+  if(!amount)return {error:'amount'};
+  const low=raw.toLowerCase();
+  const incNames=INCOME_CATS.map(c=>c.name), expNames=EXPENSE_CATS.map(c=>c.name);
+  // type
+  let type='expense';
+  const hasIncomeWord=QA_INCOME_WORDS.some(w=>qaHas(low,w));
+  const incomeCatNamed=incNames.find(n=>n.toLowerCase()!=='other income'&&qaHas(low,n.toLowerCase()));
+  const expCatNamed=expNames.find(n=>n.toLowerCase()!=='other'&&qaHas(low,n.toLowerCase()));
+  if(hasIncomeWord||(incomeCatNamed&&!expCatNamed))type='income';
+  if(qaHas(low,'rent')&&!hasIncomeWord&&!qaHas(low,'tenant'))type='expense';
+  // category
+  const names=type==='income'?incNames:expNames;
+  let category=names.find(n=>{const l=n.toLowerCase();return l!=='other'&&l!=='other income'&&qaHas(low,l);});
+  if(!category){
+    const kw=QA_KEYWORDS[type];let best=0;
+    Object.keys(kw).forEach(cat=>{
+      if(!names.includes(cat))return;
+      const hits=kw[cat].filter(w=>qaHas(low,w)).length;
+      if(hits>best){best=hits;category=cat;}
+    });
+  }
+  if(!category&&type==='income'&&qaHas(low,'rent')&&names.includes('Rent Received'))category='Rent Received';
+  if(!category)category=type==='income'?(names.includes('Other Income')?'Other Income':names[0]):(names.includes('Other')?'Other':names[0]);
+  const note=(raw.charAt(0).toUpperCase()+raw.slice(1)).slice(0,80);
+  return {type,amount,category,date:qaLocalISO(d.date),note};
+}
+
+function qaSubmit(){
+  const inp=document.getElementById('qaInput');
+  const p=qaParse(inp.value);
+  if(!p){showToast('⚠️ Type an entry first, e.g. Petrol 250 yesterday');return;}
+  if(p.error){showToast('⚠️ Could not find an amount. Try: Lunch 120');return;}
+  _qaPending=p;qaRenderCard();
+}
+function qaRenderCard(){
+  const p=_qaPending,box=document.getElementById('qaCard');
+  if(!p){box.style.display='none';box.innerHTML='';return;}
+  const cats=p.type==='income'?INCOME_CATS:EXPENSE_CATS;
+  const isInc=p.type==='income';
+  const sel='padding:9px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--surface);color:var(--text);outline:none;font-family:var(--font);';
+  box.innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button onclick="qaSetType('income')" style="flex:1;padding:8px;border-radius:10px;font-weight:700;font-size:0.8rem;cursor:pointer;font-family:var(--font);border:2px solid ${isInc?'#00b894':'var(--border)'};background:${isInc?'#e6faf5':'var(--surface)'};color:${isInc?'#00805f':'var(--muted)'};">↑ Income</button>
+      <button onclick="qaSetType('expense')" style="flex:1;padding:8px;border-radius:10px;font-weight:700;font-size:0.8rem;cursor:pointer;font-family:var(--font);border:2px solid ${!isInc?'#ff6b6b':'var(--border)'};background:${!isInc?'#ffeeee':'var(--surface)'};color:${!isInc?'#c62828':'var(--muted)'};">↓ Expense</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;">
+      <input type="number" id="qaAmt" value="${p.amount}" step="0.01" min="0" style="${sel}width:38%;font-weight:800;"/>
+      <select id="qaCat" style="${sel}flex:1;min-width:0;">${cats.map(c=>`<option value="${c.name}"${c.name===p.category?' selected':''}>${c.emoji} ${c.name}</option>`).join('')}</select>
+    </div>
+    <input type="date" id="qaDate" value="${p.date}" style="${sel}width:100%;margin-bottom:8px;"/>
+    <div id="qaNoteView" style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="qaSave()" style="flex:1;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#00b894,#4d96ff);color:#fff;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:var(--font);">✅ Save</button>
+      <button onclick="qaCancel()" style="padding:11px 16px;border:2px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-weight:700;font-size:0.88rem;cursor:pointer;font-family:var(--font);">✕</button>
+    </div>`;
+  document.getElementById('qaNoteView').textContent='📝 '+p.note;
+  box.style.display='block';
+}
+function qaSyncPending(){
+  if(!_qaPending)return;
+  const a=parseFloat(document.getElementById('qaAmt').value);
+  if(a>0)_qaPending.amount=a;
+  _qaPending.category=document.getElementById('qaCat').value;
+  _qaPending.date=document.getElementById('qaDate').value||_qaPending.date;
+}
+function qaSetType(type){
+  if(!_qaPending||_qaPending.type===type)return;
+  qaSyncPending();
+  _qaPending.type=type;
+  const names=(type==='income'?INCOME_CATS:EXPENSE_CATS).map(c=>c.name);
+  if(!names.includes(_qaPending.category))_qaPending.category=type==='income'?(names.includes('Other Income')?'Other Income':names[0]):(names.includes('Other')?'Other':names[0]);
+  qaRenderCard();
+}
+function qaCancel(){_qaPending=null;qaRenderCard();}
+function qaSave(){
+  if(!_qaPending)return;
+  qaSyncPending();
+  const p=_qaPending;
+  if(!p.amount||p.amount<=0){showToast('⚠️ Enter valid amount!');return;}
+  if(!p.date){showToast('⚠️ Select a date!');return;}
+  transactions.unshift({id:Date.now(),type:p.type,amount:p.amount,category:p.category,date:p.date,note:p.note,createdAt:Date.now()});
+  saveData();renderAll();checkBudgetAlert();
+  showToast(p.type==='income'?'💰 Income added!':'💸 Expense recorded!');
+  document.getElementById('qaInput').value='';
+  _qaPending=null;qaRenderCard();
+}
+function qaVoice(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){showToast('⚠️ Voice input is not supported on this device');return;}
+  const btn=document.getElementById('qaMic');
+  let r;
+  try{r=new SR();}catch(e){showToast('⚠️ Voice input unavailable');return;}
+  r.lang='en-IN';r.interimResults=false;r.maxAlternatives=1;
+  r.onstart=()=>{btn.textContent='🔴';};
+  r.onresult=e=>{document.getElementById('qaInput').value=e.results[0][0].transcript;qaSubmit();};
+  r.onerror=()=>{showToast('⚠️ Could not hear that. Try again or type it.');};
+  r.onend=()=>{btn.textContent='🎤';};
+  try{r.start();}catch(e){btn.textContent='🎤';}
+}
+(function(){
+  const init=()=>{
+    const b=document.getElementById('qaMic');
+    if(b&&!(window.SpeechRecognition||window.webkitSpeechRecognition))b.style.display='none';
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+
 function deleteTxn(id){
   if(!confirm('Delete this transaction?'))return;
   transactions=transactions.filter(t=>t.id!==id);saveData();renderAll();showToast('🗑️ Deleted');
@@ -4876,7 +5105,7 @@ function renderLoans(){
 }
 
 function renderLoanCards(type){
-  const list=loans.filter(l=>l.type===type);
+  const list=loans.filter(l=>l.type===type&&l.status!=='closed'); // closed/paid loans live in History
   const cid=type==='given'?'loanGivenCards':'loanTakenCards';
   const el=document.getElementById(cid);
   const isGiven=type==='given';
@@ -4886,7 +5115,7 @@ function renderLoanCards(type){
   if(!list.length){
     el.innerHTML=`<div style="text-align:center;padding:20px 16px;background:var(--surface);border-radius:14px;border:2px dashed var(--border);">
       <div style="font-size:2rem;margin-bottom:6px;">${isGiven?'💙':'🧡'}</div>
-      <div style="font-size:0.82rem;font-weight:600;color:var(--muted);">${isGiven?'No loans given yet':'No loans borrowed yet'}</div>
+      <div style="font-size:0.82rem;font-weight:600;color:var(--muted);">${isGiven?'No active loans given':'No active loans borrowed'}</div>
       <div style="font-size:0.74rem;color:var(--muted);margin-top:4px;">Tap <strong>+ Add New Loan</strong> above</div>
     </div>`;
     return;
@@ -5146,6 +5375,36 @@ function deleteRepayment(loanId,repayId){
   const outstanding=getLoanOutstanding(loan);
   if(outstanding>0&&loan.status==='closed')loan.status='active';
   saveData();renderLoans();renderLoanReport();checkLoanOverdue();showToast('🗑️ Repayment deleted!');
+}
+
+function openLoanHistory(){
+  const fmtD=d=>d?new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'-';
+  const closed=loans.filter(l=>l.status==='closed').map(l=>{
+    const reps=(l.repayments||[]);
+    const closedOn=reps.length?[...reps].sort((a,b)=>a.date.localeCompare(b.date))[reps.length-1].date:l.date;
+    return {loan:l,closedOn};
+  }).sort((a,b)=>b.closedOn.localeCompare(a.closedOn));
+  const el=document.getElementById('loanHistoryContent');
+  if(!closed.length){
+    el.innerHTML='<div style="text-align:center;padding:24px 16px;background:var(--bg);border-radius:14px;border:2px dashed var(--border);color:var(--muted);font-size:0.82rem;font-weight:600;">No paid or closed loans yet</div>';
+  } else {
+    el.innerHTML=`<div class="loan-stmt-wrap" style="overflow-x:auto;"><table class="loan-stmt-table" style="min-width:520px;">
+      <thead><tr><th style="text-align:left;">Person</th><th style="text-align:left;">Type</th><th style="text-align:left;">Loan Date</th><th style="text-align:right;">Principal</th><th style="text-align:right;">Interest</th><th style="text-align:right;">Repaid</th><th style="text-align:left;">Closed On</th></tr></thead>
+      <tbody>${closed.map(({loan,closedOn})=>{
+        const interest=calcInterest(loan);
+        const repaid=(loan.repayments||[]).reduce((s,r)=>s+r.amount,0);
+        const isGiven=loan.type==='given';
+        return `<tr class="repay-row" style="cursor:pointer;" onclick="closeModal('loanHistoryModal');openLoanDetail(${loan.id})">
+          <td style="font-weight:700;">${loan.person}</td>
+          <td>${isGiven?'💙 Lent':'🧡 Borrowed'}</td>
+          <td style="white-space:nowrap;">${fmtD(loan.date)}</td>
+          <td style="text-align:right;">${fmt(loan.amount)}</td>
+          <td style="text-align:right;">${fmt(interest)}</td>
+          <td style="text-align:right;color:#00897b;font-weight:700;">${fmt(repaid)}</td>
+          <td style="white-space:nowrap;">${fmtD(closedOn)}</td>
+        </tr>`;}).join('')}</tbody></table></div>`;
+  }
+  openModal('loanHistoryModal');
 }
 
 function closeLoan(id){
@@ -7150,6 +7409,15 @@ window.onload=async()=>{
     <h3>🏦 Loan Details</h3>
     <div id="loanDetailContent"></div>
     <button class="modal-close" onclick="closeModal('loanDetailModal')" style="margin-top:10px;">Close</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="loanHistoryModal">
+  <div class="modal-sheet" style="max-height:88vh;overflow-y:auto;">
+    <h3>📜 Loan History</h3>
+    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;">Paid / closed loans. Tap a row to view details.</div>
+    <div id="loanHistoryContent"></div>
+    <button class="modal-close" onclick="closeModal('loanHistoryModal')" style="margin-top:10px;">Close</button>
   </div>
 </div>
 
