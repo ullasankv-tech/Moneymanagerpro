@@ -14,7 +14,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - uses: actions/setup-java@v4
         with:
@@ -22,7 +21,7 @@ jobs:
           java-version: 17
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       # If your project has a web build step (e.g. npm run build), add it here.
       - name: Sync web files into Android project
