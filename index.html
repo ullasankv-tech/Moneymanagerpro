@@ -708,6 +708,13 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .ledger-empty{text-align:center;padding:30px 20px;color:var(--muted);font-size:0.82rem;}
 .ledger-print-btn{float:right;padding:5px 12px;background:var(--bg);border:2px solid var(--border);border-radius:8px;font-size:0.7rem;font-weight:700;cursor:pointer;font-family:var(--font);color:var(--text);}
 
+.voice-mic-btn{flex:0 0 auto;width:42px;height:42px;border:2px solid var(--border);border-radius:12px;background:var(--surface);font-size:1.05rem;line-height:1;cursor:pointer;font-family:var(--font);}
+.voice-mic-btn.listening{border-color:#e53935;background:#ffebee;animation:voicePulse 1s infinite;}
+@keyframes voicePulse{0%,100%{box-shadow:0 0 0 0 rgba(229,57,53,.35)}50%{box-shadow:0 0 0 6px rgba(229,57,53,0)}}
+.notes-voice-row{display:flex;align-items:center;margin-bottom:6px;}
+.voice-mic-btn.notes-voice-btn{width:auto;height:auto;padding:8px 14px;font-size:.8rem;font-weight:700;}
+.voice-field-row{display:flex;gap:8px;align-items:center;}
+.voice-field-row>.form-input{flex:1;min-width:0;}
 </style>
 </head>
 <body>
@@ -934,6 +941,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           <input type="date" class="form-input" style="width:145px;padding:5px 7px;font-size:0.74rem;" id="homeNotesDate" onchange="onHomeNoteDateChange()"/>
         </div>
 
+        <div class="notes-voice-row"><button type="button" id="homeNotesMic" class="voice-mic-btn notes-voice-btn" data-idle="🎤 Voice typing" data-live="🔴 Listening… tap to stop" aria-label="Voice typing for notes" onclick="homeNoteVoice(this)">🎤 Voice typing</button></div>
         <!-- Compact rich-text toolbar -->
         <div class="notes-editor-wrap">
           <div class="notes-toolbar" role="toolbar" aria-label="Note formatting">
@@ -1779,9 +1787,9 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <option value="other">Other</option>
       </select>
     </div>
-    <div class="form-group"><label>Scrip</label><input type="text" class="form-input" id="invPurchaseStock" placeholder="e.g. RELIANCE"></div>
-    <div class="form-group"><label>Quantity</label><input type="number" class="form-input" id="invPurchaseQty" min="0.0001" step="0.0001" oninput="calcInvestmentPurchase()"></div>
-    <div class="form-group"><label>Buy Rate</label><input type="number" class="form-input" id="invPurchaseRate" min="0" step="0.01" oninput="calcInvestmentPurchase()"></div>
+    <div class="form-group"><label>Scrip</label><div class="voice-field-row"><input type="text" class="form-input" id="invPurchaseStock" placeholder="e.g. RELIANCE"><button type="button" class="voice-mic-btn" aria-label="Speak scrip" onclick="invVoiceText('invPurchaseStock',this)">🎤</button></div></div>
+    <div class="form-group"><label>Quantity</label><div class="voice-field-row"><input type="number" class="form-input" id="invPurchaseQty" min="0.0001" step="0.0001" oninput="calcInvestmentPurchase()"><button type="button" class="voice-mic-btn" aria-label="Speak quantity" onclick="invVoiceNumber('invPurchaseQty',this)">🎤</button></div></div>
+    <div class="form-group"><label>Buy Rate</label><div class="voice-field-row"><input type="number" class="form-input" id="invPurchaseRate" min="0" step="0.01" oninput="calcInvestmentPurchase()"><button type="button" class="voice-mic-btn" aria-label="Speak buy rate" onclick="invVoiceNumber('invPurchaseRate',this)">🎤</button></div></div>
     <div class="form-group"><label>Amount (Self Calculated)</label><input type="number" class="form-input" id="invPurchaseAmount" readonly></div>
     <button id="investmentPurchaseSaveBtn" type="button" onclick="saveInvestmentPurchase()" style="width:100%;padding:12px;background:#1565c0;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">Save Investment</button>
     <button type="button" class="modal-close" onclick="closeModal('investmentPurchaseModal')">Cancel</button>
@@ -1792,11 +1800,11 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
   <div class="modal-sheet">
     <h3 id="investmentSaleModalTitle">📉 Investment Sale</h3>
     <input type="hidden" id="invSaleId">
-    <div class="form-group"><label>Against Purchase</label><select class="form-input" id="invSalePurchase" onchange="updateInvestmentSaleBalance()"></select></div>
+    <div class="form-group"><label>Against Purchase</label><div class="voice-field-row"><select class="form-input" id="invSalePurchase" onchange="updateInvestmentSaleBalance()"></select><button type="button" class="voice-mic-btn" aria-label="Speak scrip name" onclick="invVoiceScrip(this)">🎤</button></div></div>
     <div id="invSaleBalance" style="margin:-4px 0 10px;font-size:.78rem;color:var(--muted);"></div>
     <div class="form-group"><label>Sale Date</label><input type="date" class="form-input" id="invSaleDate"></div>
-    <div class="form-group"><label>Sell Quantity</label><input type="number" class="form-input" id="invSaleQty" min="0.0001" step="0.0001" oninput="calcInvestmentSale()"></div>
-    <div class="form-group"><label>Sell Rate</label><input type="number" class="form-input" id="invSaleRate" min="0" step="0.01" oninput="calcInvestmentSale()"></div>
+    <div class="form-group"><label>Sell Quantity</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleQty" min="0.0001" step="0.0001" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell quantity" onclick="invVoiceNumber('invSaleQty',this)">🎤</button></div></div>
+    <div class="form-group"><label>Sell Rate</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleRate" min="0" step="0.01" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell rate" onclick="invVoiceNumber('invSaleRate',this)">🎤</button></div></div>
     <div class="form-group"><label>Sell Amount (Self Calculated)</label><input type="number" class="form-input" id="invSaleAmount" readonly></div>
     <button id="investmentSaleSaveBtn" type="button" onclick="saveInvestmentSale()" style="width:100%;padding:12px;background:#2e7d32;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">Save Sale</button>
     <button type="button" class="modal-close" onclick="closeModal('investmentSaleModal')">Cancel</button>
@@ -2329,7 +2337,12 @@ function closeModal(id){
 function closeAllModals(){
   document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));
 }
-function getMonthTxns(m=reportMonth,y=reportYear){return transactions.filter(t=>{const d=new Date(t.date);return d.getMonth()===m&&d.getFullYear()===y;});}
+// Loan principal entries (money borrowed / principal repaid) are Balance-Sheet items, not income or
+// expenditure. They stay in `transactions` so the cash balance reconciles, but every income/expense
+// total, budget, report and score uses opTxns() / getMonthTxns(), which leave them out.
+function isLoanPrincipalTxn(t){return !!(t&&(t.loanRepayId||t.loanBorrow));}
+function opTxns(){return transactions.filter(t=>!isLoanPrincipalTxn(t));}
+function getMonthTxns(m=reportMonth,y=reportYear){return opTxns().filter(t=>{const d=new Date(t.date);return d.getMonth()===m&&d.getFullYear()===y;});}
 function getMonthLabel(m=reportMonth,y=reportYear){return new Date(y,m,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});}
 
 // ═══════════════════════════════════════
@@ -3099,6 +3112,95 @@ function qaVoice(){
     const b=document.getElementById('qaMic');
     if(b&&!(window.SpeechRecognition||window.webkitSpeechRecognition))b.style.display='none';
   };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+
+// ═══════════════════════════════════════
+// VOICE TYPING — Home Notes + Investment entries
+// Tap 🎤, speak, tap again to stop early. Hidden on devices without speech recognition.
+// ═══════════════════════════════════════
+let _voiceRec=null;
+function _voiceSupported(){return !!(window.SpeechRecognition||window.webkitSpeechRecognition);}
+function _voiceSetBtn(btn,on){
+  if(!btn)return;
+  btn.classList.toggle('listening',on);
+  btn.textContent=on?(btn.dataset.live||'🔴'):(btn.dataset.idle||'🎤');
+}
+function voiceListen(btn,onText){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){showToast('⚠️ Voice input is not supported on this device');return;}
+  if(_voiceRec){try{_voiceRec.stop();}catch(e){}return;}   // tap while listening = stop
+  let r;
+  try{r=new SR();}catch(e){showToast('⚠️ Voice input unavailable');return;}
+  r.lang='en-IN';r.interimResults=false;r.maxAlternatives=1;r.continuous=false;
+  r.onstart=()=>{_voiceRec=r;_voiceSetBtn(btn,true);};
+  r.onresult=e=>{
+    let txt='';
+    for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)txt+=e.results[i][0].transcript+' ';}
+    txt=txt.trim();
+    if(txt)onText(txt);
+  };
+  r.onerror=ev=>{
+    const er=ev&&ev.error;
+    if(er==='aborted')return;
+    if(er==='not-allowed'||er==='service-not-allowed')showToast('⚠️ Microphone permission is blocked. Allow it and try again.');
+    else showToast('⚠️ Could not hear that. Try again or type it.');
+  };
+  r.onend=()=>{_voiceSetBtn(btn,false);if(_voiceRec===r)_voiceRec=null;};
+  try{r.start();}catch(e){_voiceSetBtn(btn,false);_voiceRec=null;}
+}
+function _voiceNumber(txt){
+  const s=String(txt).toLowerCase().replace(/,/g,'').replace(/\bpoint\b/g,'.').replace(/\s*\.\s*/g,'.');
+  const m=s.match(/\d+(\.\d+)?/);
+  return m?m[0]:'';
+}
+function homeNoteVoice(btn){
+  voiceListen(btn,txt=>{
+    const el=document.getElementById('homeNotesText');if(!el)return;
+    el.focus();
+    const sel=window.getSelection();
+    if(!sel.rangeCount||!el.contains(sel.anchorNode)){
+      const rg=document.createRange();rg.selectNodeContents(el);rg.collapse(false);
+      sel.removeAllRanges();sel.addRange(rg);
+    }
+    const lead=(el.textContent||'').trim()?' ':'';
+    let ok=false;
+    try{ok=document.execCommand('insertText',false,lead+txt);}catch(e){}
+    if(!ok){el.appendChild(document.createTextNode(lead+txt));el.dispatchEvent(new Event('input',{bubbles:true}));}
+  });
+}
+function invVoiceText(inputId,btn){
+  voiceListen(btn,txt=>{
+    const el=document.getElementById(inputId);if(!el)return;
+    el.value=txt.replace(/[.\s]+$/,'');
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+}
+function invVoiceNumber(inputId,btn){
+  voiceListen(btn,txt=>{
+    const el=document.getElementById(inputId);if(!el)return;
+    const n=_voiceNumber(txt);
+    if(!n){showToast('⚠️ Say a number, e.g. "150"');return;}
+    el.value=n;
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+}
+function invVoiceScrip(btn){
+  const sel=document.getElementById('invSalePurchase');if(!sel)return;
+  if(sel.disabled){showToast('Scrip cannot be changed while editing a sale.');return;}
+  voiceListen(btn,txt=>{
+    const norm=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const said=norm(txt);if(!said)return;
+    const opts=[...sel.options].map(o=>({o,name:norm(o.text.split(' · ')[0])}));
+    const hit=opts.find(x=>x.name===said)||opts.find(x=>x.name&&(x.name.includes(said)||said.includes(x.name)));
+    if(!hit){showToast('⚠️ No scrip matching "'+txt+'" with quantity left to sell');return;}
+    sel.value=hit.o.value;updateInvestmentSaleBalance();
+    const n=opts.filter(x=>x.name===hit.name).length;
+    showToast('✅ '+hit.o.text.split(' · ')[0]+' selected'+(n>1?' — '+n+' purchases, check the date':''));
+  });
+}
+(function(){
+  const init=()=>{if(!_voiceSupported())document.querySelectorAll('.voice-mic-btn').forEach(b=>{b.style.display='none';});};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 
@@ -4183,7 +4285,7 @@ function applyDateFilter(){
 }
 function renderDateWise(){
   const rc=document.getElementById('reportContent');
-  let txns=[...transactions];
+  let txns=opTxns();
   if(dwFrom)txns=txns.filter(t=>t.date>=dwFrom);
   if(dwTo)txns=txns.filter(t=>t.date<=dwTo);
   if(!txns.length){rc.innerHTML+=`<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.82rem;">📅 No transactions found for this date range.</div>`;return;}
@@ -4212,7 +4314,7 @@ function renderStatement(){
   const allDates=transactions.map(t=>t.date).sort();
   const stFrom=dwFrom||allDates[0]||today;
   const stTo=dwTo||today;
-  const txns=[...transactions]
+  const txns=opTxns()
     .filter(t=>t.date>=stFrom&&t.date<=stTo)
     .sort((a,b)=>a.date.localeCompare(b.date));
   const incomeTxns=txns.filter(t=>t.type==='income');
@@ -4239,6 +4341,22 @@ function renderStatement(){
   const creditBalance=balance<0?Math.abs(balance):0;
   const debitRows=entryRows(groupedExpenseTxns)+(debitBalance?`<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-date"></span><span class="ie-desc">By Balance c/d</span></div><span class="ie-amt">${fmtR(debitBalance)}</span></div>`:'');
   const creditRows=entryRows(incomeTxns)+(creditBalance?`<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-date"></span><span class="ie-desc">To Balance c/d</span></div><span class="ie-amt">${fmtR(creditBalance)}</span></div>`:'');
+
+  // Loan receipts & payments — shown separately, NOT part of income/expenditure
+  const loanTx=transactions.filter(t=>isLoanPrincipalTxn(t)&&t.date>=stFrom&&t.date<=stTo).sort((a,b)=>a.date.localeCompare(b.date));
+  const loanRecv=loanTx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const loanPaid=loanTx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const loanNet=loanRecv-loanPaid;
+  const cashNet=balance+loanNet;
+  const loanSection=loanTx.length?`
+    <div style="border:2px solid #1565c0;border-radius:14px;overflow:hidden;margin-top:14px;">
+      <div style="background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;padding:10px 14px;font-size:0.74rem;font-weight:800;">🏦 Loan Receipts &amp; Payments<div style="font-size:0.64rem;font-weight:600;opacity:.9;margin-top:2px;">Balance-sheet items — not part of Income &amp; Expenditure</div></div>
+      ${loanTx.map(t=>{const dd=new Date(t.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'});return `<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 12px;border-bottom:1px solid #bbdefb;font-size:0.74rem;background:var(--surface);"><span style="min-width:0;flex:1;"><b>${dd}</b> &nbsp;${t.type==='income'?'Received':'Paid'} — ${(t.note||'').replace(/^Loan (taken from|repayment — )\s*/,'$1 ')||t.category}</span><span style="font-weight:800;color:${t.type==='income'?'#00897b':'#e53935'};white-space:nowrap;">${t.type==='income'?'+':'-'}${fmtR(t.amount)}</span></div>`;}).join('')}
+      <div class="stmt-summary-row"><span class="stmt-summary-label">Loans received</span><span class="stmt-summary-val" style="color:#00897b;">${fmtR(loanRecv)}</span></div>
+      <div class="stmt-summary-row"><span class="stmt-summary-label">Loan principal repaid</span><span class="stmt-summary-val" style="color:#e53935;">${fmtR(loanPaid)}</span></div>
+      <div class="stmt-summary-row"><span class="stmt-summary-label">Net loan cash flow</span><span class="stmt-summary-val">${loanNet>=0?'+':'-'}${fmtR(Math.abs(loanNet))}</span></div>
+      <div class="stmt-summary-row"><span class="stmt-summary-label" style="font-weight:800;">Net cash movement (I&amp;E result + loans)</span><span class="stmt-summary-val" style="font-weight:800;">${cashNet>=0?'+':'-'}${fmtR(Math.abs(cashNet))}</span></div>
+    </div>`:'';
 
   rc.innerHTML=`
     <div class="date-filter-row" style="margin-bottom:12px;">
@@ -4269,6 +4387,7 @@ function renderStatement(){
       <div class="stmt-summary-row"><span class="stmt-summary-label">💸 Debit / Expenditure Total</span><span class="stmt-summary-val" style="color:#e53935;">${fmtR(expense)}</span></div>
       <div class="stmt-summary-row"><span class="stmt-summary-label" style="font-size:0.95rem;">⚖️ Closing Balance</span><span class="stmt-summary-val" style="font-size:1.05rem;">${balance>=0?'Surplus: ':'Deficit: '}${fmtR(Math.abs(balance))}</span></div>
     </div>
+    ${loanSection}
     <div style="font-size:0.72rem;color:var(--muted);text-align:center;margin:8px 0 12px;">The balance is automatically added to the smaller side so that Debit and Credit totals are equal.</div>
     <button class="stmt-print-btn" onclick="printStatement()">🖨️ Save / Share as PDF</button>`;
 }
@@ -4309,8 +4428,9 @@ function invIsLTCG(assetType, buyDate, sellDate){
 }
 function invBalanceQty(p,exceptSaleId){return Number(p.qty||0)-(p.sales||[]).reduce((s,z)=>z.id===exceptSaleId?s:s+Number(z.qty||0),0);}
 
+function invTodayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 // ── Purchase entry ──
-function clearInvestmentPurchaseForm(){['invPurchaseId','invPurchaseDate','invPurchaseStock','invPurchaseQty','invPurchaseRate','invPurchaseAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const at=document.getElementById('invPurchaseAssetType');if(at)at.value='equity';setInvestmentCategoryOptions();document.getElementById('investmentPurchaseModalTitle').textContent='📈 Investment Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Save Purchase';}
+function clearInvestmentPurchaseForm(){['invPurchaseId','invPurchaseDate','invPurchaseStock','invPurchaseQty','invPurchaseRate','invPurchaseAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const at=document.getElementById('invPurchaseAssetType');if(at)at.value='equity';const pd=document.getElementById('invPurchaseDate');if(pd)pd.value=invTodayISO();setInvestmentCategoryOptions();document.getElementById('investmentPurchaseModalTitle').textContent='📈 Investment Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Save Purchase';}
 function openInvestmentPurchaseModal(){clearInvestmentPurchaseForm();openModal('investmentPurchaseModal');}
 function calcInvestmentPurchase(){const q=Number(document.getElementById('invPurchaseQty').value||0),r=Number(document.getElementById('invPurchaseRate').value||0);document.getElementById('invPurchaseAmount').value=q&&r>=0?(q*r).toFixed(2):'';}
 async function saveInvestmentPurchase(){
@@ -4354,7 +4474,7 @@ function updateInvestmentSaleBalance(){
   el.textContent=p?('Purchased '+p.qty+' · Available to sell '+Number(invBalanceQty(p,sid).toFixed(4))):'';
 }
 function calcInvestmentSale(){const q=Number(document.getElementById('invSaleQty').value||0),r=Number(document.getElementById('invSaleRate').value||0);document.getElementById('invSaleAmount').value=q&&r>=0?(q*r).toFixed(2):'';}
-function clearInvestmentSaleForm(){['invSaleId','invSaleDate','invSaleQty','invSaleRate','invSaleAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});document.getElementById('invSalePurchase').disabled=false;document.getElementById('investmentSaleModalTitle').textContent='📉 Investment Sale';document.getElementById('investmentSaleSaveBtn').textContent='Save Sale';}
+function clearInvestmentSaleForm(){['invSaleId','invSaleDate','invSaleQty','invSaleRate','invSaleAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});document.getElementById('invSalePurchase').disabled=false;const sd=document.getElementById('invSaleDate');if(sd)sd.value=invTodayISO();document.getElementById('investmentSaleModalTitle').textContent='📉 Investment Sale';document.getElementById('investmentSaleSaveBtn').textContent='Save Sale';}
 function openInvestmentSaleModal(purchaseId){
   if(!investments.some(p=>invBalanceQty(p)>1e-9)){showToast('Add a purchase first (or nothing left to sell).');return;}
   clearInvestmentSaleForm();fillInvestmentSaleLots(purchaseId);updateInvestmentSaleBalance();openModal('investmentSaleModal');
@@ -4625,11 +4745,11 @@ function renderHome(){
     const d=new Date(t.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
     return`<div class="txn-item">
       <div class="txn-icon ${t.type}">${cat.emoji}</div>
-      <div class="txn-body"><div class="txn-title">${t.category}${t.note?' — '+t.note:''}</div><div class="txn-meta">${d} • ${t.type}</div></div>
+      <div class="txn-body"><div class="txn-title">${t.category}${t.note?' — '+t.note:''}</div><div class="txn-meta">${d} • ${isLoanPrincipalTxn(t)?(t.type==='income'?'loan received':'loan repayment')+' (not in I&E)':t.type}</div></div>
       <div style="display:flex;align-items:center;gap:4px;">
         <div class="txn-amount ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
-        <button style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:3px 7px;font-size:0.72rem;cursor:pointer;color:#4d96ff;font-weight:700;" onclick="openEditModal(${t.id})">✏️</button>
-        <button class="txn-del" onclick="deleteTxn(${t.id})">✕</button>
+        ${isLoanPrincipalTxn(t)?'<span title="Managed from the Loans tab" style="font-size:0.66rem;font-weight:800;color:#1565c0;background:#e3f2fd;border-radius:8px;padding:4px 7px;">🏦 Loan</span>':`<button style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:3px 7px;font-size:0.72rem;cursor:pointer;color:#4d96ff;font-weight:700;" onclick="openEditModal(${t.id})">✏️</button>
+        <button class="txn-del" onclick="deleteTxn(${t.id})">✕</button>`}
       </div>
     </div>`;
   }).join('');
@@ -5087,7 +5207,7 @@ function buildInvestmentPdf(){
 function buildIEPdf(){
   const today=new Date().toISOString().split('T')[0],allDates=transactions.map(t=>t.date).sort();
   const stFrom=dwFrom||allDates[0]||today,stTo=dwTo||today;
-  const txns=[...transactions].filter(t=>t.date>=stFrom&&t.date<=stTo).sort((a,b)=>a.date.localeCompare(b.date));
+  const txns=opTxns().filter(t=>t.date>=stFrom&&t.date<=stTo).sort((a,b)=>a.date.localeCompare(b.date));
   const incomeTxns=txns.filter(t=>t.type==='income'),expenseTxns=txns.filter(t=>t.type==='expense');
   const income=incomeTxns.reduce((s,t)=>s+t.amount,0),expense=expenseTxns.reduce((s,t)=>s+t.amount,0),balance=income-expense,total=Math.max(income,expense);
   const groups={};expenseTxns.forEach(t=>{const c=t.category||'Uncategorized';if(!groups[c])groups[c]={category:c,amount:0,count:0};groups[c].amount+=Number(t.amount||0);groups[c].count++;});
@@ -5112,6 +5232,19 @@ function buildIEPdf(){
   p.row(['Credit / Income Total',pdfMoney(income)],sf,sa,{bold:true});
   p.row(['Debit / Expenditure Total',pdfMoney(expense)],sf,sa,{bold:true});
   p.row(['Closing Balance ('+(balance>=0?'Surplus':'Deficit')+')',pdfMoney(Math.abs(balance))],sf,sa,{bold:true,fill:PDF_TOTAL_FILL});
+  const loanTx=transactions.filter(t=>isLoanPrincipalTxn(t)&&t.date>=stFrom&&t.date<=stTo).sort((a,b)=>a.date.localeCompare(b.date));
+  if(loanTx.length){
+    const lr=loanTx.filter(t=>t.type==='income').reduce((a,t)=>a+t.amount,0),lp=loanTx.filter(t=>t.type==='expense').reduce((a,t)=>a+t.amount,0),ln=lr-lp,cn=balance+ln;
+    p.gap(14);
+    p.heading('Loan Receipts & Payments (not part of Income & Expenditure)',10,true);
+    const lf=[.56,.22,.22],la=['l','r','r'],lh=['Particulars','Received (Rs.)','Paid (Rs.)'],lo={bold:true,fill:PDF_HEAD_FILL,head:true};
+    p.row(lh,lf,la,lo);p.header={cells:lh,fr:lf,al:la,o:lo};
+    loanTx.forEach(t=>p.row([new Date(t.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+'  '+(t.note||t.category),t.type==='income'?pdfMoney(t.amount):'',t.type==='expense'?pdfMoney(t.amount):''],lf,la));
+    p.row(['Total',pdfMoney(lr),pdfMoney(lp)],lf,la,{bold:true,fill:PDF_TOTAL_FILL});
+    p.gap(8);
+    p.row(['Net loan cash flow',(ln>=0?'':'-')+pdfMoney(Math.abs(ln))],sf,sa,{bold:true});
+    p.row(['Net cash movement (I&E result + loans)',(cn>=0?'':'-')+pdfMoney(Math.abs(cn))],sf,sa,{bold:true,fill:PDF_TOTAL_FILL});
+  }
   return {pdf:p,name:'Income-Expenditure-'+stFrom+'_to_'+stTo+'.pdf'};
 }
 function buildLoanPdf(loan){
@@ -5358,6 +5491,23 @@ function openLoanModal(){
   document.getElementById('loanDate').value=new Date().toISOString().split('T')[0];
   openModal('loanModal');
 }
+// ── Loan borrowed → Income side ──
+// Money received when you borrow is an inflow (Cr), mirrored as an income transaction
+// linked to the loan (loanId / loanBorrow). Loans you lend out are not touched.
+function ensureLoanReceivedCategory(){
+  if(INCOME_CATS.some(c=>c.name==='Loan Received'))return;
+  INCOME_CATS.push({name:'Loan Received',emoji:'🤝'});
+  try{Promise.resolve(saveCategories()).catch(()=>{});}catch(e){}
+  try{updateCategories();}catch(e){}
+}
+function syncLoanBorrowTxn(loan){
+  if(!loan)return;
+  transactions=transactions.filter(t=>!(t.loanBorrow&&t.loanId===loan.id));
+  if(loan.type!=='taken')return;
+  ensureLoanReceivedCategory();
+  transactions.unshift({id:Date.now()+2,type:'income',amount:loan.amount,category:'Loan Received',date:loan.date,note:'Loan taken from '+loan.person+(loan.note?' — '+loan.note:''),createdAt:Date.now(),loanId:loan.id,loanBorrow:true});
+}
+function hasLoanBorrowTxn(loan){return transactions.some(t=>t.loanBorrow&&t.loanId===loan.id);}
 function addLoan(){
   const person=document.getElementById('loanPerson').value.trim();
   const amount=parseFloat(document.getElementById('loanAmount').value);
@@ -5368,11 +5518,13 @@ function addLoan(){
   if(!person){showToast('⚠️ Enter person name!');return;}
   if(!amount||amount<=0){showToast('⚠️ Enter valid amount!');return;}
   if(!date){showToast('⚠️ Select loan date!');return;}
-  loans.push({id:Date.now(),type:loanModalType,person,amount,rate,date,due,note,repayments:[],status:'active'});
-  saveData();closeModal('loanModal');renderLoans();renderLoanReport();checkLoanOverdue();
+  const newLoan={id:Date.now(),type:loanModalType,person,amount,rate,date,due,note,repayments:[],status:'active'};
+  loans.push(newLoan);
+  syncLoanBorrowTxn(newLoan);
+  saveData();closeModal('loanModal');renderLoans();renderLoanReport();checkLoanOverdue();renderAll();
   ['loanPerson','loanAmount','loanNote','loanDue'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('loanRate').value='0';
-  showToast(loanModalType==='given'?'💙 Loan entry added!':'🧡 Borrowed entry added!');
+  showToast(loanModalType==='given'?'💙 Loan entry added!':'🧡 Borrowed entry added & shown as income!');
 }
 function setLoanFilter(f){loanFilter=f;renderLoans();}
 function calcInterest(loan){
@@ -5590,6 +5742,24 @@ function openRepayModal(id){
   document.getElementById('repayLoanInfo').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:0.95rem;font-weight:800;">${loan.person}</div><div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">${loan.type==='given'?'💙 You lent':'🧡 You borrowed'} ${fmt(loan.amount)}</div></div><div style="text-align:right;"><div style="font-size:0.88rem;font-weight:800;color:#ff6b6b;">${fmt(outstanding)}</div><div style="font-size:0.68rem;color:var(--muted);">outstanding</div></div></div>`;
   openModal('repayModal');
 }
+// ── Loan repayment → Income & Expenditure ──
+// Paying back money you borrowed is an outflow (Dr), so it is mirrored as an expense
+// transaction linked to the repayment (loanId / loanRepayId). Repayments received on
+// money you lent are not touched.
+function ensureLoanRepayCategory(){
+  if(EXPENSE_CATS.some(c=>c.name==='Loan Repayment'))return;
+  EXPENSE_CATS.push({name:'Loan Repayment',emoji:'🏦'});
+  try{Promise.resolve(saveCategories()).catch(()=>{});}catch(e){}
+  try{updateCategories();}catch(e){}
+}
+function syncLoanRepayTxn(loan,rep){
+  if(!loan||!rep)return;
+  transactions=transactions.filter(t=>t.loanRepayId!==rep.id);
+  if(loan.type!=='taken')return;
+  ensureLoanRepayCategory();
+  transactions.unshift({id:Date.now()+1,type:'expense',amount:rep.amount,category:'Loan Repayment',date:rep.date,note:'Loan repayment — '+loan.person+(rep.note?' — '+rep.note:''),createdAt:Date.now(),loanId:loan.id,loanRepayId:rep.id});
+}
+function hasLoanRepayTxn(rep){return transactions.some(t=>t.loanRepayId===rep.id);}
 function addRepayment(){
   const id=parseInt(document.getElementById('repayLoanId').value);
   const amount=parseFloat(document.getElementById('repayAmount').value);
@@ -5598,11 +5768,13 @@ function addRepayment(){
   if(!amount||amount<=0){showToast('⚠️ Enter valid amount!');return;}
   if(!date){showToast('⚠️ Select date!');return;}
   const loan=loans.find(l=>l.id===id);if(!loan)return;
-  loan.repayments.push({id:Date.now(),amount,date,note});
+  const newRep={id:Date.now(),amount,date,note};
+  loan.repayments.push(newRep);
+  syncLoanRepayTxn(loan,newRep);
   const outstanding=getLoanOutstanding(loan);
   if(outstanding<=0){loan.status='closed';showToast('🎉 Loan fully repaid! Marked closed.');}
-  else{showToast(`✅ ${fmt(amount)} repayment recorded!`);}
-  saveData();closeModal('repayModal');renderLoans();renderLoanReport();checkLoanOverdue();
+  else{showToast(`✅ ${fmt(amount)} repayment recorded${loan.type==='taken'?' & added to expenses':''}!`);}
+  saveData();closeModal('repayModal');renderLoans();renderLoanReport();checkLoanOverdue();renderAll();
 }
 // ── EDIT LOAN ──
 function openEditLoanModal(id){
@@ -5642,8 +5814,11 @@ function saveEditLoan(){
   if(!amount||amount<=0){showToast('⚠️ Enter valid amount!');return;}
   if(!date){showToast('⚠️ Select date!');return;}
   const idx=loans.findIndex(l=>l.id===id);if(idx===-1)return;
+  const oldLoanType=loans[idx].type;
   loans[idx]={...loans[idx],type:editLoanType,person,amount,rate,date,due,note};
-  saveData();closeModal('editLoanModal');renderLoans();renderLoanReport();checkLoanOverdue();
+  (loans[idx].repayments||[]).forEach(r=>{if(hasLoanRepayTxn(r)||oldLoanType!==loans[idx].type)syncLoanRepayTxn(loans[idx],r);});
+  if(hasLoanBorrowTxn(loans[idx])||oldLoanType!==loans[idx].type)syncLoanBorrowTxn(loans[idx]);
+  saveData();closeModal('editLoanModal');renderLoans();renderLoanReport();checkLoanOverdue();renderAll();
   showToast('✅ Loan updated!');
 }
 
@@ -5670,10 +5845,11 @@ function saveEditRepay(){
   const loan=loans.find(l=>l.id===loanId);if(!loan)return;
   const idx=loan.repayments.findIndex(r=>r.id===repayId);if(idx===-1)return;
   loan.repayments[idx]={...loan.repayments[idx],amount,date,note};
+  if(hasLoanRepayTxn(loan.repayments[idx]))syncLoanRepayTxn(loan,loan.repayments[idx]);
   // recheck if loan should be active
   const outstanding=getLoanOutstanding(loan);
   if(outstanding<=0)loan.status='closed'; else loan.status='active';
-  saveData();closeModal('editRepayModal');renderLoans();renderLoanReport();checkLoanOverdue();
+  saveData();closeModal('editRepayModal');renderLoans();renderLoanReport();checkLoanOverdue();renderAll();
   showToast('✅ Repayment updated!');
 }
 
@@ -5682,9 +5858,10 @@ function deleteRepayment(loanId,repayId){
   if(!confirm('Delete this repayment entry?'))return;
   const loan=loans.find(l=>l.id===loanId);if(!loan)return;
   loan.repayments=loan.repayments.filter(r=>r.id!==repayId);
+  transactions=transactions.filter(t=>t.loanRepayId!==repayId);
   const outstanding=getLoanOutstanding(loan);
   if(outstanding>0&&loan.status==='closed')loan.status='active';
-  saveData();renderLoans();renderLoanReport();checkLoanOverdue();showToast('🗑️ Repayment deleted!');
+  saveData();renderLoans();renderLoanReport();checkLoanOverdue();renderAll();showToast('🗑️ Repayment deleted!');
 }
 
 function openLoanHistory(){
@@ -5726,14 +5903,18 @@ function closeLoan(id){
     : 'Mark this loan as closed/settled?';
   if(!confirm(msg))return;
   if(outstanding>0){
-    loan.repayments.push({id:Date.now(),amount:outstanding,date:new Date().toISOString().split('T')[0],note:'Loan Closed/Settled'});
+    const settleRep={id:Date.now(),amount:outstanding,date:new Date().toISOString().split('T')[0],note:'Loan Closed/Settled'};
+    loan.repayments.push(settleRep);
+    syncLoanRepayTxn(loan,settleRep);
   }
   loan.status='closed';
-  saveData();renderLoans();renderLoanReport();showToast('✅ Loan closed!');
+  saveData();renderLoans();renderLoanReport();renderAll();showToast('✅ Loan closed!');
 }
 function deleteLoan(id){
   if(!confirm('Delete this loan record permanently?'))return;
-  loans=loans.filter(l=>l.id!==id);saveData();renderLoans();renderLoanReport();checkLoanOverdue();showToast('🗑️ Deleted!');
+  loans=loans.filter(l=>l.id!==id);
+  transactions=transactions.filter(t=>!(t.loanId===id&&(t.loanRepayId||t.loanBorrow)));
+  saveData();renderLoans();renderLoanReport();checkLoanOverdue();renderAll();showToast('🗑️ Deleted!');
 }
 function openLoanStatement(id){
   const loan=loans.find(l=>l.id===id);if(!loan)return;
@@ -6167,7 +6348,7 @@ window.addEventListener('popstate',e=>{
 function calcHealthScore(){
   const today=new Date();
   const mo=today.getMonth(), yr=today.getFullYear();
-  const mt=transactions.filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
+  const mt=opTxns().filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
   const mInc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const mExp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
 
@@ -6267,7 +6448,7 @@ async function saveDailyLimit(val){
 
 function renderDailyLimit(){
   const today=new Date().toISOString().split('T')[0];
-  const todayExp=transactions.filter(t=>t.type==='expense'&&t.date===today).reduce((s,t)=>s+t.amount,0);
+  const todayExp=opTxns().filter(t=>t.type==='expense'&&t.date===today).reduce((s,t)=>s+t.amount,0);
   const spentEl=document.getElementById('dailySpentAmt');
   const remainEl=document.getElementById('dailyRemainAmt');
   const fillEl=document.getElementById('dailyLimitFill');
@@ -7421,7 +7602,7 @@ async function deletePocket(id){
 async function runPocketAutoSplit(){
   const today=new Date();
   const mo=today.getMonth(), yr=today.getFullYear();
-  const incomes=transactions.filter(t=>t.type==='income'&&new Date(t.date).getMonth()===mo&&new Date(t.date).getFullYear()===yr);
+  const incomes=opTxns().filter(t=>t.type==='income'&&new Date(t.date).getMonth()===mo&&new Date(t.date).getFullYear()===yr);
   if(!incomes.length){ showToast('⚠️ No income this month to split'); return; }
   const latest=incomes.sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
   const emPct=(pocketSplitRules.emergency||0)/100;
@@ -7458,7 +7639,7 @@ function renderSafeToSpend(){
   const buffer=parseFloat(document.getElementById('safeBuffer')?.value)||500;
 
   const mo=today.getMonth(), yr=today.getFullYear();
-  const mt=transactions.filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
+  const mt=opTxns().filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
   const mInc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const mExp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const remainingCash=Math.max(0,mInc-mExp);
@@ -7568,7 +7749,7 @@ function renderAIInsights(){
   if(!list) return;
   const today=new Date();
   const mo=today.getMonth(), yr=today.getFullYear();
-  const mt=transactions.filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
+  const mt=opTxns().filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
   const mInc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const mExp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const insights=[];
@@ -7633,7 +7814,7 @@ function renderAIInsights(){
 function renderGoalBoost(){
   const today=new Date();
   const mo=today.getMonth(), yr=today.getFullYear();
-  const mt=transactions.filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
+  const mt=opTxns().filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
   const mInc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const mExp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const surplus=Math.max(0,mInc-mExp);
