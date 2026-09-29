@@ -1,0 +1,66 @@
+# Save as: .github/workflows/release-aab.yml
+# Run from: GitHub → Actions → "Release AAB" → Run workflow
+name: Release AAB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm ci
+
+      # If your project has a web build step (e.g. npm run build), add it here.
+      - name: Sync web files into Android project
+        run: npx cap sync android
+
+      # Play Store rejects an upload whose versionCode was already used.
+      # Using the run number means every new run is higher than the last.
+      - name: Set versionCode
+        run: sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
+
+      - name: Build release bundle (unsigned)
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --no-daemon
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/upload-keystore.jks"
+
+      - name: Sign AAB
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore "$RUNNER_TEMP/upload-keystore.jks" \
+            -storepass "$KS_PASS" -keypass "$KEY_PASS" \
+            "$AAB" "$KEY_ALIAS"
+          jarsigner -verify "$AAB"
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload-keystore.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: money-manager-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 7
