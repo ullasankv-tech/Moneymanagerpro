@@ -96,7 +96,7 @@ jobs:
           ./gradlew bundleRelease --no-daemon
 
       - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/moneymanagerpro.jks"
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/MoneyManagerPro.jks"
 
       - name: Sign AAB
         env:
