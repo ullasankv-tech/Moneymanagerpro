@@ -106,7 +106,7 @@ jobs:
         run: |
           AAB=android/app/build/outputs/bundle/release/app-release.aab
           jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
-            -keystore "$RUNNER_TEMP/upload-keystore.jks" \
+            -keystore "$RUNNER_TEMP/moneymanagerpro.jks" \
             -storepass "$KS_PASS" -keypass "$KEY_PASS" \
             "$AAB" "$KEY_ALIAS"
           jarsigner -verify "$AAB"
