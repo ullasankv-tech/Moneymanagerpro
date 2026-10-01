@@ -96,7 +96,7 @@ jobs:
           ./gradlew bundleRelease --no-daemon
 
       - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/MoneyManagerPro.jks"
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/Money.jks"
 
       - name: Sign AAB
         env:
@@ -106,7 +106,7 @@ jobs:
         run: |
           AAB=android/app/build/outputs/bundle/release/app-release.aab
           jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
-            -keystore "$RUNNER_TEMP/MoneyManagerPro.jks" \
+            -keystore "$RUNNER_TEMP/Money.jks" \
             -storepass "$KS_PASS" -keypass "$KEY_PASS" \
             "$AAB" "$KEY_ALIAS"
           jarsigner -verify "$AAB"
