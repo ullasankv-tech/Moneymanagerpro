@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.ullasankv_tech.twa",
+        "sha256_cert_fingerprints": ["A4:E8:2F:A5:93:27:81:F2:2A:3A:F0:F0:36:CD:E4:20:26:48:9C:A9:94:DF:81:B0:EE:86:47:0E:88:E1:BF:09"]
+      }
+    }]
