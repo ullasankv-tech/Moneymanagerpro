@@ -39,13 +39,17 @@ jobs:
       - name: Install Capacitor 6
         run: |
           npm init -y
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @capgo/capacitor-native-biometric@6.0.4
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @capgo/capacitor-native-biometric@6.0.4 @capacitor-community/speech-recognition@^6.0.0
           npm install @capacitor/assets@3 --save-d
       
       - name: Initialize Capacitor (non-interactive)
         run: |
           npx cap init "Money Manager Pro" com.ullasankv.moneymanagerpro --web-dir www
           npx cap add android
+      
+      - name: Add mic permission
+        run: |
+          sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>\n    <application#' android/app/src/main/AndroidManifest.xml
           npx cap sync android
           
       - name: Add biometric permission
