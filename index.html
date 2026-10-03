@@ -3095,6 +3095,7 @@ function qaSave(){
   _qaPending=null;qaRenderCard();
 }
 function qaVoice(){
+  if(_capSR()){_voiceListenNative(document.getElementById('qaMic'),function(txt){document.getElementById('qaInput').value=txt;qaSubmit();});return;}
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){showToast('⚠️ Voice input is not supported on this device');return;}
   const btn=document.getElementById('qaMic');
@@ -3110,7 +3111,7 @@ function qaVoice(){
 (function(){
   const init=()=>{
     const b=document.getElementById('qaMic');
-    if(b&&!(window.SpeechRecognition||window.webkitSpeechRecognition))b.style.display='none';
+    if(b&&!_voiceSupported())b.style.display='none';
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
@@ -3120,13 +3121,33 @@ function qaVoice(){
 // Tap 🎤, speak, tap again to stop early. Hidden on devices without speech recognition.
 // ═══════════════════════════════════════
 let _voiceRec=null;
-function _voiceSupported(){return !!(window.SpeechRecognition||window.webkitSpeechRecognition);}
+function _capSR(){try{return (window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform()&&Capacitor.Plugins&&Capacitor.Plugins.SpeechRecognition)||null;}catch(e){return null;}}
+function _voiceSupported(){return !!(_capSR()||window.SpeechRecognition||window.webkitSpeechRecognition);}
+async function _voiceListenNative(btn,onText){
+  const SP=_capSR();
+  if(_voiceRec){try{_voiceRec.stop();}catch(e){}return;}   // tap while listening = stop
+  try{
+    let perm=await SP.checkPermissions();
+    if(!perm||perm.speechRecognition!=='granted')perm=await SP.requestPermissions();
+    if(!perm||perm.speechRecognition!=='granted'){showToast('⚠️ Microphone permission is blocked. Allow it in phone Settings → Apps → Money Manager Pro → Permissions.');return;}
+    _voiceRec={stop:function(){try{SP.stop();}catch(e){}}};
+    _voiceSetBtn(btn,true);
+    const res=await SP.start({language:'en-IN',maxResults:1,partialResults:false,popup:false});
+    const txt=((res&&res.matches&&res.matches[0])||'').trim();
+    if(txt)onText(txt);else showToast('⚠️ Could not hear that. Try again or type it.');
+  }catch(e){
+    showToast('⚠️ Could not hear that. Try again or type it.');
+  }finally{
+    _voiceRec=null;_voiceSetBtn(btn,false);
+  }
+}
 function _voiceSetBtn(btn,on){
   if(!btn)return;
   btn.classList.toggle('listening',on);
   btn.textContent=on?(btn.dataset.live||'🔴'):(btn.dataset.idle||'🎤');
 }
 function voiceListen(btn,onText){
+  if(_capSR()){_voiceListenNative(btn,onText);return;}
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){showToast('⚠️ Voice input is not supported on this device');return;}
   if(_voiceRec){try{_voiceRec.stop();}catch(e){}return;}   // tap while listening = stop
