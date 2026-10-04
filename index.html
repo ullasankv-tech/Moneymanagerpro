@@ -1771,6 +1771,18 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
   </div>
 </div>
 
+<!-- INVESTMENT CHARGES MASTER (Delivery / Intraday / F & O) -->
+<div class="modal-overlay" id="invChargesModal">
+  <div class="modal-sheet">
+    <h3 id="invChargesTitle">⚙️ Charges</h3>
+    <div style="font-size:.72rem;color:var(--muted);margin:-6px 0 12px;">Rates are indicative (Oct 2026). Edit them to match your broker. They auto-fill the Charges field in Purchase / Sale entries, where you can still change the amount.</div>
+    <div id="invChargesFields"></div>
+    <button type="button" onclick="saveInvChargesForm()" style="width:100%;padding:12px;background:#1565c0;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">Save Charges</button>
+    <button type="button" onclick="resetInvChargesForm()" style="width:100%;padding:11px;margin-top:10px;background:none;border:2px solid var(--border);border-radius:12px;color:var(--muted);font-weight:700;cursor:pointer;font-family:var(--font);">🔄 Reset to Default</button>
+    <button type="button" class="modal-close" onclick="closeModal('invChargesModal')">Cancel</button>
+  </div>
+</div>
+
 <div class="modal-overlay" id="investmentPurchaseModal">
   <div class="modal-sheet">
     <h3 id="investmentPurchaseModalTitle">📈 Investment Purchase</h3>
@@ -1787,10 +1799,13 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <option value="other">Other</option>
       </select>
     </div>
+    <div class="form-group"><label>Trade Type</label><select class="form-input" id="invPurchaseTradeType" onchange="invTradeTypeChanged('Purchase')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option></select></div>
+    <div class="form-group" id="invPurchaseInstrWrap" style="display:none;"><label>F &amp; O Instrument</label><select class="form-input" id="invPurchaseInstrument" onchange="invTradeTypeChanged('Purchase')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
     <div class="form-group"><label>Scrip</label><div class="voice-field-row"><input type="text" class="form-input" id="invPurchaseStock" placeholder="e.g. RELIANCE"><button type="button" class="voice-mic-btn" aria-label="Speak scrip" onclick="invVoiceText('invPurchaseStock',this)">🎤</button></div></div>
     <div class="form-group"><label>Quantity</label><div class="voice-field-row"><input type="number" class="form-input" id="invPurchaseQty" min="0.0001" step="0.0001" oninput="calcInvestmentPurchase()"><button type="button" class="voice-mic-btn" aria-label="Speak quantity" onclick="invVoiceNumber('invPurchaseQty',this)">🎤</button></div></div>
     <div class="form-group"><label>Buy Rate</label><div class="voice-field-row"><input type="number" class="form-input" id="invPurchaseRate" min="0" step="0.01" oninput="calcInvestmentPurchase()"><button type="button" class="voice-mic-btn" aria-label="Speak buy rate" onclick="invVoiceNumber('invPurchaseRate',this)">🎤</button></div></div>
-    <div class="form-group"><label>Amount (Self Calculated)</label><input type="number" class="form-input" id="invPurchaseAmount" readonly></div>
+    <div class="form-group"><label>Charges (Auto, editable)</label><input type="number" class="form-input" id="invPurchaseCharges" min="0" step="0.01" inputmode="decimal" oninput="invChargesTyped('Purchase')"></div>
+    <div class="form-group"><label>Amount incl. Charges (Self Calculated)</label><input type="number" class="form-input" id="invPurchaseAmount" readonly></div>
     <button id="investmentPurchaseSaveBtn" type="button" onclick="saveInvestmentPurchase()" style="width:100%;padding:12px;background:#1565c0;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">Save Investment</button>
     <button type="button" class="modal-close" onclick="closeModal('investmentPurchaseModal')">Cancel</button>
   </div>
@@ -1802,9 +1817,12 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <input type="hidden" id="invSaleId">
     <div class="form-group"><label>Against Purchase</label><div class="voice-field-row"><select class="form-input" id="invSalePurchase" onchange="updateInvestmentSaleBalance()"></select><button type="button" class="voice-mic-btn" aria-label="Speak scrip name" onclick="invVoiceScrip(this)">🎤</button></div></div>
     <div id="invSaleBalance" style="margin:-4px 0 10px;font-size:.78rem;color:var(--muted);"></div>
+    <div class="form-group"><label>Trade Type</label><select class="form-input" id="invSaleTradeType" onchange="invTradeTypeChanged('Sale')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option></select></div>
+    <div class="form-group" id="invSaleInstrWrap" style="display:none;"><label>F &amp; O Instrument</label><select class="form-input" id="invSaleInstrument" onchange="invTradeTypeChanged('Sale')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
     <div class="form-group"><label>Sale Date</label><input type="date" class="form-input" id="invSaleDate"></div>
     <div class="form-group"><label>Sell Quantity</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleQty" min="0.0001" step="0.0001" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell quantity" onclick="invVoiceNumber('invSaleQty',this)">🎤</button></div></div>
     <div class="form-group"><label>Sell Rate</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleRate" min="0" step="0.01" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell rate" onclick="invVoiceNumber('invSaleRate',this)">🎤</button></div></div>
+    <div class="form-group"><label>Charges (Auto, editable)</label><input type="number" class="form-input" id="invSaleCharges" min="0" step="0.01" inputmode="decimal" oninput="invChargesTyped('Sale')"></div>
     <div class="form-group"><label>Sell Amount (Self Calculated)</label><input type="number" class="form-input" id="invSaleAmount" readonly></div>
     <button id="investmentSaleSaveBtn" type="button" onclick="saveInvestmentSale()" style="width:100%;padding:12px;background:#2e7d32;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">Save Sale</button>
     <button type="button" class="modal-close" onclick="closeModal('investmentSaleModal')">Cancel</button>
@@ -4422,10 +4440,13 @@ function newInvSaleId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
 function recalcInvestment(x){
   const sales=x.sales||[];
   const q=sales.reduce((s,z)=>s+Number(z.qty||0),0),amt=sales.reduce((s,z)=>s+Number(z.qty||0)*Number(z.rate||0),0);
-  x.buyAmount=Number(x.qty||0)*Number(x.buyRate||0);
+  const sc=sales.reduce((s,z)=>s+Number(z.charges||0),0),bq=Number(x.qty||0);
+  x.buyCharges=Number(x.charges||0);x.sellCharges=sc;
+  x.buyAmount=Number(x.qty||0)*Number(x.buyRate||0)+x.buyCharges; // buy Amount includes charges (fund flow)
   x.qtySold=q;x.soldAmount=amt;x.sellRate=q?amt/q:0;
   x.saleDate=sales.reduce((d,z)=>(z.date&&z.date>d?z.date:d),'');
-  x.profit=amt-q*Number(x.buyRate||0);
+  // Profit is net of charges: sale charges + the purchase charges for the quantity sold
+  x.profit=amt-sc-q*Number(x.buyRate||0)-(bq>0?x.buyCharges*Math.min(q/bq,1):0);
   return x;
 }
 function normalizeInvestment(x){
@@ -4449,21 +4470,171 @@ function invIsLTCG(assetType, buyDate, sellDate){
 }
 function invBalanceQty(p,exceptSaleId){return Number(p.qty||0)-(p.sales||[]).reduce((s,z)=>z.id===exceptSaleId?s:s+Number(z.qty||0),0);}
 
+// ── Charges Master (Delivery / Intraday / F & O) ──
+const INV_TRADE_TYPES={delivery:'Delivery',intraday:'Intraday',fno:'F & O'};
+const INV_CHARGE_SCHEMA={
+  delivery:[
+    {k:'brokerageFlat',l:'Brokerage per order (₹)',d:0},
+    {k:'brokeragePct',l:'Brokerage (% of turnover)',d:0},
+    {k:'sttBuy',l:'STT – Buy side (%)',d:0.1},
+    {k:'sttSell',l:'STT – Sell side (%)',d:0.1},
+    {k:'exch',l:'Exchange transaction charges (%)',d:0.00297},
+    {k:'sebi',l:'SEBI turnover fee (%)',d:0.0001},
+    {k:'stampBuy',l:'Stamp duty – Buy side (%)',d:0.015},
+    {k:'gst',l:'GST (%) on brokerage + exchange charges',d:18},
+    {k:'dp',l:'DP charges per sale (₹)',d:15.93}
+  ],
+  intraday:[
+    {k:'brokerageFlat',l:'Brokerage per order (₹)',d:20},
+    {k:'brokeragePct',l:'Brokerage (% of turnover)',d:0},
+    {k:'sttBuy',l:'STT – Buy side (%)',d:0},
+    {k:'sttSell',l:'STT – Sell side (%)',d:0.025},
+    {k:'exch',l:'Exchange transaction charges (%)',d:0.00297},
+    {k:'sebi',l:'SEBI turnover fee (%)',d:0.0001},
+    {k:'stampBuy',l:'Stamp duty – Buy side (%)',d:0.003},
+    {k:'gst',l:'GST (%) on brokerage + exchange charges',d:18}
+  ],
+  fno:[
+    {k:'brokerageFlat',l:'Brokerage per order (₹)',d:20},
+    {k:'brokeragePct',l:'Brokerage (% of turnover)',d:0},
+    {k:'sttFutSell',l:'STT – Futures, sell side (%)',d:0.05},
+    {k:'sttOptSell',l:'STT – Options premium, sell side (%)',d:0.15},
+    {k:'exchFut',l:'Exchange charges – Futures (%)',d:0.00173},
+    {k:'exchOpt',l:'Exchange charges – Options (% of premium)',d:0.03503},
+    {k:'sebi',l:'SEBI turnover fee (%)',d:0.0001},
+    {k:'stampFut',l:'Stamp duty – Futures, buy side (%)',d:0.002},
+    {k:'stampOpt',l:'Stamp duty – Options, buy side (%)',d:0.003},
+    {k:'gst',l:'GST (%) on brokerage + exchange charges',d:18}
+  ]
+};
+function invMergeMaster(raw){
+  const out={};
+  Object.keys(INV_CHARGE_SCHEMA).forEach(t=>{
+    out[t]={};
+    INV_CHARGE_SCHEMA[t].forEach(f=>{
+      const src=raw&&raw[t]?raw[t][f.k]:undefined,v=Number(src);
+      out[t][f.k]=(src!==undefined&&src!==null&&src!==''&&Number.isFinite(v)&&v>=0)?v:f.d;
+    });
+  });
+  return out;
+}
+let invChargesMaster=invMergeMaster(null);
+let invChargesEditType='';
+async function loadInvChargesMaster(){
+  try{
+    if(!db||!currentUser)return;
+    const r=await dbGet('settings','inv_charges_'+currentUser.username);
+    invChargesMaster=invMergeMaster(r&&r.value?JSON.parse(r.value):null);
+  }catch(e){invChargesMaster=invMergeMaster(null);}
+}
+async function saveInvChargesMaster(){
+  if(!currentUser)return;
+  await dbPut('settings',{key:'inv_charges_'+currentUser.username,value:JSON.stringify(invChargesMaster)});
+}
+function invRenderChargesFields(vals){
+  document.getElementById('invChargesFields').innerHTML=INV_CHARGE_SCHEMA[invChargesEditType].map(f=>`<div class="form-group"><label>${invEsc(f.l)}</label><input type="number" class="form-input" id="invCh_${f.k}" min="0" step="any" inputmode="decimal" value="${vals[f.k]}"></div>`).join('');
+}
+function openInvChargesMaster(type){
+  if(!INV_CHARGE_SCHEMA[type])return;
+  invChargesEditType=type;
+  document.getElementById('invChargesTitle').textContent='⚙️ '+INV_TRADE_TYPES[type]+' – Charges';
+  invRenderChargesFields(invChargesMaster[type]);
+  openModal('invChargesModal');
+}
+async function saveInvChargesForm(){
+  const t=invChargesEditType;if(!INV_CHARGE_SCHEMA[t])return;
+  const next={};
+  for(const f of INV_CHARGE_SCHEMA[t]){
+    const raw=document.getElementById('invCh_'+f.k).value.trim(),v=raw===''?0:Number(raw);
+    if(!Number.isFinite(v)||v<0){showToast('⚠️ Enter a valid value for: '+f.l);return;}
+    next[f.k]=v;
+  }
+  const prev=invChargesMaster[t];
+  invChargesMaster[t]=next;
+  try{await saveInvChargesMaster();showToast('✅ '+INV_TRADE_TYPES[t]+' charges saved!');closeModal('invChargesModal');}
+  catch(e){invChargesMaster[t]=prev;showToast('⚠️ Could not save charges.');}
+}
+function resetInvChargesForm(){
+  if(!INV_CHARGE_SCHEMA[invChargesEditType])return;
+  invRenderChargesFields(invMergeMaster(null)[invChargesEditType]);
+  showToast('Defaults loaded – tap Save Charges to keep them.');
+}
+// Total charges for one entry. side: 'buy' | 'sell'. turnover = qty × rate.
+function invComputeCharges(type,instr,side,turnover){
+  const m=invChargesMaster[type];turnover=Number(turnover||0);
+  if(!m||!(turnover>0))return 0;
+  const brokerage=Number(m.brokerageFlat||0)+Number(m.brokeragePct||0)/100*turnover;
+  let exchPct,sttPct,stampPct;
+  if(type==='fno'){
+    const opt=instr==='options';
+    exchPct=opt?m.exchOpt:m.exchFut;
+    sttPct=side==='sell'?(opt?m.sttOptSell:m.sttFutSell):0;
+    stampPct=side==='buy'?(opt?m.stampOpt:m.stampFut):0;
+  }else{
+    exchPct=m.exch;
+    sttPct=side==='buy'?m.sttBuy:m.sttSell;
+    stampPct=side==='buy'?m.stampBuy:0;
+  }
+  const exch=turnover*Number(exchPct||0)/100,stt=turnover*Number(sttPct||0)/100,stamp=turnover*Number(stampPct||0)/100,sebi=turnover*Number(m.sebi||0)/100;
+  const gst=(brokerage+exch)*Number(m.gst||0)/100;
+  const dp=(side==='sell'&&type==='delivery')?Number(m.dp||0):0;
+  return Math.round((brokerage+stt+exch+sebi+stamp+gst+dp)*100)/100;
+}
+// Entry-form helpers (kind = 'Purchase' | 'Sale')
+function invChargeIds(kind){const pu=kind==='Purchase';return {type:'inv'+kind+'TradeType',instr:'inv'+kind+'Instrument',wrap:'inv'+kind+'InstrWrap',ch:'inv'+kind+'Charges',qty:pu?'invPurchaseQty':'invSaleQty',rate:pu?'invPurchaseRate':'invSaleRate'};}
+function invToggleInstr(kind){const i=invChargeIds(kind),t=document.getElementById(i.type),w=document.getElementById(i.wrap);if(t&&w)w.style.display=t.value==='fno'?'':'none';}
+function invRefreshCharges(kind){
+  const i=invChargeIds(kind),ch=document.getElementById(i.ch);
+  if(!ch||ch.dataset.manual==='1')return;
+  const q=Number(document.getElementById(i.qty).value||0),r=Number(document.getElementById(i.rate).value||0);
+  ch.value=q*r>0?invComputeCharges(document.getElementById(i.type).value,document.getElementById(i.instr).value,kind==='Purchase'?'buy':'sell',q*r).toFixed(2):'';
+}
+function invTradeTypeChanged(kind){const ch=document.getElementById(invChargeIds(kind).ch);if(ch)ch.dataset.manual='';invToggleInstr(kind);invRefreshCharges(kind);if(kind==='Purchase')calcInvestmentPurchase();}
+function invChargesTyped(kind){const ch=document.getElementById(invChargeIds(kind).ch);ch.dataset.manual=ch.value.trim()===''?'':'1';if(kind==='Purchase')calcInvestmentPurchase();}
+function invResetChargeFields(kind){
+  const i=invChargeIds(kind);
+  document.getElementById(i.type).value='delivery';document.getElementById(i.instr).value='futures';
+  const ch=document.getElementById(i.ch);ch.value='';ch.dataset.manual='';
+  invToggleInstr(kind);
+}
+function invLoadChargeFields(kind,rec){
+  const i=invChargeIds(kind);
+  document.getElementById(i.type).value=rec.tradeType||'delivery';
+  document.getElementById(i.instr).value=rec.instrument||'futures';
+  invToggleInstr(kind);
+  const ch=document.getElementById(i.ch),saved=rec.charges;
+  if(saved==null){ch.value='';ch.dataset.manual='1';return;} // older entry saved before charges existed
+  const q=Number(document.getElementById(i.qty).value||0),r=Number(document.getElementById(i.rate).value||0);
+  const auto=invComputeCharges(rec.tradeType||'delivery',rec.instrument||'futures',kind==='Purchase'?'buy':'sell',q*r);
+  ch.value=Number(saved).toFixed(2);
+  ch.dataset.manual=Math.abs(auto-Number(saved))>0.005?'1':'';
+}
+// A new sale starts with the trade type of the purchase it is made against
+function invSyncSaleTypeFromLot(){
+  const idEl=document.getElementById('invSaleId');if(!idEl||Number(idEl.value||0))return;
+  const sel=document.getElementById('invSalePurchase'),p=investments.find(x=>String(x.id)===(sel&&sel.value));if(!p)return;
+  document.getElementById('invSaleTradeType').value=p.tradeType||'delivery';
+  document.getElementById('invSaleInstrument').value=p.instrument||'futures';
+  invTradeTypeChanged('Sale');
+}
+
 function invTodayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 // ── Purchase entry ──
-function clearInvestmentPurchaseForm(){['invPurchaseId','invPurchaseDate','invPurchaseStock','invPurchaseQty','invPurchaseRate','invPurchaseAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const at=document.getElementById('invPurchaseAssetType');if(at)at.value='equity';const pd=document.getElementById('invPurchaseDate');if(pd)pd.value=invTodayISO();setInvestmentCategoryOptions();document.getElementById('investmentPurchaseModalTitle').textContent='📈 Investment Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Save Purchase';}
+function clearInvestmentPurchaseForm(){['invPurchaseId','invPurchaseDate','invPurchaseStock','invPurchaseQty','invPurchaseRate','invPurchaseAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const at=document.getElementById('invPurchaseAssetType');if(at)at.value='equity';const pd=document.getElementById('invPurchaseDate');if(pd)pd.value=invTodayISO();setInvestmentCategoryOptions();invResetChargeFields('Purchase');document.getElementById('investmentPurchaseModalTitle').textContent='📈 Investment Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Save Purchase';}
 function openInvestmentPurchaseModal(){clearInvestmentPurchaseForm();openModal('investmentPurchaseModal');}
-function calcInvestmentPurchase(){const q=Number(document.getElementById('invPurchaseQty').value||0),r=Number(document.getElementById('invPurchaseRate').value||0);document.getElementById('invPurchaseAmount').value=q&&r>=0?(q*r).toFixed(2):'';}
+function calcInvestmentPurchase(){const q=Number(document.getElementById('invPurchaseQty').value||0),r=Number(document.getElementById('invPurchaseRate').value||0);invRefreshCharges('Purchase');const chg=Number(document.getElementById('invPurchaseCharges').value||0);document.getElementById('invPurchaseAmount').value=q&&r>=0?(q*r+chg).toFixed(2):'';}
 async function saveInvestmentPurchase(){
   const btn=document.getElementById('investmentPurchaseSaveBtn');
   if(btn.disabled)return;
   const id=Number(document.getElementById('invPurchaseId').value||0),date=document.getElementById('invPurchaseDate').value,category=document.getElementById('invPurchaseCategory').value,assetType=document.getElementById('invPurchaseAssetType')?.value||'equity',stock=document.getElementById('invPurchaseStock').value.trim(),qty=Number(document.getElementById('invPurchaseQty').value||0),buyRate=Number(document.getElementById('invPurchaseRate').value||0);
   if(!date||!stock||qty<=0||buyRate<0){showToast('Enter valid purchase details!');return;}
+  const tradeType=document.getElementById('invPurchaseTradeType').value,instrument=document.getElementById('invPurchaseInstrument').value,charges=Number(document.getElementById('invPurchaseCharges').value||0);
+  if(!(charges>=0)){showToast('Charges cannot be negative!');return;}
   const old=id?investments.find(x=>x.id===id):null;
   if(id&&!old){showToast('⚠️ Investment record not found!');return;}
   if(old&&qty<Number(old.qtySold||0)-1e-9){showToast('Quantity cannot be less than already sold quantity ('+old.qtySold+')!');return;}
   btn.disabled=true;
-  const item=old?{...old,date,category,assetType,stock,qty,buyRate}:{id:Date.now(),date,category,assetType,stock,qty,buyRate,sales:[],createdAt:Date.now()};
+  const item=old?{...old,date,category,assetType,stock,qty,buyRate,tradeType,instrument,charges}:{id:Date.now(),date,category,assetType,stock,qty,buyRate,tradeType,instrument,charges,sales:[],createdAt:Date.now()};
   recalcInvestment(item);
   const prev=investments.slice();
   if(old)investments[investments.findIndex(x=>x.id===id)]=item;else investments.unshift(item);
@@ -4478,7 +4649,7 @@ async function saveInvestmentPurchase(){
     showToast('⚠️ Could not save purchase: '+(e&&e.name?e.name:'error'));
   }finally{btn.disabled=false;}
 }
-function editInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;clearInvestmentPurchaseForm();document.getElementById('invPurchaseId').value=x.id;document.getElementById('invPurchaseDate').value=x.date;document.getElementById('invPurchaseCategory').value=x.category||INVESTMENT_CATS[0]?.name||'';const at=document.getElementById('invPurchaseAssetType');if(at)at.value=x.assetType||'equity';document.getElementById('invPurchaseStock').value=x.stock;document.getElementById('invPurchaseQty').value=x.qty;document.getElementById('invPurchaseRate').value=x.buyRate;calcInvestmentPurchase();document.getElementById('investmentPurchaseModalTitle').textContent='✏️ Edit Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Update Purchase';openModal('investmentPurchaseModal');}
+function editInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;clearInvestmentPurchaseForm();document.getElementById('invPurchaseId').value=x.id;document.getElementById('invPurchaseDate').value=x.date;document.getElementById('invPurchaseCategory').value=x.category||INVESTMENT_CATS[0]?.name||'';const at=document.getElementById('invPurchaseAssetType');if(at)at.value=x.assetType||'equity';document.getElementById('invPurchaseStock').value=x.stock;document.getElementById('invPurchaseQty').value=x.qty;document.getElementById('invPurchaseRate').value=x.buyRate;invLoadChargeFields('Purchase',x);calcInvestmentPurchase();document.getElementById('investmentPurchaseModalTitle').textContent='✏️ Edit Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Update Purchase';openModal('investmentPurchaseModal');}
 async function deleteInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;const n=(x.sales||[]).length;if(!confirm('Delete purchase of '+x.stock+(n?' and its '+n+' sale entr'+(n>1?'ies':'y'):'')+'?'))return;const prev=investments.slice();investments=investments.filter(i=>i.id!==id);try{await saveInvestments();showToast('🗑️ Deleted!');}catch(e){investments=prev;showToast('⚠️ Could not delete.');}renderInvestments();}
 
 // ── Sale entry (separate from purchase) ──
@@ -4493,9 +4664,10 @@ function updateInvestmentSaleBalance(){
   const p=investments.find(x=>String(x.id)===document.getElementById('invSalePurchase').value);
   const sid=Number(document.getElementById('invSaleId').value||0);
   el.textContent=p?('Purchased '+p.qty+' · Available to sell '+Number(invBalanceQty(p,sid).toFixed(4))):'';
+  invSyncSaleTypeFromLot();
 }
-function calcInvestmentSale(){const q=Number(document.getElementById('invSaleQty').value||0),r=Number(document.getElementById('invSaleRate').value||0);document.getElementById('invSaleAmount').value=q&&r>=0?(q*r).toFixed(2):'';}
-function clearInvestmentSaleForm(){['invSaleId','invSaleDate','invSaleQty','invSaleRate','invSaleAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});document.getElementById('invSalePurchase').disabled=false;const sd=document.getElementById('invSaleDate');if(sd)sd.value=invTodayISO();document.getElementById('investmentSaleModalTitle').textContent='📉 Investment Sale';document.getElementById('investmentSaleSaveBtn').textContent='Save Sale';}
+function calcInvestmentSale(){const q=Number(document.getElementById('invSaleQty').value||0),r=Number(document.getElementById('invSaleRate').value||0);document.getElementById('invSaleAmount').value=q&&r>=0?(q*r).toFixed(2):'';invRefreshCharges('Sale');}
+function clearInvestmentSaleForm(){['invSaleId','invSaleDate','invSaleQty','invSaleRate','invSaleAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});document.getElementById('invSalePurchase').disabled=false;const sd=document.getElementById('invSaleDate');if(sd)sd.value=invTodayISO();invResetChargeFields('Sale');document.getElementById('investmentSaleModalTitle').textContent='📉 Investment Sale';document.getElementById('investmentSaleSaveBtn').textContent='Save Sale';}
 function openInvestmentSaleModal(purchaseId){
   if(!investments.some(p=>invBalanceQty(p)>1e-9)){showToast('Add a purchase first (or nothing left to sell).');return;}
   clearInvestmentSaleForm();fillInvestmentSaleLots(purchaseId);updateInvestmentSaleBalance();openModal('investmentSaleModal');
@@ -4507,10 +4679,12 @@ async function saveInvestmentSale(){
   const p=investments.find(x=>x.id===pid);
   if(!p){showToast('Select the purchase this sale is against!');return;}
   if(!date||qty<=0||rate<0){showToast('Enter valid sale details!');return;}
+  const tradeType=document.getElementById('invSaleTradeType').value,instrument=document.getElementById('invSaleInstrument').value,charges=Number(document.getElementById('invSaleCharges').value||0);
+  if(!(charges>=0)){showToast('Charges cannot be negative!');return;}
   if(qty>invBalanceQty(p,sid)+1e-9){showToast('Sell quantity exceeds available quantity!');return;}
   btn.disabled=true;
   const prev=investments.map(x=>({...x,sales:(x.sales||[]).map(z=>({...z}))}));
-  if(sid){const z=p.sales.find(z=>z.id===sid);if(z){z.date=date;z.qty=qty;z.rate=rate;}}else p.sales.push({id:newInvSaleId(),date,qty,rate});
+  if(sid){const z=p.sales.find(z=>z.id===sid);if(z){z.date=date;z.qty=qty;z.rate=rate;z.tradeType=tradeType;z.instrument=instrument;z.charges=charges;}}else p.sales.push({id:newInvSaleId(),date,qty,rate,tradeType,instrument,charges});
   recalcInvestment(p);
   try{
     await saveInvestments();
@@ -4528,7 +4702,7 @@ function editInvestmentSale(pid,sid){
   clearInvestmentSaleForm();fillInvestmentSaleLots(pid);
   document.getElementById('invSalePurchase').disabled=true;
   document.getElementById('invSaleId').value=z.id;document.getElementById('invSaleDate').value=z.date||'';document.getElementById('invSaleQty').value=z.qty;document.getElementById('invSaleRate').value=z.rate;
-  calcInvestmentSale();updateInvestmentSaleBalance();
+  invLoadChargeFields('Sale',z);calcInvestmentSale();updateInvestmentSaleBalance();
   document.getElementById('investmentSaleModalTitle').textContent='✏️ Edit Sale';document.getElementById('investmentSaleSaveBtn').textContent='Update Sale';
   openModal('investmentSaleModal');
 }
@@ -4552,7 +4726,7 @@ async function saveInvestments(){
     tx.onabort=()=>reject(tx.error||new Error('Transaction aborted'));
   });
 }
-async function loadInvestments(){if(!db||!currentUser)return;const u=currentUser.username,all=await dbGetAll('investments');investments=(await Promise.all(all.filter(x=>x._user===u).map(async x=>{try{return x._enc?JSON.parse(await decryptData(x._enc)):x;}catch{return x;}}))).map(normalizeInvestment);}
+async function loadInvestments(){if(!db||!currentUser)return;const u=currentUser.username,all=await dbGetAll('investments');investments=(await Promise.all(all.filter(x=>x._user===u).map(async x=>{try{return x._enc?JSON.parse(await decryptData(x._enc)):x;}catch{return x;}}))).map(normalizeInvestment);await loadInvChargesMaster();}
 
 // ── Averaging (average buy price after buying more) ──
 function avgHoldings(){
@@ -4659,8 +4833,9 @@ function renderInvestments(){
       <span style="font-size:0.85rem;font-weight:800;">Total Profit / Loss</span>
       <span style="font-size:0.95rem;font-weight:900;color:${profit>=0?'#00b894':'#ff6b6b'};">${profit<0?'-':''}${fmt(Math.abs(profit))}</span>
     </div>
-    <div style="padding:10px 0;text-align:center;border-bottom:1.5px solid var(--border);">
-      <a href="https://www.nseindia.com" target="_blank" rel="noopener noreferrer" style="color:#1565c0;font-weight:700;font-size:0.85rem;text-decoration:none;">www.nseindia.com</a>
+    <div style="padding:10px 0;display:flex;align-items:center;gap:10px;border-bottom:1.5px solid var(--border);">
+      <label for="invTradeTypeSel" style="font-size:0.78rem;font-weight:800;color:var(--muted);white-space:nowrap;">⚙️ Trade Type</label>
+      <select id="invTradeTypeSel" class="form-input" style="flex:1;" onchange="openInvChargesMaster(this.value);this.value='';"><option value="">Select to set charges…</option><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option></select>
     </div>`;
   list.innerHTML=investments.length?investments.map(x=>{
     const bal=Number(invBalanceQty(x).toFixed(4));
@@ -4689,7 +4864,8 @@ function investmentStatementRows(from,to){
     if(!bought&&!sales.length)return;
     const q=sales.reduce((t,z)=>t+Number(z.qty||0),0),amt=sales.reduce((t,z)=>t+Number(z.qty||0)*Number(z.rate||0),0);
     const soldDates=[...new Set(sales.map(z=>z.date).filter(Boolean))].sort();
-    out.push({date:x.date,stock:x.stock,qty:x.qty,buyRate:x.buyRate,buyAmount:x.buyAmount,bought:bought,qtySold:q,sellRate:q?amt/q:0,soldAmount:amt,soldDates:soldDates,profit:amt-q*Number(x.buyRate||0)});
+    const sc=sales.reduce((t,z)=>t+Number(z.charges||0),0),bc=Number(x.charges||0),bq=Number(x.qty||0);
+    out.push({date:x.date,stock:x.stock,qty:x.qty,buyRate:x.buyRate,buyCharges:bc,buyAmount:x.buyAmount,bought:bought,qtySold:q,sellRate:q?amt/q:0,sellCharges:sc,soldAmount:amt,soldDates:soldDates,profit:amt-sc-q*Number(x.buyRate||0)-(bq>0?bc*Math.min(q/bq,1):0)});
   });
   return out.sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.stock).localeCompare(String(b.stock)));
 }
@@ -4716,6 +4892,7 @@ function renderInvestmentDateWise(targetId){
   invReportDefaults();
   const rows=investmentStatementRows(invFrom,invTo);
   const buyTotal=rows.filter(r=>r.bought).reduce((s,r)=>s+Number(r.buyAmount||0),0),sellTotal=rows.reduce((s,r)=>s+Number(r.soldAmount||0),0),totalProfit=rows.reduce((s,r)=>s+Number(r.profit||0),0);
+  const buyChargesTotal=rows.filter(r=>r.bought).reduce((s,r)=>s+Number(r.buyCharges||0),0),sellChargesTotal=rows.reduce((s,r)=>s+Number(r.sellCharges||0),0);
   const cell='padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;';
   const mu=r=>r.bought?'':'color:var(--muted);';
   const fromId=targetId==='reportContent'?'inv-from':'inv-from-'+targetId;
@@ -4726,7 +4903,7 @@ function renderInvestmentDateWise(targetId){
       <input type="date" class="date-filter-input" id="${toId}" value="${invTo}"/>
       <button class="date-filter-btn" onclick="applyInvestmentFilter('${targetId}')">Go</button>
     </div><div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;text-align:center;">Investment Statement: ${investmentBritishDate(invFrom)} to ${investmentBritishDate(invTo)} · change dates &amp; tap Go</div>
-    <div class="investment-report-table-wrap" style="overflow:auto;background:var(--surface);border-radius:12px;border:1px solid var(--border);max-height:64vh;-webkit-overflow-scrolling:touch;"><table style="width:max-content;min-width:0;border-collapse:collapse;font-size:.85rem;"><thead><tr style="background:#e3f2fd;color:#1a2e1a;"><th style="${cell}text-align:left;">Date</th><th style="${cell}text-align:left;">Scrip</th><th style="${cell}text-align:right;">Qty</th><th style="${cell}text-align:right;">Buy_Rate</th><th style="${cell}text-align:right;">Amount</th><th style="${cell}text-align:left;">Date_sold</th><th style="${cell}text-align:right;">Sell_qty</th><th style="${cell}text-align:right;">Sell_rate</th><th style="${cell}text-align:right;">Sell_Amt</th><th style="${cell}text-align:right;">Profit</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="${cell}${mu(r)}">${investmentBritishDate(r.date)}</td><td style="${cell}font-weight:700;">${invEsc(r.stock)}</td><td style="${cell}text-align:right;${mu(r)}">${r.qty}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyRate)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyAmount)}</td><td style="${cell}">${(r.soldDates&&r.soldDates.length)?r.soldDates.map(d=>investmentBritishDate(d)).join(', '):''}</td><td style="${cell}text-align:right;">${r.qtySold||0}</td><td style="${cell}text-align:right;">${r.sellRate?fmtR(r.sellRate):''}</td><td style="${cell}text-align:right;">${fmtR(r.soldAmount||0)}</td><td style="${cell}text-align:right;font-weight:800;">${r.profit<0?'-':''}${fmtR(Math.abs(r.profit||0))}</td></tr>`).join('')||'<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted)">No investment entries in this date range.</td></tr>'}</tbody><tfoot><tr style="font-weight:800;background:var(--bg);"><td colspan="4" style="padding:9px 10px;text-align:right;">Total</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyTotal)}</td><td colspan="3"></td><td style="padding:9px 10px;text-align:right;">${fmtR(sellTotal)}</td><td style="padding:9px 10px;text-align:right;">${totalProfit<0?'-':''}${fmtR(Math.abs(totalProfit))}</td></tr></tfoot></table></div>
+    <div class="investment-report-table-wrap" style="overflow:auto;background:var(--surface);border-radius:12px;border:1px solid var(--border);max-height:64vh;-webkit-overflow-scrolling:touch;"><table style="width:max-content;min-width:0;border-collapse:collapse;font-size:.85rem;"><thead><tr style="background:#e3f2fd;color:#1a2e1a;"><th style="${cell}text-align:left;">Date</th><th style="${cell}text-align:left;">Scrip</th><th style="${cell}text-align:right;">Qty</th><th style="${cell}text-align:right;">Buy_Rate</th><th style="${cell}text-align:right;">Charges</th><th style="${cell}text-align:right;">Amount</th><th style="${cell}text-align:left;">Date sold</th><th style="${cell}text-align:right;">Sell qty</th><th style="${cell}text-align:right;">Sell rate</th><th style="${cell}text-align:right;">Charges</th><th style="${cell}text-align:right;">Sell Amt</th><th style="${cell}text-align:right;">Profit</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="${cell}${mu(r)}">${investmentBritishDate(r.date)}</td><td style="${cell}font-weight:700;">${invEsc(r.stock)}</td><td style="${cell}text-align:right;${mu(r)}">${r.qty}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyRate)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyCharges||0)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyAmount)}</td><td style="${cell}">${(r.soldDates&&r.soldDates.length)?r.soldDates.map(d=>investmentBritishDate(d)).join(', '):''}</td><td style="${cell}text-align:right;">${r.qtySold||0}</td><td style="${cell}text-align:right;">${r.sellRate?fmtR(r.sellRate):''}</td><td style="${cell}text-align:right;">${fmtR(r.sellCharges||0)}</td><td style="${cell}text-align:right;">${fmtR(r.soldAmount||0)}</td><td style="${cell}text-align:right;font-weight:800;">${r.profit<0?'-':''}${fmtR(Math.abs(r.profit||0))}</td></tr>`).join('')||'<tr><td colspan="12" style="padding:24px;text-align:center;color:var(--muted)">No investment entries in this date range.</td></tr>'}</tbody><tfoot><tr style="font-weight:800;background:var(--bg);"><td colspan="4" style="padding:9px 10px;text-align:right;">Total</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyChargesTotal)}</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyTotal)}</td><td colspan="3"></td><td style="padding:9px 10px;text-align:right;">${fmtR(sellChargesTotal)}</td><td style="padding:9px 10px;text-align:right;">${fmtR(sellTotal)}</td><td style="padding:9px 10px;text-align:right;">${totalProfit<0?'-':''}${fmtR(Math.abs(totalProfit))}</td></tr></tfoot></table></div>
     <div style="font-size:0.68rem;color:var(--muted);margin:6px 2px;">Greyed purchase details = bought before this range; only sales inside the range are counted.</div>
     <button class="stmt-print-btn" onclick="printInvestmentStatement()">🖨️ Save Investment Statement as PDF</button>`;
 }
@@ -4856,7 +5033,7 @@ async function buildBackupObj(){
     username:currentUser.username,
     exported:new Date().toISOString(),
     transactions,budgets,goals,emis,recurringTxns,loans,
-    INCOME_CATS,EXPENSE_CATS,INVESTMENT_CATS,investments,
+    INCOME_CATS,EXPENSE_CATS,INVESTMENT_CATS,investments,invChargesMaster,
     reminders:remindersData,
     netWorth:netWorthData,
     register:registerData,
@@ -5217,12 +5394,12 @@ function buildInvestmentPdf(){
   p.heading('Investment Statement',16,true);
   p.heading(((currentUser&&currentUser.name)||'')+'   |   Period: '+investmentBritishDate(invFrom)+' to '+investmentBritishDate(invTo),9,false);
   p.gap(8);
-  const fr=[.10,.20,.08,.10,.12,.09,.10,.12,.09],al=['l','l','r','r','r','r','r','r','r'];
-  const hd=['Date','Scrip','Qty','Buy_Rate','Amount','Sell_qty','Sell_rate','Sell_Amt','Profit'],ho={bold:true,fill:PDF_HEAD_FILL,head:true};
+  const fr=[.09,.16,.06,.08,.08,.10,.07,.08,.08,.10,.10],al=['l','l','r','r','r','r','r','r','r','r','r'];
+  const hd=['Date','Scrip','Qty','Buy_Rate','Charges','Amount','Sell qty','Sell rate','Charges','Sell Amt','Profit'],ho={bold:true,fill:PDF_HEAD_FILL,head:true};
   p.row(hd,fr,al,ho);p.header={cells:hd,fr:fr,al:al,o:ho};
-  rows.forEach(r=>p.row([investmentBritishDate(r.date),r.stock,r.qty,pdfMoney(r.buyRate),pdfMoney(r.buyAmount),r.qtySold||0,r.sellRate?pdfMoney(r.sellRate):'',pdfMoney(r.soldAmount),pdfSigned(r.profit)],fr,al));
+  rows.forEach(r=>p.row([investmentBritishDate(r.date),r.stock,r.qty,pdfMoney(r.buyRate),pdfMoney(r.buyCharges||0),pdfMoney(r.buyAmount),r.qtySold||0,r.sellRate?pdfMoney(r.sellRate):'',pdfMoney(r.sellCharges||0),pdfMoney(r.soldAmount),pdfSigned(r.profit)],fr,al));
   if(!rows.length)p.row(['No investment entries in this date range.'],[1],['l']);
-  p.row(['Total','','','',pdfMoney(buyTotal),'','',pdfMoney(sellTotal),pdfSigned(totalProfit)],fr,al,{bold:true,fill:PDF_TOTAL_FILL});
+  p.row(['Total','','','',pdfMoney(rows.filter(r=>r.bought).reduce((t,r)=>t+Number(r.buyCharges||0),0)),pdfMoney(buyTotal),'','',pdfMoney(rows.reduce((t,r)=>t+Number(r.sellCharges||0),0)),pdfMoney(sellTotal),pdfSigned(totalProfit)],fr,al,{bold:true,fill:PDF_TOTAL_FILL});
   return p;
 }
 function buildIEPdf(){
@@ -5378,6 +5555,7 @@ async function applyBackupData(data){
   await saveNetWorth();
   await saveRegister();
   await dbPut('settings',{key:'daily_limit_'+currentUser.username,value:String(dailyLimit)});
+  if(data.invChargesMaster){invChargesMaster=invMergeMaster(data.invChargesMaster);await saveInvChargesMaster();}
 
   // Remove all existing notes for this user, then restore every date-wise note from the backup.
   const allSettings=await dbGetAll('settings');
