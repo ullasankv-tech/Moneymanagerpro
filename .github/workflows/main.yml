@@ -17,6 +17,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check signing secrets
+        env:
+          A: ${{ secrets.KEYSTORE_BASE64 }}
+          B: ${{ secrets.KEYSTORE_PASSWORD }}
+          C: ${{ secrets.KEY_ALIAS }}
+          D: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for v in A B C D; do
+            if [ -z "${!v}" ]; then echo "Missing secret. Add KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD under Settings > Secrets and variables > Actions."; exit 1; fi
+          done
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -82,21 +93,45 @@ jobs:
           </paths>
           EOF
 
-      - name: Build debug APK
+      # Android only installs an update when the new APK has the SAME signing key and a HIGHER versionCode.
+      # The debug key changes on every CI run, so we sign with our own keystore and bump the version each run.
+      - name: Set version
+        run: |
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+          grep -n "versionCode\|versionName" android/app/build.gradle
+
+      - name: Build release APK (unsigned)
         working-directory: android
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/MoneyManagerPro.jks"
+
+      - name: Align and sign APK
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          UNSIGNED=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          "$BT/zipalign" -p -f 4 "$UNSIGNED" aligned.apk
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/MoneyManagerPro.jks" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:KS_PASS --key-pass env:KEY_PASS \
+            --out MoneyManagerPro.apk aligned.apk
+          "$BT/apksigner" verify --print-certs MoneyManagerPro.apk
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/MoneyManagerPro.jks"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: MoneyManagerPro-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: MoneyManagerPro.apk
           if-no-files-found: error
-
-      - name: Upload APK (raw, for direct download)
-        uses: actions/upload-artifact@v4
-        with:
-          name: MoneyManagerPro-apk-unsigned
-          path: android/app/build/outputs/apk/debug/
