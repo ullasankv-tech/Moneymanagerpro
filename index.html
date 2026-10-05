@@ -3499,9 +3499,13 @@ function renderTaxCenter(){
     normalizeInvestment(inv);
     const at = inv.assetType || 'equity';
     if(!byType[at]) byType[at] = {stcg:0, ltcg:0, special:0};
+    const taxBq = Number(inv.qty||0);
+    const taxBuyDed = invDeductibleCharges(inv.tradeType||'delivery', inv.instrument||'futures', 'buy', taxBq*Number(inv.buyRate||0), inv.charges);
     (inv.sales||[]).forEach(s=>{
       if(!s.date || s.date < fyStartStr) return;
-      const profit = (s.qty * s.rate) - (s.qty * (inv.buyRate||0));
+      // Gain = sale - cost - deductible charges (all charges except STT), same basis as the Investment Statement otherwise
+      const taxSellDed = invDeductibleCharges(s.tradeType||inv.tradeType||'delivery', s.instrument||inv.instrument||'futures', 'sell', Number(s.qty||0)*Number(s.rate||0), s.charges);
+      const profit = (s.qty * s.rate) - (s.qty * (inv.buyRate||0)) - taxSellDed - (taxBq>0 ? taxBuyDed*Math.min(Number(s.qty||0)/taxBq,1) : 0);
       totalRealized += profit;
       if(at === 'crypto'){
         cryptoGains += profit;
@@ -4579,6 +4583,19 @@ function invComputeCharges(type,instr,side,turnover){
   const gst=(brokerage+exch)*Number(m.gst||0)/100;
   const dp=(side==='sell'&&type==='delivery')?Number(m.dp||0):0;
   return Math.round((brokerage+stt+exch+sebi+stamp+gst+dp)*100)/100;
+}
+// STT part of an entry's charges, estimated from the current Charges Master rates. STT is not deductible against capital gains.
+function invSttPart(type,instr,side,turnover){
+  const m=invChargesMaster[type];turnover=Number(turnover||0);
+  if(!m||!(turnover>0))return 0;
+  let sttPct;
+  if(type==='fno'){const opt=instr==='options';sttPct=side==='sell'?(opt?m.sttOptSell:m.sttFutSell):0;}
+  else sttPct=side==='buy'?m.sttBuy:m.sttSell;
+  return Math.round(turnover*Number(sttPct||0)/100*100)/100;
+}
+// Charges allowed in the Tax Center = stored charges minus the STT part (never below zero)
+function invDeductibleCharges(type,instr,side,turnover,stored){
+  return Math.max(0,Number(stored||0)-invSttPart(type,instr,side,turnover));
 }
 // Entry-form helpers (kind = 'Purchase' | 'Sale')
 function invChargeIds(kind){const pu=kind==='Purchase';return {type:'inv'+kind+'TradeType',instr:'inv'+kind+'Instrument',wrap:'inv'+kind+'InstrWrap',ch:'inv'+kind+'Charges',qty:pu?'invPurchaseQty':'invSaleQty',rate:pu?'invPurchaseRate':'invSaleRate'};}
