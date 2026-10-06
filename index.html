@@ -715,6 +715,35 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .voice-mic-btn.notes-voice-btn{width:auto;height:auto;padding:8px 14px;font-size:.8rem;font-weight:700;}
 .voice-field-row{display:flex;gap:8px;align-items:center;}
 .voice-field-row>.form-input{flex:1;min-width:0;}
+/* Investment Purchase / Sale entry forms — compact two-column layout */
+.inv-form{padding:16px 16px 0!important;}
+.inv-form .inv-head{display:flex;align-items:center;gap:8px;margin:0 0 12px;}
+.inv-form .inv-head::before{content:"";width:4px;height:20px;border-radius:2px;background:var(--acc,#1565c0);}
+.inv-form .inv-head h3{margin:0;font-size:.98rem;font-weight:800;}
+.inv-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 10px;}
+.inv-grid>*{min-width:0;}
+.inv-full{grid-column:1/-1;}
+.inv-form .form-group{margin:0;}
+.inv-form .form-group label{font-size:.68rem;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:none;letter-spacing:0;}
+.inv-form .form-input{height:40px;padding:0 10px;font-size:.88rem;font-weight:600;border-radius:10px;min-width:0;}
+.inv-form select.form-input{padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
+.inv-form input[type=date].form-input{display:block;line-height:38px;text-align:left;}
+.inv-form input[type=date].form-input::-webkit-date-and-time-value{text-align:left;min-height:1.2em;}
+.inv-form input[type=date].form-input::-webkit-calendar-picker-indicator{opacity:.55;margin:0;padding:0;}
+.inv-form textarea.form-input{height:auto;min-height:54px;padding:8px 10px;line-height:1.35;}
+.inv-form input[readonly].form-input{background:rgba(21,101,192,.07);font-weight:800;}
+.inv-form .voice-field-row{gap:6px;}
+.inv-form .voice-mic-btn{width:34px;height:40px;border-radius:10px;font-size:.9rem;}
+.inv-form .inv-sep{grid-column:1/-1;height:1px;background:var(--border);margin:2px 0;opacity:.8;}
+.inv-form .inv-risk{min-height:40px;display:flex;align-items:center;font-size:.7rem;font-weight:700;line-height:1.25;}
+.inv-form .inv-bal{margin:0;font-size:.74rem;color:var(--muted);padding:6px 10px;background:var(--bg);border-radius:8px;}
+.inv-form .inv-bal:empty{display:none;}
+.inv-actions{position:sticky;bottom:0;display:flex;gap:10px;margin:14px -16px 0;padding:10px 16px calc(12px + var(--safe-bottom));background:var(--surface);border-top:1px solid var(--border);}
+.inv-actions button{height:44px;border-radius:12px;font-weight:800;font-size:.9rem;cursor:pointer;font-family:var(--font);}
+.inv-actions .inv-cancel{flex:1;background:none;border:1.5px solid var(--border);color:var(--muted);}
+.inv-actions .inv-save{flex:2;border:none;color:#fff;}
+.inv-actions .inv-save:disabled{opacity:.6;}
+
 </style>
 </head>
 <body>
@@ -1378,7 +1407,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <button type="button" onclick="openInvestmentSaleModal()" style="padding:14px 10px;background:#2e7d32;border:none;border-radius:12px;color:#fff;font-weight:800;cursor:pointer;font-family:var(--font);">📉 Sale</button>
     </div>
     <div id="investmentSummary"></div>
-    <button type="button" onclick="openInvestmentEntriesModal()" style="width:100%;padding:11px;margin:10px 0 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📋 View Purchase / Sale Entries</button>
+    <div style="display:flex;gap:8px;margin:10px 0 14px;"><button type="button" onclick="openInvestmentEntriesModal()" style="flex:1;padding:11px 6px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📋 Edit Entries</button><button type="button" onclick="openInvPerformance()" style="flex:1;padding:11px 6px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📊 Trading Performance</button></div>
     <div id="investmentReportInline"></div>
 
     <!-- TAX & CAPITAL GAINS CENTER -->
@@ -1793,48 +1822,85 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 </div>
 
 <div class="modal-overlay" id="investmentPurchaseModal">
-  <div class="modal-sheet">
-    <h3 id="investmentPurchaseModalTitle">📈 Investment Purchase</h3>
+  <div class="modal-sheet inv-form">
+    <div class="inv-head" style="--acc:#1565c0;"><h3 id="investmentPurchaseModalTitle">📈 Investment Purchase</h3></div>
     <input type="hidden" id="invPurchaseId">
-    <div class="form-group"><label>Purchase Date</label><input type="date" class="form-input" id="invPurchaseDate"></div>
-    <div class="form-group"><label>Investment Category</label><select class="form-input" id="invPurchaseCategory"></select></div>
-    <div class="form-group"><label>Asset Type</label>
-      <select class="form-input" id="invPurchaseAssetType">
-        <option value="equity">Equity / Stocks</option>
-        <option value="equity_mf">Equity Mutual Fund</option>
-        <option value="debt_mf">Debt Mutual Fund</option>
-        <option value="gold">Gold / SGB / Gold ETF</option>
-        <option value="crypto">Crypto / VDA</option>
-        <option value="other">Other</option>
-      </select>
+    <div class="inv-grid">
+      <div class="form-group"><label>Purchase date</label><input type="date" class="form-input" id="invPurchaseDate"></div>
+      <div class="form-group"><label>Trade type</label><select class="form-input" id="invPurchaseTradeType" onchange="invTradeTypeChanged('Purchase')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option></select></div>
+      <div class="form-group inv-full" id="invPurchaseInstrWrap" style="display:none;"><label>F &amp; O instrument</label><select class="form-input" id="invPurchaseInstrument" onchange="invTradeTypeChanged('Purchase')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
+      <div class="form-group"><label>Category</label><select class="form-input" id="invPurchaseCategory"></select></div>
+      <div class="form-group"><label>Asset type</label>
+        <select class="form-input" id="invPurchaseAssetType">
+          <option value="equity">Equity / Stocks</option>
+          <option value="equity_mf">Equity Mutual Fund</option>
+          <option value="debt_mf">Debt Mutual Fund</option>
+          <option value="gold">Gold / SGB / Gold ETF</option>
+          <option value="crypto">Crypto / VDA</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="inv-sep"></div>
+      <div class="form-group inv-full"><label>Scrip</label><div class="voice-field-row"><input type="text" class="form-input" id="invPurchaseStock" placeholder="e.g. RELIANCE"><button type="button" class="voice-mic-btn" aria-label="Speak scrip" onclick="invVoiceText('invPurchaseStock',this)">🎤</button></div></div>
+      <div class="form-group"><label>Quantity</label><div class="voice-field-row"><input type="number" class="form-input" id="invPurchaseQty" min="0.0001" step="0.0001" inputmode="decimal" oninput="calcInvestmentPurchase()"><button type="button" class="voice-mic-btn" aria-label="Speak quantity" onclick="invVoiceNumber('invPurchaseQty',this)">🎤</button></div></div>
+      <div class="form-group"><label>Buy rate</label><div class="voice-field-row"><input type="number" class="form-input" id="invPurchaseRate" min="0" step="0.01" inputmode="decimal" oninput="calcInvestmentPurchase()"><button type="button" class="voice-mic-btn" aria-label="Speak buy rate" onclick="invVoiceNumber('invPurchaseRate',this)">🎤</button></div></div>
+      <div class="form-group"><label>Charges (auto, editable)</label><input type="number" class="form-input" id="invPurchaseCharges" min="0" step="0.01" inputmode="decimal" oninput="invChargesTyped('Purchase')"></div>
+      <div class="form-group"><label>Amount incl. charges</label><input type="number" class="form-input" id="invPurchaseAmount" readonly></div>
+      <div class="inv-sep"></div>
+      <div class="form-group"><label>Stop-loss price (optional)</label><input type="number" class="form-input" id="invPurchaseStopLoss" min="0" step="0.01" inputmode="decimal" oninput="calcInvestmentPurchase()"></div>
+      <div class="form-group"><label>&nbsp;</label><div id="invPurchaseRisk" class="inv-risk"></div></div>
+      <div class="form-group inv-full"><label>Why this trade? (plan / reason, optional)</label><textarea class="form-input" id="invPurchasePlan" rows="2" placeholder="Setup, target, exit rule…" style="resize:vertical;"></textarea></div>
     </div>
-    <div class="form-group"><label>Trade Type</label><select class="form-input" id="invPurchaseTradeType" onchange="invTradeTypeChanged('Purchase')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option></select></div>
-    <div class="form-group" id="invPurchaseInstrWrap" style="display:none;"><label>F &amp; O Instrument</label><select class="form-input" id="invPurchaseInstrument" onchange="invTradeTypeChanged('Purchase')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
-    <div class="form-group"><label>Scrip</label><div class="voice-field-row"><input type="text" class="form-input" id="invPurchaseStock" placeholder="e.g. RELIANCE"><button type="button" class="voice-mic-btn" aria-label="Speak scrip" onclick="invVoiceText('invPurchaseStock',this)">🎤</button></div></div>
-    <div class="form-group"><label>Quantity</label><div class="voice-field-row"><input type="number" class="form-input" id="invPurchaseQty" min="0.0001" step="0.0001" oninput="calcInvestmentPurchase()"><button type="button" class="voice-mic-btn" aria-label="Speak quantity" onclick="invVoiceNumber('invPurchaseQty',this)">🎤</button></div></div>
-    <div class="form-group"><label>Buy Rate</label><div class="voice-field-row"><input type="number" class="form-input" id="invPurchaseRate" min="0" step="0.01" oninput="calcInvestmentPurchase()"><button type="button" class="voice-mic-btn" aria-label="Speak buy rate" onclick="invVoiceNumber('invPurchaseRate',this)">🎤</button></div></div>
-    <div class="form-group"><label>Charges (Auto, editable)</label><input type="number" class="form-input" id="invPurchaseCharges" min="0" step="0.01" inputmode="decimal" oninput="invChargesTyped('Purchase')"></div>
-    <div class="form-group"><label>Amount incl. Charges (Self Calculated)</label><input type="number" class="form-input" id="invPurchaseAmount" readonly></div>
-    <button id="investmentPurchaseSaveBtn" type="button" onclick="saveInvestmentPurchase()" style="width:100%;padding:12px;background:#1565c0;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">Save Investment</button>
-    <button type="button" class="modal-close" onclick="closeModal('investmentPurchaseModal')">Cancel</button>
+    <div class="inv-actions">
+      <button type="button" class="inv-cancel" onclick="closeModal('investmentPurchaseModal')">Cancel</button>
+      <button id="investmentPurchaseSaveBtn" type="button" class="inv-save" style="background:#1565c0;" onclick="saveInvestmentPurchase()">Save Investment</button>
+    </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="investmentSaleModal">
-  <div class="modal-sheet">
-    <h3 id="investmentSaleModalTitle">📉 Investment Sale</h3>
+  <div class="modal-sheet inv-form">
+    <div class="inv-head" style="--acc:#2e7d32;"><h3 id="investmentSaleModalTitle">📉 Investment Sale</h3></div>
     <input type="hidden" id="invSaleId">
-    <div class="form-group"><label>Against Purchase</label><div class="voice-field-row"><select class="form-input" id="invSalePurchase" onchange="updateInvestmentSaleBalance()"></select><button type="button" class="voice-mic-btn" aria-label="Speak scrip name" onclick="invVoiceScrip(this)">🎤</button></div></div>
-    <div id="invSaleBalance" style="margin:-4px 0 10px;font-size:.78rem;color:var(--muted);"></div>
-    <div class="form-group"><label>Trade Type</label><select class="form-input" id="invSaleTradeType" onchange="invTradeTypeChanged('Sale')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option></select></div>
-    <div class="form-group" id="invSaleInstrWrap" style="display:none;"><label>F &amp; O Instrument</label><select class="form-input" id="invSaleInstrument" onchange="invTradeTypeChanged('Sale')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
-    <div class="form-group"><label>Sale Date</label><input type="date" class="form-input" id="invSaleDate"></div>
-    <div class="form-group"><label>Sell Quantity</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleQty" min="0.0001" step="0.0001" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell quantity" onclick="invVoiceNumber('invSaleQty',this)">🎤</button></div></div>
-    <div class="form-group"><label>Sell Rate</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleRate" min="0" step="0.01" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell rate" onclick="invVoiceNumber('invSaleRate',this)">🎤</button></div></div>
-    <div class="form-group"><label>Charges (Auto, editable)</label><input type="number" class="form-input" id="invSaleCharges" min="0" step="0.01" inputmode="decimal" oninput="invChargesTyped('Sale')"></div>
-    <div class="form-group"><label>Sell Amount (Self Calculated)</label><input type="number" class="form-input" id="invSaleAmount" readonly></div>
-    <button id="investmentSaleSaveBtn" type="button" onclick="saveInvestmentSale()" style="width:100%;padding:12px;background:#2e7d32;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">Save Sale</button>
-    <button type="button" class="modal-close" onclick="closeModal('investmentSaleModal')">Cancel</button>
+    <div class="inv-grid">
+      <div class="form-group inv-full"><label>Against purchase</label><div class="voice-field-row"><select class="form-input" id="invSalePurchase" onchange="updateInvestmentSaleBalance()"></select><button type="button" class="voice-mic-btn" aria-label="Speak scrip name" onclick="invVoiceScrip(this)">🎤</button></div></div>
+      <div id="invSaleBalance" class="inv-full inv-bal"></div>
+      <div class="form-group"><label>Sale date</label><input type="date" class="form-input" id="invSaleDate"></div>
+      <div class="form-group"><label>Trade type</label><select class="form-input" id="invSaleTradeType" onchange="invTradeTypeChanged('Sale')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option></select></div>
+      <div class="form-group inv-full" id="invSaleInstrWrap" style="display:none;"><label>F &amp; O instrument</label><select class="form-input" id="invSaleInstrument" onchange="invTradeTypeChanged('Sale')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
+      <div class="inv-sep"></div>
+      <div class="form-group"><label>Sell quantity</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleQty" min="0.0001" step="0.0001" inputmode="decimal" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell quantity" onclick="invVoiceNumber('invSaleQty',this)">🎤</button></div></div>
+      <div class="form-group"><label>Sell rate</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleRate" min="0" step="0.01" inputmode="decimal" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell rate" onclick="invVoiceNumber('invSaleRate',this)">🎤</button></div></div>
+      <div class="form-group"><label>Charges (auto, editable)</label><input type="number" class="form-input" id="invSaleCharges" min="0" step="0.01" inputmode="decimal" oninput="invChargesTyped('Sale')"></div>
+      <div class="form-group"><label>Sell amount</label><input type="number" class="form-input" id="invSaleAmount" readonly></div>
+      <div class="inv-sep"></div>
+      <div class="form-group inv-full"><label>Did you follow your plan?</label><select class="form-input" id="invSaleFollowed"><option value="">— Not marked —</option><option value="yes">Yes, followed my plan</option><option value="no">No, broke my plan</option></select></div>
+    </div>
+    <div class="inv-actions">
+      <button type="button" class="inv-cancel" onclick="closeModal('investmentSaleModal')">Cancel</button>
+      <button id="investmentSaleSaveBtn" type="button" class="inv-save" style="background:#2e7d32;" onclick="saveInvestmentSale()">Save Sale</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRADING PERFORMANCE (popup) -->
+<div class="modal-overlay" id="invPerformanceModal">
+  <div class="modal-sheet">
+    <div id="invPerformance"></div>
+    <button type="button" class="modal-close" onclick="closeModal('invPerformanceModal')" style="margin-top:14px;">Close</button>
+  </div>
+</div>
+<!-- TRADING RULES -->
+<div class="modal-overlay" id="invRulesModal">
+  <div class="modal-sheet">
+    <h3>🎯 Trading Rules</h3>
+    <div style="font-size:.72rem;color:var(--muted);margin:-6px 0 12px;">Set your own limits. The app warns you (it never blocks you) when a new trade would break them. Set a value to 0 to switch that rule off.</div>
+    <div class="form-group"><label>Trading capital (₹)</label><input type="number" class="form-input" id="invRuleCapital" min="0" step="any" inputmode="decimal"></div>
+    <div class="form-group"><label>Max risk per trade (% of capital)</label><input type="number" class="form-input" id="invRuleRiskPct" min="0" step="any" inputmode="decimal"></div>
+    <div class="form-group"><label>Daily loss limit (₹)</label><input type="number" class="form-input" id="invRuleDailyLoss" min="0" step="any" inputmode="decimal"></div>
+    <div class="form-group"><label>Pause after this many losing trades in a row</label><input type="number" class="form-input" id="invRuleMaxLosses" min="0" step="1" inputmode="numeric"></div>
+    <button type="button" onclick="saveInvRules()" style="width:100%;padding:12px;background:#1565c0;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">Save Rules</button>
+    <button type="button" class="modal-close" onclick="closeModal('invRulesModal')">Cancel</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -5120,11 +5186,169 @@ function invSyncSaleTypeFromLot(){
   invTradeTypeChanged('Sale');
 }
 
+// ── Trading performance, risk & discipline ──
+let invRules={capital:0,maxRiskPct:2,dailyLossLimit:0,maxLosses:3};
+let invPerfPeriod='month';
+async function loadInvRules(){
+  try{
+    if(!db||!currentUser)return;
+    const r=await dbGet('settings','inv_rules_'+currentUser.username),v=r&&r.value?JSON.parse(r.value):{};
+    invRules={
+      capital:Math.max(0,Number(v.capital)||0),
+      maxRiskPct:(v.maxRiskPct===undefined||v.maxRiskPct===null)?2:Math.max(0,Number(v.maxRiskPct)||0),
+      dailyLossLimit:Math.max(0,Number(v.dailyLossLimit)||0),
+      maxLosses:(v.maxLosses===undefined||v.maxLosses===null)?3:Math.max(0,Math.floor(Number(v.maxLosses))||0)
+    };
+  }catch(e){invRules={capital:0,maxRiskPct:2,dailyLossLimit:0,maxLosses:3};}
+}
+function openInvRules(){
+  document.getElementById('invRuleCapital').value=invRules.capital||'';
+  document.getElementById('invRuleRiskPct').value=invRules.maxRiskPct;
+  document.getElementById('invRuleDailyLoss').value=invRules.dailyLossLimit||'';
+  document.getElementById('invRuleMaxLosses').value=invRules.maxLosses;
+  openModal('invRulesModal');
+}
+async function saveInvRules(){
+  const g=id=>document.getElementById(id).value.trim(),n=id=>g(id)===''?0:Number(g(id));
+  const next={capital:n('invRuleCapital'),maxRiskPct:n('invRuleRiskPct'),dailyLossLimit:n('invRuleDailyLoss'),maxLosses:Math.floor(n('invRuleMaxLosses'))};
+  if(Object.values(next).some(v=>!Number.isFinite(v)||v<0)){showToast('⚠️ Enter valid, non-negative values.');return;}
+  if(next.maxRiskPct>100){showToast('⚠️ Risk per trade cannot be above 100%.');return;}
+  const prev=invRules;invRules=next;
+  try{
+    if(!currentUser)throw new Error('no user');
+    await dbPut('settings',{key:'inv_rules_'+currentUser.username,value:JSON.stringify(invRules)});
+    showToast('✅ Trading rules saved!');closeModal('invRulesModal');renderInvestments();
+  }catch(e){invRules=prev;showToast('⚠️ Could not save rules.');}
+}
+// One closed trade per sale entry. Net = sale - cost - sale charges - purchase charges for the quantity sold (same basis as the Investment Statement).
+function invClosedTrades(){
+  const out=[];
+  investments.forEach(x=>{
+    normalizeInvestment(x);
+    const bq=Number(x.qty||0),bc=Number(x.charges||0),br=Number(x.buyRate||0);
+    (x.sales||[]).forEach(z=>{
+      const q=Number(z.qty||0),r=Number(z.rate||0);
+      if(!(q>0)||!z.date)return;
+      const charges=Number(z.charges||0)+(bq>0?bc*Math.min(q/bq,1):0),gross=q*(r-br);
+      out.push({id:Number(z.id||0),date:z.date,stock:x.stock,type:z.tradeType||x.tradeType||'delivery',gross:gross,charges:charges,net:gross-charges,followed:z.followed||''});
+    });
+  });
+  return out.sort((a,b)=>String(a.date).localeCompare(String(b.date))||a.id-b.id);
+}
+function invPerfStats(list){
+  const n=list.length,wins=list.filter(t=>t.net>0),losses=list.filter(t=>t.net<0);
+  const gp=wins.reduce((s,t)=>s+t.net,0),gl=-losses.reduce((s,t)=>s+t.net,0),net=list.reduce((s,t)=>s+t.net,0);
+  const gross=list.reduce((s,t)=>s+t.gross,0),charges=list.reduce((s,t)=>s+t.charges,0);
+  return {n:n,wins:wins.length,losses:losses.length,winRate:n?wins.length/n*100:0,gp:gp,gl:gl,net:net,gross:gross,charges:charges,
+    avgWin:wins.length?gp/wins.length:0,avgLoss:losses.length?gl/losses.length:0,expectancy:n?net/n:0,
+    pf:gl>0?gp/gl:(gp>0?Infinity:0),best:n?Math.max(...list.map(t=>t.net)):0,worst:n?Math.min(...list.map(t=>t.net)):0};
+}
+function invPerfRange(){
+  const d=new Date(),y=d.getFullYear(),m=d.getMonth(),p=v=>String(v).padStart(2,'0');
+  if(invPerfPeriod==='month')return [y+'-'+p(m+1)+'-01','9999-12-31'];
+  if(invPerfPeriod==='fy'){const fy=m>=3?y:y-1;return [fy+'-04-01',(fy+1)+'-03-31'];}
+  return ['',''];
+}
+const invMoney=v=>(v<0?'-':'')+fmt(Math.abs(Math.round(v*100)/100));
+const invSign=v=>v>0?'#00b894':(v<0?'#ff6b6b':'var(--muted)');
+// Open positions that carry a stop-loss: money at risk if every stop is hit
+function invOpenRisk(){
+  let risk=0,noSl=0;
+  investments.forEach(x=>{
+    const bal=invBalanceQty(x);
+    if(!(bal>1e-9))return;
+    const sl=Number(x.stopLoss||0);
+    if(sl>0)risk+=Math.max(0,Number(x.buyRate||0)-sl)*bal;
+    else if((x.tradeType||'delivery')!=='delivery')noSl++;
+  });
+  return {risk:risk,noSl:noSl};
+}
+// Messages when the user's own rules are already breached today
+function invDisciplineMessages(){
+  const msgs=[],all=invClosedTrades(),today=invTodayISO();
+  const todayNet=all.filter(t=>t.date===today).reduce((s,t)=>s+t.net,0);
+  if(invRules.dailyLossLimit>0&&todayNet<=-invRules.dailyLossLimit)
+    msgs.push('Today\'s loss ('+invMoney(todayNet)+') has reached your daily limit of '+fmt(invRules.dailyLossLimit)+'.');
+  let streak=0;for(let i=all.length-1;i>=0&&all[i].net<0;i--)streak++;
+  if(invRules.maxLosses>0&&streak>=invRules.maxLosses)
+    msgs.push('You have '+streak+' losing trades in a row (your pause limit is '+invRules.maxLosses+').');
+  return msgs;
+}
+function invDisciplineAlert(){
+  const m=invDisciplineMessages();
+  if(m.length)alert('⚠️ Rule check\n\n'+m.join('\n')+'\n\nConsider stopping for today and reviewing your trades.');
+}
+function invUpdateRiskReadout(){
+  const el=document.getElementById('invPurchaseRisk');if(!el)return;
+  const q=Number(document.getElementById('invPurchaseQty').value||0),r=Number(document.getElementById('invPurchaseRate').value||0),sl=Number(document.getElementById('invPurchaseStopLoss').value||0);
+  if(!(q>0&&r>0&&sl>0)){el.textContent='';return;}
+  if(sl>=r){el.style.color='#ff6b6b';el.textContent='⚠️ Stop-loss should be below the buy rate.';return;}
+  const risk=(r-sl)*q;let t='Capital at risk: '+fmt(risk),bad=false;
+  if(invRules.capital>0){const p=risk/invRules.capital*100;t+=' ('+p.toFixed(2)+'% of capital)';if(invRules.maxRiskPct>0&&p>invRules.maxRiskPct){t+=' ⚠️ above your '+invRules.maxRiskPct+'% limit';bad=true;}}
+  el.style.color=bad?'#ff6b6b':'#2e7d32';el.textContent=t;
+}
+function openInvPerformance(){renderInvPerformance();openModal('invPerformanceModal');}
+function renderInvPerformance(){
+  const el=document.getElementById('invPerformance');if(!el)return;
+  const all=invClosedTrades(),rg=invPerfRange(),tr=all.filter(t=>(!rg[0]||t.date>=rg[0])&&(!rg[1]||t.date<=rg[1]));
+  const S=invPerfStats(tr),card='';
+  const box=(l,v,c)=>`<div style="background:var(--bg);border-radius:10px;padding:8px 10px;"><div style="font-size:.66rem;font-weight:700;color:var(--muted);">${l}</div><div style="font-size:.92rem;font-weight:800;${c?'color:'+c+';':''}">${v}</div></div>`;
+  const head=`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;"><h3 style="margin:0;font-size:.95rem;">📊 Trading Performance</h3><select class="form-input" style="width:auto;padding:6px 8px;font-size:.78rem;" onchange="invPerfPeriod=this.value;renderInvPerformance()"><option value="month"${invPerfPeriod==='month'?' selected':''}>This month</option><option value="fy"${invPerfPeriod==='fy'?' selected':''}>This FY</option><option value="all"${invPerfPeriod==='all'?' selected':''}>All time</option></select></div>`;
+  const rulesBtn=`<button type="button" onclick="openInvRules()" style="width:100%;padding:10px;margin-top:10px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-weight:700;font-size:.8rem;cursor:pointer;color:var(--text);font-family:var(--font);">🎯 Trading Rules (capital, risk &amp; loss limits)</button>`;
+  if(!S.n){el.innerHTML=`<div style="${card}">${head}<div style="text-align:center;color:var(--muted);font-size:.8rem;padding:8px 0;">No closed trades in this period yet. Record a Sale to see your win rate, expectancy and charges.</div>${rulesBtn}</div>`;return;}
+  const pfTxt=S.pf===Infinity?'∞':S.pf.toFixed(2);
+  let html=`<div style="${card}">${head}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      ${box('Net P&amp;L (after charges)',invMoney(S.net),invSign(S.net))}
+      ${box('Charges paid',fmt(S.charges),'#ff6b6b')}
+      ${box('Win rate',S.winRate.toFixed(1)+'% ('+S.wins+'W / '+S.losses+'L)')}
+      ${box('Profit factor',pfTxt,S.pf>=1?'#00b894':'#ff6b6b')}
+      ${box('Avg win',fmt(S.avgWin),'#00b894')}
+      ${box('Avg loss',fmt(S.avgLoss),'#ff6b6b')}
+      ${box('Expectancy / trade',invMoney(S.expectancy),invSign(S.expectancy))}
+      ${box('Best / Worst',invMoney(S.best)+' / '+invMoney(S.worst))}
+    </div>`;
+  // Insights
+  const tips=[];
+  if(S.expectancy<0)tips.push('On average you lose '+fmt(-S.expectancy)+' per trade. Fix this before adding size.');
+  if(S.avgLoss>0&&S.avgWin>0){const be=S.avgLoss/(S.avgWin+S.avgLoss)*100;tips.push('Your wins and losses need a win rate of at least '+be.toFixed(0)+'% to break even; you are at '+S.winRate.toFixed(0)+'%.');}
+  if(S.gross>0&&S.charges/S.gross>0.25)tips.push('Charges eat '+(S.charges/S.gross*100).toFixed(0)+'% of your gross profit. Fewer, higher-quality trades help.');
+  else if(S.gross<=0&&S.charges>0)tips.push('Gross trading result is '+invMoney(S.gross)+' and charges add '+fmt(S.charges)+' on top.');
+  const fy=tr.filter(t=>t.followed==='yes'),fn=tr.filter(t=>t.followed==='no');
+  if(fy.length&&fn.length){const a=invPerfStats(fy),b=invPerfStats(fn);tips.push('Plan followed: '+fy.length+' trades, avg '+invMoney(a.expectancy)+'. Plan broken: '+fn.length+' trades, avg '+invMoney(b.expectancy)+'.');}
+  else if(fn.length)tips.push('You marked '+fn.length+' trade(s) as breaking your plan, worth '+invMoney(invPerfStats(fn).net)+' net.');
+  if(tips.length)html+=`<div style="margin-top:10px;padding:10px;background:#fff8e1;border-radius:10px;font-size:.76rem;color:#5d4037;line-height:1.5;">${tips.map(t=>'💡 '+invEsc(t)).join('<br>')}</div>`;
+  // By trade type
+  const rows=Object.keys(INV_TRADE_TYPES).map(k=>{const l=tr.filter(t=>t.type===k);if(!l.length)return '';const p=invPerfStats(l);return `<tr><td style="padding:6px 4px;font-weight:700;">${INV_TRADE_TYPES[k]}</td><td style="padding:6px 4px;text-align:right;">${p.n}</td><td style="padding:6px 4px;text-align:right;">${p.winRate.toFixed(0)}%</td><td style="padding:6px 4px;text-align:right;color:var(--muted);">${fmtR(p.charges)}</td><td style="padding:6px 4px;text-align:right;font-weight:800;color:${invSign(p.net)};">${invMoney(p.net)}</td></tr>`;}).join('');
+  html+=`<div style="margin-top:12px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:.78rem;"><thead><tr style="color:var(--muted);font-size:.68rem;"><th style="text-align:left;padding:4px;">Type</th><th style="text-align:right;padding:4px;">Trades</th><th style="text-align:right;padding:4px;">Win%</th><th style="text-align:right;padding:4px;">Charges</th><th style="text-align:right;padding:4px;">Net P&amp;L</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  // Monthly net P&L, last 6 months (always from all trades)
+  const mm={};all.forEach(t=>{const k=String(t.date).slice(0,7);mm[k]=(mm[k]||0)+t.net;});
+  const keys=Object.keys(mm).sort().slice(-6),mx=Math.max(1,...keys.map(k=>Math.abs(mm[k])));
+  if(keys.length){
+    const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    html+=`<div style="margin-top:12px;"><div style="font-size:.7rem;font-weight:700;color:var(--muted);margin-bottom:6px;">Monthly net P&amp;L</div>${keys.map(k=>{const v=mm[k],w=Math.max(3,Math.abs(v)/mx*100),lb=mn[Number(k.slice(5,7))-1]+' '+k.slice(2,4);return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.74rem;"><span style="width:44px;color:var(--muted);">${lb}</span><div style="flex:1;background:var(--bg);border-radius:6px;height:14px;overflow:hidden;"><div style="width:${w.toFixed(1)}%;height:100%;background:${v>=0?'#00b894':'#ff6b6b'};"></div></div><span style="width:92px;text-align:right;font-weight:700;color:${invSign(v)};">${invMoney(v)}</span></div>`;}).join('')}</div>`;
+  }
+  // Risk & discipline today
+  const today=invTodayISO(),tNet=all.filter(t=>t.date===today).reduce((s,t)=>s+t.net,0),orisk=invOpenRisk(),dm=invDisciplineMessages();
+  let rk=`Today's P&amp;L: <b style="color:${invSign(tNet)}">${invMoney(tNet)}</b>`;
+  if(invRules.dailyLossLimit>0)rk+=` · limit ${fmt(invRules.dailyLossLimit)}`;
+  if(orisk.risk>0){rk+=`<br>Open risk (stop-losses): <b>${fmt(orisk.risk)}</b>`;if(invRules.capital>0)rk+=` (${(orisk.risk/invRules.capital*100).toFixed(1)}% of capital)`;}
+  if(orisk.noSl>0)rk+=`<br>⚠️ ${orisk.noSl} open Intraday/F&amp;O position(s) have no stop-loss.`;
+  if(dm.length)rk+=`<br><span style="color:#ff6b6b;font-weight:700;">${dm.map(invEsc).join('<br>')}</span>`;
+  html+=`<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:10px;font-size:.78rem;line-height:1.55;">${rk}</div>`;
+  // F&O turnover for tax time (indicative)
+  const fno=all.filter(t=>t.type==='fno'&&t.date>=invPerfFYStart()&&t.date<=invPerfFYEnd());
+  if(fno.length){const to=fno.reduce((s,t)=>s+Math.abs(t.gross),0),fs=invPerfStats(fno);html+=`<div style="margin-top:10px;font-size:.72rem;color:var(--muted);line-height:1.5;">F&amp;O this FY: ${fno.length} trades · net ${invMoney(fs.net)} · turnover (sum of absolute trade P&amp;L, indicative) ${fmt(to)}. Audit and ITR rules depend on turnover and your profile, so confirm with a CA. This is not tax advice.</div>`;}
+  el.innerHTML=html+rulesBtn+'</div>';
+}
+function invPerfFYStart(){const d=new Date(),y=d.getFullYear(),fy=d.getMonth()>=3?y:y-1;return fy+'-04-01';}
+function invPerfFYEnd(){const d=new Date(),y=d.getFullYear(),fy=d.getMonth()>=3?y:y-1;return (fy+1)+'-03-31';}
+
 function invTodayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 // ── Purchase entry ──
-function clearInvestmentPurchaseForm(){['invPurchaseId','invPurchaseDate','invPurchaseStock','invPurchaseQty','invPurchaseRate','invPurchaseAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const at=document.getElementById('invPurchaseAssetType');if(at)at.value='equity';const pd=document.getElementById('invPurchaseDate');if(pd)pd.value=invTodayISO();setInvestmentCategoryOptions();invResetChargeFields('Purchase');document.getElementById('investmentPurchaseModalTitle').textContent='📈 Investment Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Save Purchase';}
-function openInvestmentPurchaseModal(){clearInvestmentPurchaseForm();openModal('investmentPurchaseModal');}
-function calcInvestmentPurchase(){const q=Number(document.getElementById('invPurchaseQty').value||0),r=Number(document.getElementById('invPurchaseRate').value||0);invRefreshCharges('Purchase');const chg=Number(document.getElementById('invPurchaseCharges').value||0);document.getElementById('invPurchaseAmount').value=q&&r>=0?(q*r+chg).toFixed(2):'';}
+function clearInvestmentPurchaseForm(){['invPurchaseId','invPurchaseDate','invPurchaseStock','invPurchaseQty','invPurchaseRate','invPurchaseAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const at=document.getElementById('invPurchaseAssetType');if(at)at.value='equity';const pd=document.getElementById('invPurchaseDate');if(pd)pd.value=invTodayISO();setInvestmentCategoryOptions();invResetChargeFields('Purchase');{const a=document.getElementById('invPurchaseStopLoss'),b=document.getElementById('invPurchasePlan'),c=document.getElementById('invPurchaseRisk');if(a)a.value='';if(b)b.value='';if(c)c.textContent='';}document.getElementById('investmentPurchaseModalTitle').textContent='📈 Investment Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Save Purchase';}
+function openInvestmentPurchaseModal(){const w=invDisciplineMessages();if(w.length&&!confirm('⚠️ '+w.join('\n')+'\n\nYour own rules say to pause. Continue anyway?'))return;clearInvestmentPurchaseForm();openModal('investmentPurchaseModal');}
+function calcInvestmentPurchase(){const q=Number(document.getElementById('invPurchaseQty').value||0),r=Number(document.getElementById('invPurchaseRate').value||0);invRefreshCharges('Purchase');const chg=Number(document.getElementById('invPurchaseCharges').value||0);document.getElementById('invPurchaseAmount').value=q&&r>=0?(q*r+chg).toFixed(2):'';invUpdateRiskReadout();}
 async function saveInvestmentPurchase(){
   const btn=document.getElementById('investmentPurchaseSaveBtn');
   if(btn.disabled)return;
@@ -5132,11 +5356,17 @@ async function saveInvestmentPurchase(){
   if(!date||!stock||qty<=0||buyRate<0){showToast('Enter valid purchase details!');return;}
   const tradeType=document.getElementById('invPurchaseTradeType').value,instrument=document.getElementById('invPurchaseInstrument').value,charges=Number(document.getElementById('invPurchaseCharges').value||0);
   if(!(charges>=0)){showToast('Charges cannot be negative!');return;}
+  const stopLoss=Number(document.getElementById('invPurchaseStopLoss').value||0),plan=document.getElementById('invPurchasePlan').value.trim();
+  if(stopLoss<0||(stopLoss>0&&stopLoss>=buyRate)){showToast('Stop-loss must be below the buy rate!');return;}
+  if(stopLoss>0&&invRules.capital>0&&invRules.maxRiskPct>0){
+    const riskPct=(buyRate-stopLoss)*qty/invRules.capital*100;
+    if(riskPct>invRules.maxRiskPct&&!confirm('⚠️ This trade risks '+riskPct.toFixed(2)+'% of your capital, above your '+invRules.maxRiskPct+'% limit.\n\nSave it anyway?'))return;
+  }
   const old=id?investments.find(x=>x.id===id):null;
   if(id&&!old){showToast('⚠️ Investment record not found!');return;}
   if(old&&qty<Number(old.qtySold||0)-1e-9){showToast('Quantity cannot be less than already sold quantity ('+old.qtySold+')!');return;}
   btn.disabled=true;
-  const item=old?{...old,date,category,assetType,stock,qty,buyRate,tradeType,instrument,charges}:{id:Date.now(),date,category,assetType,stock,qty,buyRate,tradeType,instrument,charges,sales:[],createdAt:Date.now()};
+  const item=old?{...old,date,category,assetType,stock,qty,buyRate,tradeType,instrument,charges,stopLoss,plan}:{id:Date.now(),date,category,assetType,stock,qty,buyRate,tradeType,instrument,charges,stopLoss,plan,sales:[],createdAt:Date.now()};
   recalcInvestment(item);
   const prev=investments.slice();
   if(old)investments[investments.findIndex(x=>x.id===id)]=item;else investments.unshift(item);
@@ -5151,7 +5381,7 @@ async function saveInvestmentPurchase(){
     showToast('⚠️ Could not save purchase: '+(e&&e.name?e.name:'error'));
   }finally{btn.disabled=false;}
 }
-function editInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;clearInvestmentPurchaseForm();document.getElementById('invPurchaseId').value=x.id;document.getElementById('invPurchaseDate').value=x.date;document.getElementById('invPurchaseCategory').value=x.category||INVESTMENT_CATS[0]?.name||'';const at=document.getElementById('invPurchaseAssetType');if(at)at.value=x.assetType||'equity';document.getElementById('invPurchaseStock').value=x.stock;document.getElementById('invPurchaseQty').value=x.qty;document.getElementById('invPurchaseRate').value=x.buyRate;invLoadChargeFields('Purchase',x);calcInvestmentPurchase();document.getElementById('investmentPurchaseModalTitle').textContent='✏️ Edit Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Update Purchase';openModal('investmentPurchaseModal');}
+function editInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;clearInvestmentPurchaseForm();document.getElementById('invPurchaseId').value=x.id;document.getElementById('invPurchaseDate').value=x.date;document.getElementById('invPurchaseCategory').value=x.category||INVESTMENT_CATS[0]?.name||'';const at=document.getElementById('invPurchaseAssetType');if(at)at.value=x.assetType||'equity';document.getElementById('invPurchaseStock').value=x.stock;document.getElementById('invPurchaseQty').value=x.qty;document.getElementById('invPurchaseRate').value=x.buyRate;invLoadChargeFields('Purchase',x);document.getElementById('invPurchaseStopLoss').value=x.stopLoss||'';document.getElementById('invPurchasePlan').value=x.plan||'';calcInvestmentPurchase();document.getElementById('investmentPurchaseModalTitle').textContent='✏️ Edit Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Update Purchase';openModal('investmentPurchaseModal');}
 async function deleteInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;const n=(x.sales||[]).length;if(!confirm('Delete purchase of '+x.stock+(n?' and its '+n+' sale entr'+(n>1?'ies':'y'):'')+'?'))return;const prev=investments.slice();investments=investments.filter(i=>i.id!==id);try{await saveInvestments();showToast('🗑️ Deleted!');}catch(e){investments=prev;showToast('⚠️ Could not delete.');}renderInvestments();}
 
 // ── Sale entry (separate from purchase) ──
@@ -5169,7 +5399,7 @@ function updateInvestmentSaleBalance(){
   invSyncSaleTypeFromLot();
 }
 function calcInvestmentSale(){const q=Number(document.getElementById('invSaleQty').value||0),r=Number(document.getElementById('invSaleRate').value||0);document.getElementById('invSaleAmount').value=q&&r>=0?(q*r).toFixed(2):'';invRefreshCharges('Sale');}
-function clearInvestmentSaleForm(){['invSaleId','invSaleDate','invSaleQty','invSaleRate','invSaleAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});document.getElementById('invSalePurchase').disabled=false;const sd=document.getElementById('invSaleDate');if(sd)sd.value=invTodayISO();invResetChargeFields('Sale');document.getElementById('investmentSaleModalTitle').textContent='📉 Investment Sale';document.getElementById('investmentSaleSaveBtn').textContent='Save Sale';}
+function clearInvestmentSaleForm(){['invSaleId','invSaleDate','invSaleQty','invSaleRate','invSaleAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});document.getElementById('invSalePurchase').disabled=false;const sd=document.getElementById('invSaleDate');if(sd)sd.value=invTodayISO();invResetChargeFields('Sale');{const f=document.getElementById('invSaleFollowed');if(f)f.value='';}document.getElementById('investmentSaleModalTitle').textContent='📉 Investment Sale';document.getElementById('investmentSaleSaveBtn').textContent='Save Sale';}
 function openInvestmentSaleModal(purchaseId){
   if(!investments.some(p=>invBalanceQty(p)>1e-9)){showToast('Add a purchase first (or nothing left to sell).');return;}
   clearInvestmentSaleForm();fillInvestmentSaleLots(purchaseId);updateInvestmentSaleBalance();openModal('investmentSaleModal');
@@ -5184,13 +5414,14 @@ async function saveInvestmentSale(){
   const tradeType=document.getElementById('invSaleTradeType').value,instrument=document.getElementById('invSaleInstrument').value,charges=Number(document.getElementById('invSaleCharges').value||0);
   if(!(charges>=0)){showToast('Charges cannot be negative!');return;}
   if(qty>invBalanceQty(p,sid)+1e-9){showToast('Sell quantity exceeds available quantity!');return;}
+  const followed=document.getElementById('invSaleFollowed')?.value||'';
   btn.disabled=true;
   const prev=investments.map(x=>({...x,sales:(x.sales||[]).map(z=>({...z}))}));
-  if(sid){const z=p.sales.find(z=>z.id===sid);if(z){z.date=date;z.qty=qty;z.rate=rate;z.tradeType=tradeType;z.instrument=instrument;z.charges=charges;}}else p.sales.push({id:newInvSaleId(),date,qty,rate,tradeType,instrument,charges});
+  if(sid){const z=p.sales.find(z=>z.id===sid);if(z){z.date=date;z.qty=qty;z.rate=rate;z.tradeType=tradeType;z.instrument=instrument;z.charges=charges;z.followed=followed;}}else p.sales.push({id:newInvSaleId(),date,qty,rate,tradeType,instrument,charges,followed});
   recalcInvestment(p);
   try{
     await saveInvestments();
-    showToast(sid?'Sale updated!':'Sale saved!');
+    showToast(sid?'Sale updated!':'Sale saved!');setTimeout(invDisciplineAlert,450);
     closeModal('investmentSaleModal');
     renderInvestments();
   }catch(e){
@@ -5204,7 +5435,7 @@ function editInvestmentSale(pid,sid){
   clearInvestmentSaleForm();fillInvestmentSaleLots(pid);
   document.getElementById('invSalePurchase').disabled=true;
   document.getElementById('invSaleId').value=z.id;document.getElementById('invSaleDate').value=z.date||'';document.getElementById('invSaleQty').value=z.qty;document.getElementById('invSaleRate').value=z.rate;
-  invLoadChargeFields('Sale',z);calcInvestmentSale();updateInvestmentSaleBalance();
+  invLoadChargeFields('Sale',z);calcInvestmentSale();updateInvestmentSaleBalance();{const f=document.getElementById('invSaleFollowed');if(f)f.value=z.followed||'';}
   document.getElementById('investmentSaleModalTitle').textContent='✏️ Edit Sale';document.getElementById('investmentSaleSaveBtn').textContent='Update Sale';
   openModal('investmentSaleModal');
 }
@@ -5228,7 +5459,7 @@ async function saveInvestments(){
     tx.onabort=()=>reject(tx.error||new Error('Transaction aborted'));
   });
 }
-async function loadInvestments(){if(!db||!currentUser)return;const u=currentUser.username,all=await dbGetAll('investments');investments=(await Promise.all(all.filter(x=>x._user===u).map(async x=>{try{return x._enc?JSON.parse(await decryptData(x._enc)):x;}catch{return x;}}))).map(normalizeInvestment);await loadInvChargesMaster();}
+async function loadInvestments(){if(!db||!currentUser)return;const u=currentUser.username,all=await dbGetAll('investments');investments=(await Promise.all(all.filter(x=>x._user===u).map(async x=>{try{return x._enc?JSON.parse(await decryptData(x._enc)):x;}catch{return x;}}))).map(normalizeInvestment);await loadInvChargesMaster();await loadInvRules();}
 
 // ── Averaging (average buy price after buying more) ──
 function avgHoldings(){
@@ -5344,6 +5575,7 @@ function renderInvestments(){
     const sales=(x.sales||[]).map(z=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 10px;margin:2px 0 0 14px;background:#e8f5e9;border-radius:8px;font-size:.74rem;color:#1b5e20;"><span>📉 ${invEsc(z.date)} · ${z.qty} @ ${fmtR(z.rate)} = ${fmtR(z.qty*z.rate)}</span><span style="white-space:nowrap;"><button type="button" onclick="editInvestmentSale(${x.id},${z.id})">✏️</button> <button type="button" onclick="deleteInvestmentSale(${x.id},${z.id})">🗑️</button></span></div>`).join('');
     return `<div style="margin-bottom:8px;"><div class="txn-item"><div class="txn-icon income">📈</div><div class="txn-body"><div class="txn-title">${invEsc(x.stock)}</div><div class="txn-meta">${invEsc(x.date)} · Qty ${x.qty} @ ${fmtR(x.buyRate)} · Sold ${x.qtySold||0} · Bal ${bal}</div></div><div><div class="txn-amount ${x.profit>=0?'income':'expense'}">${x.profit<0?'-':''}${fmtR(Math.abs(x.profit||0))}</div><button type="button" onclick="editInvestment(${x.id})">✏️ Edit</button><button type="button" onclick="deleteInvestment(${x.id})">🗑️ Delete</button></div></div>${sales}</div>`;
   }).join(''):'<div style="text-align:center;padding:20px;color:var(--muted)">No investments recorded.</div>';
+  try{renderInvPerformance();}catch(e){console.error('Performance render error',e);}
   if(document.getElementById('investmentReportInline')) renderInvestmentDateWise('investmentReportInline');
 }
 function openInvestmentEntriesModal(){ renderInvestments(); openModal('investmentEntriesModal'); }
