@@ -1000,6 +1000,15 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div class="chart-title">📂 Expense Breakdown</div>
         <canvas id="catChart" style="width:100%;height:180px;display:block;margin-bottom:10px;"></canvas><div id="catBreakdown"></div>
       </div>
+
+      <!-- BANK STATEMENT CROSS-CHECK -->
+      <div class="panel" id="bankCheckPanel">
+        <h3>🏦 Cross Check Cash Flow with Bank Statement</h3>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;line-height:1.5;">Upload your bank statement in Excel format with columns <b>Date, Particulars, Debit, Credit, Balance</b>. Password-protected Excel files are supported. The file is read on your device only — nothing is uploaded or saved.</p>
+        <input type="file" id="bankStmtFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain" style="display:none;" onchange="bsHandleFile(this)"/>
+        <button type="button" onclick="document.getElementById('bankStmtFile').click()" style="width:100%;padding:12px;background:linear-gradient(135deg,#1565c0,#00b894);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:var(--font);">📂 Upload Bank Statement (Excel)</button>
+        <div id="bankCheckResult" style="margin-top:12px;"></div>
+      </div>
     </div>
 
     <!-- GOALS -->
@@ -4117,6 +4126,482 @@ function checkBudgetAlert(){
     document.getElementById('budgetAlertText').textContent=worst.pct>=100?`⚠️ ${worst.cat.name} budget exceeded!`:`⚡ ${worst.cat.name} at ${worst.pct}%`;
     document.getElementById('budgetAlertSub').textContent=`Spent ${fmt(worst.spent)} of ${fmt(worst.limit)}`;
   }else{alertBox.classList.remove('show');}
+}
+
+// ═══════════════════════════════════════
+// BANK STATEMENT CROSS-CHECK (Reports)
+// Reads an Excel (.xlsx) bank statement fully on-device (works offline), summarises Debit / Credit /
+// Balance and compares it with the app's own income & expense entries for the same period.
+// ═══════════════════════════════════════
+function bsEsc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function bsMoney(n){return (n<0?'-':'')+fmt(n);}
+function bsShortDate(iso){return new Date(iso+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});}
+function bsLongDate(iso){return new Date(iso+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});}
+
+// --- minimal .xlsx reader (zip + XML) using the browser's built-in DecompressionStream ---
+async function bsInflate(u8){
+  const out=new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(out).arrayBuffer());
+}
+async function bsUnzip(buf){
+  const u8=new Uint8Array(buf), dv=new DataView(buf);
+  let eocd=-1;
+  for(let i=u8.length-22;i>=Math.max(0,u8.length-65557);i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;}}
+  if(eocd<0)throw new Error('notzip');
+  const count=dv.getUint16(eocd+10,true);
+  let p=dv.getUint32(eocd+16,true);
+  const dec=new TextDecoder(), files={};
+  for(let n=0;n<count;n++){
+    if(dv.getUint32(p,true)!==0x02014b50)break;
+    const method=dv.getUint16(p+10,true), csize=dv.getUint32(p+20,true);
+    const nlen=dv.getUint16(p+28,true), elen=dv.getUint16(p+30,true), clen=dv.getUint16(p+32,true), lho=dv.getUint32(p+42,true);
+    files[dec.decode(u8.subarray(p+46,p+46+nlen))]={method,csize,lho};
+    p+=46+nlen+elen+clen;
+  }
+  return {files,u8,dv};
+}
+async function bsReadEntry(z,name){
+  const f=z.files[name]; if(!f)return null;
+  const nlen=z.dv.getUint16(f.lho+26,true), elen=z.dv.getUint16(f.lho+28,true);
+  const st=f.lho+30+nlen+elen, data=z.u8.subarray(st,st+f.csize);
+  return new TextDecoder().decode(f.method===0?data:await bsInflate(data));
+}
+function bsColIdx(ref){const m=/^([A-Z]+)/i.exec(ref||'');if(!m)return -1;let n=0;for(const ch of m[1].toUpperCase())n=n*26+ch.charCodeAt(0)-64;return n-1;}
+async function bsXlsxSheets(buf){
+  if(typeof DecompressionStream==='undefined')throw new Error('nonative');
+  const z=await bsUnzip(buf), dp=new DOMParser();
+  const xml=async nm=>{const t=await bsReadEntry(z,nm);return t?dp.parseFromString(t,'application/xml'):null;};
+  const txt=el=>Array.from(el.getElementsByTagName('t')).filter(t=>t.parentNode.nodeName!=='rPh').map(t=>t.textContent).join('');
+  const sst=[], sd=await xml('xl/sharedStrings.xml');
+  if(sd)Array.from(sd.getElementsByTagName('si')).forEach(si=>sst.push(txt(si)));
+  // sheet order from workbook.xml (+ relationships); fall back to sheet1..n
+  let paths=[];
+  const wb=await xml('xl/workbook.xml'), rels=await xml('xl/_rels/workbook.xml.rels');
+  if(wb&&rels){
+    const target={};
+    Array.from(rels.getElementsByTagName('Relationship')).forEach(r=>{target[r.getAttribute('Id')]=r.getAttribute('Target');});
+    Array.from(wb.getElementsByTagName('sheet')).forEach(sh=>{
+      let t=target[sh.getAttribute('r:id')];
+      if(t)paths.push(t.charAt(0)==='/'?t.slice(1):'xl/'+t.replace(/^\.?\//,''));
+    });
+  }
+  if(!paths.length)paths=Object.keys(z.files).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n)).sort();
+  const sheets=[];
+  for(const path of paths){
+    const sx=await xml(path); if(!sx)continue;
+    const rows=[];
+    Array.from(sx.getElementsByTagName('row')).forEach((rw,ri)=>{
+      const rn=parseInt(rw.getAttribute('r'),10), arr=[];
+      Array.from(rw.getElementsByTagName('c')).forEach((c,ci)=>{
+        let idx=bsColIdx(c.getAttribute('r')); if(idx<0)idx=ci;
+        const t=c.getAttribute('t'), vEl=c.getElementsByTagName('v')[0], v=vEl?vEl.textContent:'';
+        let val='';
+        if(t==='s')val=sst[parseInt(v,10)]||'';
+        else if(t==='inlineStr')val=txt(c);
+        else if(t==='str'||t==='e'||t==='b')val=v;
+        else if(v!=='')val=Number(v);
+        arr[idx]=val;
+      });
+      rows[(isNaN(rn)?ri+1:rn)-1]=arr;
+    });
+    sheets.push(Array.from(rows,r=>r||[]));
+  }
+  return sheets;
+}
+// older .xls files (or browsers without DecompressionStream): load SheetJS on demand (needs internet once)
+function bsLoadSheetJS(){return new Promise((res,rej)=>{
+  if(window.XLSX)return res();
+  const sc=document.createElement('script');
+  sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  sc.onload=res; sc.onerror=()=>rej(new Error('offline'));
+  document.head.appendChild(sc);
+});}
+async function bsSheetJsSheets(buf){
+  await bsLoadSheetJS();
+  const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
+  return wb.SheetNames.map(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''}));
+}
+function bsCsvRows(t){
+  t=t.replace(/^\uFEFF/,'');
+  const rows=[]; let row=[],cur='',q=false;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=c;}
+    else if(c==='"')q=true;
+    else if(c===','){row.push(cur);cur='';}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(cur);rows.push(row);row=[];cur='';}
+    else cur+=c;
+  }
+  if(cur!==''||row.length){row.push(cur);rows.push(row);}
+  return rows;
+}
+async function bsReadSheets(buf,name){
+  if(/\.(csv|txt)$/i.test(name))return [bsCsvRows(new TextDecoder().decode(buf))];
+  const u8=new Uint8Array(buf,0,4);
+  const isZip=u8[0]===0x50&&u8[1]===0x4B;
+  if(isZip){
+    try{return await bsXlsxSheets(buf);}
+    catch(e){try{return await bsSheetJsSheets(buf);}catch(e2){throw new Error('Could not read this Excel file. Please save it as .xlsx or .csv and try again.');}}
+  }
+  try{return await bsSheetJsSheets(buf);}
+  catch(e){throw new Error('This looks like an older .xls file, which needs an internet connection to open. Please save it as .xlsx (Excel) or .csv and try again.');}
+}
+
+// --- statement parsing ---
+function bsIso(y,m,d){
+  if(m<1||m>12||d<1||d>31)return null;
+  const dt=new Date(Date.UTC(y,m-1,d));
+  return dt.getUTCMonth()===m-1?dt.toISOString().slice(0,10):null;
+}
+function bsParseDate(v){
+  if(v===''||v==null)return null;
+  if(typeof v==='number'){
+    if(v>20000&&v<80000)return new Date(Date.UTC(1899,11,30)+Math.floor(v)*86400000).toISOString().slice(0,10);
+    return null;
+  }
+  let s=String(v).trim().replace(/[T\s]+\d{1,2}:\d{2}(:\d{2})?.*$/,''), m;
+  if(/^\d{5}(\.\d+)?$/.test(s))return bsParseDate(Number(s));
+  if((m=/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/.exec(s)))return bsIso(+m[1],+m[2],+m[3]);
+  if((m=/^(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{2,4})$/.exec(s))){let y=+m[3];if(y<100)y+=2000;return bsIso(y,+m[2],+m[1]);}   // dd/mm/yyyy (Indian format)
+  if((m=/^(\d{1,2})[-\/. ]([A-Za-z]{3})[A-Za-z]*[-\/. ,]*(\d{2,4})$/.exec(s))){
+    const mi=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[2].toLowerCase());
+    let y=+m[3];if(y<100)y+=2000;
+    return mi<0?null:bsIso(y,mi+1,+m[1]);
+  }
+  return null;
+}
+function bsNum(v){
+  if(typeof v==='number')return isFinite(v)?v:0;
+  const s=String(v==null?'':v).replace(/[₹,\s]|rs\.?|inr/gi,'').replace(/(dr|cr)\.?$/i,'');
+  if(s===''||s==='-')return 0;
+  const n=parseFloat(s.replace(/^\((.*)\)$/,'-$1'));
+  return isFinite(n)?n:0;
+}
+function bsBal(v){
+  if(v===''||v==null)return null;
+  if(typeof v==='number')return isFinite(v)?v:null;
+  const raw=String(v).trim(); if(raw===''||raw==='-')return null;
+  const n=bsNum(raw), neg=/dr\.?$/i.test(raw)&&n>0;
+  return neg?-n:n;
+}
+function bsFindHeader(rows){
+  const pick=(cells,res,skip)=>{for(const re of res){const i=cells.findIndex((c,ix)=>!skip.includes(ix)&&re.test(c));if(i>=0)return i;}return -1;};
+  for(let i=0;i<Math.min(rows.length,100);i++){
+    const cells=Array.from(rows[i]||[],c=>String(c==null?'':c).trim().toLowerCase());
+    if(!cells.length)continue;
+    const d=pick(cells,[/^date$/,/(txn|tran|transaction|posting)\s*date/,/date|\bdt\b/],[]);
+    const notBal=c=>!/balance/.test(c)&&!/dr\s*\/\s*cr|cr\s*\/\s*dr/.test(c);
+    const db=cells.findIndex(c=>notBal(c)&&/debit|withdraw|^dr\.?$|\bdr\b/.test(c));
+    const cr=cells.findIndex(c=>notBal(c)&&/credit|deposit|^cr\.?$|\bcr\b/.test(c));
+    if(d<0||db<0||cr<0||db===cr)continue;
+    const bal=pick(cells,[/balance|^bal\b/],[d,db,cr]);
+    const part=pick(cells,[/particular|narration|description|detail|remark|transaction/],[d,db,cr,bal]);
+    return {hi:i,d,db,cr,bal,part};
+  }
+  return null;
+}
+function bsParseStatement(sheets){
+  for(const rows of sheets){
+    const h=bsFindHeader(rows); if(!h)continue;
+    const out=[];
+    for(let i=h.hi+1;i<rows.length;i++){
+      const r=rows[i]||[], date=bsParseDate(r[h.d]); if(!date)continue;
+      const debit=Math.abs(bsNum(r[h.db])), credit=Math.abs(bsNum(r[h.cr]));
+      if(!debit&&!credit)continue;
+      out.push({date,desc:h.part>=0?String(r[h.part]==null?'':r[h.part]).trim():'',debit,credit,bal:h.bal>=0?bsBal(r[h.bal]):null});
+    }
+    if(out.length){
+      if(out[0].date>out[out.length-1].date)out.reverse();   // newest-first statements → oldest-first
+      return out;
+    }
+  }
+  throw new Error('Could not find the statement table. The sheet needs a header row with Date, Debit and Credit columns (Particulars and Balance are optional but recommended).');
+}
+
+// --- analysis: totals, balance check, and entry-by-entry matching with the app ---
+function bsDayDiff(a,b){return Math.round((Date.parse(a)-Date.parse(b))/86400000);}
+function bsAnalyse(rows,fileName){
+  const totalDebit=rows.reduce((s,r)=>s+r.debit,0), totalCredit=rows.reduce((s,r)=>s+r.credit,0);
+  const from=rows.reduce((m,r)=>r.date<m?r.date:m,rows[0].date), to=rows.reduce((m,r)=>r.date>m?r.date:m,rows[0].date);
+  const f=rows[0], l=rows[rows.length-1], hasBal=f.bal!=null&&l.bal!=null;
+  const opening=hasBal?f.bal+f.debit-f.credit:null, closing=hasBal?l.bal:null;
+  const balOk=hasBal?Math.abs(opening+totalCredit-totalDebit-closing)<=1:null;
+  const app=transactions.filter(t=>t.date>=from&&t.date<=to);
+  // match: same type + same amount, exact date first, then within ±3 days
+  const entries=[];
+  rows.forEach(r=>{
+    if(r.debit>0)entries.push({date:r.date,desc:r.desc,type:'expense',amt:r.debit});
+    if(r.credit>0)entries.push({date:r.date,desc:r.desc,type:'income',amt:r.credit});
+  });
+  const pool=app.map(t=>({t,used:false}));
+  const pass=tol=>{entries.forEach(e=>{
+    if(e.done)return;
+    let best=null,bd=1e9;
+    pool.forEach(p=>{
+      if(p.used||p.t.type!==e.type||Math.abs((Number(p.t.amount)||0)-e.amt)>0.005)return;
+      const dd=Math.abs(bsDayDiff(p.t.date,e.date));
+      if(dd<=tol&&dd<bd){best=p;bd=dd;}
+    });
+    if(best){best.used=true;e.done=true;}
+  });};
+  pass(0);pass(3);
+  const bankOnly=entries.filter(e=>!e.done);
+  const appOnly=pool.filter(p=>!p.used).map(p=>({date:p.t.date,type:p.t.type,amt:Number(p.t.amount)||0,desc:(p.t.category||'')+(p.t.note?' – '+p.t.note:'')}))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  return {fileName,rows,totalDebit,totalCredit,from,to,opening,closing,balOk,app,entries,matched:entries.length-bankOnly.length,bankOnly,appOnly};
+}
+
+// --- rendering ---
+function bsRender(r){
+  const el=document.getElementById('bankCheckResult');
+  const appIn=r.app.filter(t=>t.type==='income').reduce((s,t)=>s+(Number(t.amount)||0),0);
+  const appOut=r.app.filter(t=>t.type==='expense').reduce((s,t)=>s+(Number(t.amount)||0),0);
+  const net=r.totalCredit-r.totalDebit;
+  const inOk=Math.abs(r.totalCredit-appIn)<0.5, outOk=Math.abs(r.totalDebit-appOut)<0.5;
+  const rr=(label,val,color)=>`<div class="report-row"><span class="report-label">${label}</span><span class="report-val"${color?` style="color:${color};"`:''}>${val}</span></div>`;
+  const cmp=(label,b,a)=>{
+    const d=b-a, ok=Math.abs(d)<0.5;
+    return `<div style="display:grid;grid-template-columns:1fr 1.05fr 1.05fr 1.05fr;gap:4px;padding:9px 0;border-bottom:1px solid var(--border);font-size:0.72rem;align-items:center;">
+      <span style="font-weight:700;">${label}</span>
+      <span style="text-align:right;font-weight:700;white-space:nowrap;">${fmtR(b)}</span>
+      <span style="text-align:right;font-weight:700;white-space:nowrap;">${fmtR(a)}</span>
+      <span style="text-align:right;font-weight:800;white-space:nowrap;color:${ok?'#00b894':'#ff922b'};">${ok?'✓ 0.00':(d>0?'+':'-')+fmtR(d)}</span></div>`;
+  };
+  const list=(items,empty)=>items.length?`<div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;">${items.map(e=>`<div style="display:flex;gap:8px;justify-content:space-between;align-items:center;padding:7px 10px;border-bottom:1px solid var(--border);font-size:0.72rem;"><span style="flex:0 0 auto;color:var(--muted);font-weight:700;">${bsShortDate(e.date)}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${bsEsc(e.desc)}</span><span style="flex:0 0 auto;font-weight:800;color:${e.type==='income'?'#00b894':'#ff6b6b'};">${e.type==='income'?'+':'-'}${fmtR(e.amt)}</span></div>`).join('')}</div>`:`<div style="font-size:0.74rem;color:var(--muted);padding:6px 2px;">${empty}</div>`;
+  const sum=(items,t)=>items.filter(e=>e.type===t).reduce((s,e)=>s+e.amt,0);
+  const tally=inOk&&outOk;
+  const verdict=tally
+    ?`<div style="padding:10px 12px;border-radius:12px;background:rgba(0,184,148,0.14);border:1.5px solid #00b894;font-size:0.78rem;font-weight:700;margin:10px 0;">✅ Cash inflow and outflow tally with your bank statement.</div>`
+    :`<div style="padding:10px 12px;border-radius:12px;background:rgba(255,146,43,0.14);border:1.5px solid #ff922b;font-size:0.78rem;font-weight:700;margin:10px 0;">⚠️ Differences found${!inOk?` — inflow is off by ₹${fmtR(r.totalCredit-appIn)}`:''}${!outOk?` — outflow is off by ₹${fmtR(r.totalDebit-appOut)}`:''}. Check the unmatched entries below.</div>`;
+  const balNote=r.balOk===null?'':(r.balOk
+    ?`<div style="font-size:0.7rem;color:#00b894;font-weight:700;margin:-4px 0 8px;">✓ Opening + Credit − Debit = Closing balance (statement is complete)</div>`
+    :`<div style="font-size:0.7rem;color:#ff922b;font-weight:700;margin:-4px 0 8px;">⚠️ Opening + Credit − Debit does not equal Closing balance — some statement rows may be missing or unreadable.</div>`);
+
+  el.innerHTML=`
+    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;">📄 ${bsEsc(r.fileName)} · ${bsLongDate(r.from)} – ${bsLongDate(r.to)} · ${r.rows.length} rows</div>
+    <div style="font-size:0.78rem;font-weight:800;margin-bottom:4px;">Bank Statement Summary</div>
+    ${r.opening!=null?rr('🏁 Opening Balance',bsMoney(r.opening)):''}
+    ${rr('📥 Total Credit (Inflow)','+'+fmt(r.totalCredit),'#00b894')}
+    ${rr('📤 Total Debit (Outflow)','-'+fmt(r.totalDebit),'#ff6b6b')}
+    ${rr('↔️ Net Cash Flow',(net>=0?'+':'-')+fmt(net),net>=0?'#00b894':'#ff6b6b')}
+    ${r.closing!=null?rr('🏦 Closing Balance',bsMoney(r.closing),'#1565c0'):''}
+    ${balNote}
+    <div style="font-size:0.78rem;font-weight:800;margin:12px 0 2px;">Bank vs Money Manager (same period)</div>
+    <div style="display:grid;grid-template-columns:1fr 1.05fr 1.05fr 1.05fr;gap:4px;padding:6px 0;border-bottom:2px solid var(--border);font-size:0.66rem;font-weight:800;color:var(--muted);text-transform:uppercase;"><span></span><span style="text-align:right;">Bank</span><span style="text-align:right;">App</span><span style="text-align:right;">Diff</span></div>
+    ${cmp('Inflow',r.totalCredit,appIn)}
+    ${cmp('Outflow',r.totalDebit,appOut)}
+    ${cmp('Net',net,appIn-appOut)}
+    ${verdict}
+    <div style="font-size:0.74rem;font-weight:700;margin-bottom:6px;">🔗 ${r.matched} of ${r.entries.length} bank entries matched with app entries (same amount, within ±3 days)</div>
+    <details style="margin-bottom:8px;" ${r.bankOnly.length?'open':''}>
+      <summary style="font-size:0.78rem;font-weight:800;cursor:pointer;padding:6px 0;">🔴 In bank, not in app (${r.bankOnly.length})${r.bankOnly.length?` · Out ₹${fmtR(sum(r.bankOnly,'expense'))} · In ₹${fmtR(sum(r.bankOnly,'income'))}`:''}</summary>
+      ${list(r.bankOnly,'Nothing missing — every bank entry is recorded in the app. 🎉')}
+    </details>
+    <details style="margin-bottom:8px;">
+      <summary style="font-size:0.78rem;font-weight:800;cursor:pointer;padding:6px 0;">🟡 In app, not in bank (${r.appOnly.length})${r.appOnly.length?` · Out ₹${fmtR(sum(r.appOnly,'expense'))} · In ₹${fmtR(sum(r.appOnly,'income'))}`:''}</summary>
+      ${list(r.appOnly,'Every app entry is found in the bank statement.')}
+      <div style="font-size:0.68rem;color:var(--muted);margin-top:6px;line-height:1.4;">Cash payments, other bank accounts, wallets or wrongly-entered amounts show up here.</div>
+    </details>
+    <button type="button" onclick="bsClear()" style="width:100%;padding:9px;background:var(--surface);border:2px solid var(--border);border-radius:10px;color:var(--muted);font-weight:700;font-size:0.78rem;cursor:pointer;font-family:var(--font);">Clear result</button>`;
+}
+function bsClear(){document.getElementById('bankCheckResult').innerHTML='';}
+function bsError(msg){
+  document.getElementById('bankCheckResult').innerHTML=`<div style="padding:10px 12px;border-radius:12px;background:rgba(255,107,107,0.12);border:1.5px solid #ff6b6b;font-size:0.76rem;line-height:1.5;">❌ ${bsEsc(msg)}</div>`;
+}
+// --- password-protected workbooks (Excel 2010+ "Agile" encryption, AES + SHA, decrypted on-device with WebCrypto) ---
+function bsCfbOpen(buf){
+  const u8=new Uint8Array(buf);
+  const sig=[0xD0,0xCF,0x11,0xE0,0xA1,0xB1,0x1A,0xE1];
+  if(u8.length<512||sig.some((b,i)=>u8[i]!==b))return null;
+  const dv=new DataView(buf), END=0xFFFFFFFA;
+  const ss=1<<dv.getUint16(30,true), mss=1<<dv.getUint16(32,true);
+  const dirStart=dv.getUint32(48,true), cutoff=dv.getUint32(56,true), mfStart=dv.getUint32(60,true);
+  const difStart=dv.getUint32(68,true), nDif=dv.getUint32(72,true);
+  const off=sec=>(sec+1)*ss;
+  const fatSecs=[];
+  for(let i=0;i<109;i++){const v=dv.getUint32(76+i*4,true);if(v<END)fatSecs.push(v);}
+  let ds=difStart;
+  for(let n=0;n<nDif&&ds<END&&off(ds)+ss<=u8.length;n++){
+    const o=off(ds);
+    for(let i=0;i<ss/4-1;i++){const v=dv.getUint32(o+i*4,true);if(v<END)fatSecs.push(v);}
+    ds=dv.getUint32(o+ss-4,true);
+  }
+  const fat=[];
+  fatSecs.forEach(sec=>{const o=off(sec);if(o+ss>u8.length)return;for(let i=0;i<ss/4;i++)fat.push(dv.getUint32(o+i*4,true));});
+  const readChain=start=>{
+    const secs=[];let c=start;
+    while(c<END&&secs.length<=fat.length&&off(c)<u8.length){secs.push(c);c=fat[c];}
+    const out=new Uint8Array(secs.length*ss);
+    secs.forEach((sec,i)=>out.set(u8.subarray(off(sec),off(sec)+ss),i*ss));
+    return out;
+  };
+  const dir=readChain(dirStart), ddv=new DataView(dir.buffer), ents=[];
+  for(let i=0;i+128<=dir.length;i+=128){
+    const type=dir[i+66]; if(!type)continue;
+    const nl=Math.max(0,ddv.getUint16(i+64,true)-2);
+    let name='';for(let k=0;k<nl;k+=2)name+=String.fromCharCode(ddv.getUint16(i+k,true));
+    ents.push({name,type,start:ddv.getUint32(i+116,true),size:ddv.getUint32(i+120,true)+ddv.getUint32(i+124,true)*4294967296});
+  }
+  const root=ents.find(e=>e.type===5);
+  let mini=null,mfat=null;
+  const get=name=>{
+    const e=ents.find(x=>x.type===2&&x.name===name); if(!e)return null;
+    if(e.size<cutoff){
+      if(!root)return null;
+      if(!mini){mini=readChain(root.start);const mf=readChain(mfStart);mfat=new DataView(mf.buffer);}
+      const out=new Uint8Array(Math.ceil(e.size/mss)*mss);
+      let c=e.start,n=0;
+      while(c<END&&n*mss<out.length&&(c+1)*4<=mfat.byteLength){out.set(mini.subarray(c*mss,c*mss+mss),n*mss);n++;c=mfat.getUint32(c*4,true);}
+      return out.subarray(0,e.size);
+    }
+    return readChain(e.start).subarray(0,e.size);
+  };
+  return {get};
+}
+function bsErr(code,msg){const e=new Error(msg);e.code=code;return e;}
+function bsConcat(){let n=0;for(const a of arguments)n+=a.length;const o=new Uint8Array(n);let p=0;for(const a of arguments){o.set(a,p);p+=a.length;}return o;}
+function bsU32(n){const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n,true);return b;}
+function bsB64(x){const b=atob(x||''),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a;}
+// AES-CBC decrypt WITHOUT padding (WebCrypto insists on PKCS#7, so a valid padding block is appended and then dropped)
+async function bsAesDec(keyBytes,iv,data){
+  const key=await crypto.subtle.importKey('raw',keyBytes,{name:'AES-CBC'},false,['encrypt','decrypt']);
+  const pad=new Uint8Array(await crypto.subtle.encrypt({name:'AES-CBC',iv:data.slice(data.length-16)},key,new Uint8Array(0)));
+  return new Uint8Array(await crypto.subtle.decrypt({name:'AES-CBC',iv},key,bsConcat(data,pad)));
+}
+async function bsDecryptAgile(info,pkg,password,onProg){
+  if(!(window.crypto&&crypto.subtle))throw bsErr('nocrypto','This browser cannot unlock protected files here. Please remove the password in Excel and upload again.');
+  const idv=new DataView(info.buffer,info.byteOffset,info.byteLength);
+  if(!(idv.getUint16(0,true)===4&&idv.getUint16(2,true)===4))
+    throw bsErr('unsupported','This file uses an older Excel encryption type that is not supported. Please re-save it in Excel 2010 or newer (or remove the password) and try again.');
+  const doc=new DOMParser().parseFromString(new TextDecoder().decode(info.subarray(8)).replace(/^\uFEFF/,''),'application/xml');
+  const kd=doc.getElementsByTagNameNS('*','keyData')[0], ek=doc.getElementsByTagNameNS('*','encryptedKey')[0];
+  const HN={SHA1:'SHA-1',SHA256:'SHA-256',SHA384:'SHA-384',SHA512:'SHA-512'};
+  if(!kd||!ek)throw bsErr('unsupported','Could not read this file\'s encryption details.');
+  const kdHash=HN[(kd.getAttribute('hashAlgorithm')||'').toUpperCase()], ekHash=HN[(ek.getAttribute('hashAlgorithm')||'').toUpperCase()];
+  if(!kdHash||!ekHash||(kd.getAttribute('cipherAlgorithm')||'AES')!=='AES')throw bsErr('unsupported','This file uses an encryption method that is not supported. Please remove the password in Excel and try again.');
+  const dg=async(h,d)=>new Uint8Array(await crypto.subtle.digest(h,d));
+  const ekSalt=bsB64(ek.getAttribute('saltValue')), kdSalt=bsB64(kd.getAttribute('saltValue'));
+  const spin=+ek.getAttribute('spinCount')||100000, keyBits=+ek.getAttribute('keyBits')||256, saltSize=+ek.getAttribute('saltSize')||16, hashSize=+ek.getAttribute('hashSize')||64;
+  const pw=new Uint8Array(password.length*2);
+  for(let i=0;i<password.length;i++){const c=password.charCodeAt(i);pw[i*2]=c&255;pw[i*2+1]=c>>8;}
+  let h=await dg(ekHash,bsConcat(ekSalt,pw));
+  for(let i=0;i<spin;i++){
+    h=await dg(ekHash,bsConcat(bsU32(i),h));
+    if(i%4000===0){if(onProg)onProg(i/spin);await new Promise(r=>setTimeout(r,0));}
+  }
+  const derive=async bk=>{
+    const k=await dg(ekHash,bsConcat(h,Uint8Array.from(bk))), n=keyBits/8;
+    if(k.length>=n)return k.slice(0,n);
+    const o=new Uint8Array(n).fill(0x36);o.set(k);return o;
+  };
+  const iv=ekSalt.slice(0,16);
+  const vIn=await bsAesDec(await derive([0xfe,0xa7,0xd2,0x76,0x3b,0x4b,0x9e,0x79]),iv,bsB64(ek.getAttribute('encryptedVerifierHashInput')));
+  const vVal=await bsAesDec(await derive([0xd7,0xaa,0x0f,0x6d,0x30,0x61,0x34,0x4e]),iv,bsB64(ek.getAttribute('encryptedVerifierHashValue')));
+  const calc=await dg(ekHash,vIn.slice(0,saltSize));
+  for(let i=0;i<hashSize;i++)if(calc[i]!==vVal[i])throw bsErr('badpw','Wrong password.');
+  const secret=(await bsAesDec(await derive([0x14,0x6e,0x0b,0xe7,0xab,0xac,0xd0,0xd6]),iv,bsB64(ek.getAttribute('encryptedKeyValue')))).slice(0,(+kd.getAttribute('keyBits')||keyBits)/8);
+  const pdv=new DataView(pkg.buffer,pkg.byteOffset,pkg.byteLength);
+  const total=pdv.getUint32(4,true)*4294967296+pdv.getUint32(0,true);
+  const enc=pkg.subarray(8), out=new Uint8Array(enc.length);
+  for(let off=0,i=0;off<enc.length;off+=4096,i++){
+    let seg=enc.subarray(off,Math.min(off+4096,enc.length));
+    seg=seg.subarray(0,seg.length-(seg.length%16)); if(!seg.length)break;
+    const sIv=(await dg(kdHash,bsConcat(kdSalt,bsU32(i)))).slice(0,16);
+    out.set(await bsAesDec(secret,sIv,seg),off);
+  }
+  return out.slice(0,total).buffer;
+}
+
+// Excel 2007-style "Standard" encryption (AES-ECB, SHA-1). WebCrypto has no ECB, so it is derived from CBC (IV 0) + XOR with the previous cipher block.
+async function bsAesEcbDec(keyBytes,data){
+  const d=await bsAesDec(keyBytes,new Uint8Array(16),data);
+  for(let i=d.length-1;i>=0;i--)d[i]^=(i>=16?data[i-16]:0);
+  return d;
+}
+async function bsDecryptStandard(info,pkg,password,onProg){
+  const dv=new DataView(info.buffer,info.byteOffset,info.byteLength);
+  const hsz=dv.getUint32(8,true), algId=dv.getUint32(20,true), algHash=dv.getUint32(24,true), keyBits=dv.getUint32(28,true);
+  if(!(algId>=0x660E&&algId<=0x6610)||algHash!==0x8004)
+    throw bsErr('unsupported','This file uses an older encryption method that is not supported. Please re-save it in Excel 2010 or newer (or remove the password) and try again.');
+  let o=12+hsz;
+  const saltSize=dv.getUint32(o,true), salt=info.slice(o+4,o+4+saltSize); o+=4+saltSize;
+  const encVer=info.slice(o,o+16), encVerHash=info.slice(o+20,o+20+32);
+  const dg=async d=>new Uint8Array(await crypto.subtle.digest('SHA-1',d));
+  const pw=new Uint8Array(password.length*2);
+  for(let i=0;i<password.length;i++){const c=password.charCodeAt(i);pw[i*2]=c&255;pw[i*2+1]=c>>8;}
+  let h=await dg(bsConcat(salt,pw));
+  for(let i=0;i<50000;i++){
+    h=await dg(bsConcat(bsU32(i),h));
+    if(i%4000===0){if(onProg)onProg(i/50000);await new Promise(r=>setTimeout(r,0));}
+  }
+  const hf=await dg(bsConcat(h,bsU32(0)));
+  const b1=new Uint8Array(64).fill(0x36), b2=new Uint8Array(64).fill(0x5C);
+  for(let i=0;i<hf.length;i++){b1[i]^=hf[i];b2[i]^=hf[i];}
+  const key=bsConcat(await dg(b1),await dg(b2)).slice(0,keyBits/8);
+  const ver=await bsAesEcbDec(key,encVer), verHash=await bsAesEcbDec(key,encVerHash), calc=await dg(ver);
+  for(let i=0;i<20;i++)if(calc[i]!==verHash[i])throw bsErr('badpw','Wrong password.');
+  const pdv=new DataView(pkg.buffer,pkg.byteOffset,pkg.byteLength);
+  const total=pdv.getUint32(4,true)*4294967296+pdv.getUint32(0,true);
+  let enc=pkg.subarray(8); enc=enc.subarray(0,enc.length-(enc.length%16));
+  return (await bsAesEcbDec(key,enc)).slice(0,total).buffer;
+}
+async function bsDecrypt(info,pkg,pw,onProg){
+  if(!(window.crypto&&crypto.subtle))throw bsErr('nocrypto','This browser cannot unlock protected files here. Please remove the password in Excel and upload again.');
+  const dv=new DataView(info.buffer,info.byteOffset,info.byteLength), maj=dv.getUint16(0,true), min=dv.getUint16(2,true);
+  if(maj===4&&min===4)return bsDecryptAgile(info,pkg,pw,onProg);
+  if(min===2&&(maj===2||maj===3||maj===4))return bsDecryptStandard(info,pkg,pw,onProg);
+  throw bsErr('unsupported','This file uses an encryption type that is not supported. Please remove the password in Excel and try again.');
+}
+
+// --- file handling ---
+let bsPending=null;
+function bsAskPassword(buf,name,msg){
+  bsPending={buf,name};
+  document.getElementById('bankCheckResult').innerHTML=`
+    <div style="padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);">
+      <div style="font-size:0.8rem;font-weight:800;margin-bottom:4px;">🔒 This file is password-protected</div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;">${bsEsc(name)} — enter the password to open it. It is used on this device only and never stored.</div>
+      ${msg?`<div style="font-size:0.74rem;color:#ff6b6b;font-weight:700;margin-bottom:8px;">❌ ${bsEsc(msg)}</div>`:''}
+      <input type="password" id="bsPw" autocomplete="off" placeholder="Excel file password" onkeydown="if(event.key==='Enter')bsUnlock()" style="width:100%;padding:11px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-bottom:8px;box-sizing:border-box;"/>
+      <button type="button" onclick="bsUnlock()" style="width:100%;padding:11px;background:linear-gradient(135deg,#1565c0,#00b894);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:0.86rem;cursor:pointer;font-family:var(--font);">🔓 Unlock &amp; Read</button>
+    </div>`;
+  setTimeout(()=>{const i=document.getElementById('bsPw');if(i)i.focus();},50);
+}
+function bsUnlock(){
+  const i=document.getElementById('bsPw'); if(!i||!bsPending)return;
+  if(!i.value){bsAskPassword(bsPending.buf,bsPending.name,'Please enter the password.');return;}
+  const pw=i.value, b=bsPending.buf, n=bsPending.name;
+  bsProcess(b,n,pw);
+}
+async function bsProcess(buf,name,pw){
+  const el=document.getElementById('bankCheckResult'), orig=buf;
+  try{
+    const cfb=bsCfbOpen(buf), info=cfb&&cfb.get('EncryptionInfo'), pkg=cfb&&cfb.get('EncryptedPackage');
+    if(info&&pkg){
+      if(pw==null){bsAskPassword(orig,name);return;}
+      el.innerHTML=`<div style="font-size:0.78rem;color:var(--muted);text-align:center;padding:12px;">🔓 Unlocking… <span id="bsProg">0%</span><br><span style="font-size:0.68rem;">This can take a few seconds on a phone.</span></div>`;
+      await new Promise(r=>setTimeout(r,30));
+      buf=await bsDecrypt(info,pkg,pw,f=>{const s=document.getElementById('bsProg');if(s)s.textContent=Math.round(f*100)+'%';});
+    }
+    el.innerHTML=`<div style="font-size:0.78rem;color:var(--muted);text-align:center;padding:10px;">⏳ Reading ${bsEsc(name)}…</div>`;
+    const sheets=await bsReadSheets(buf,name);
+    bsPending=null;
+    bsRender(bsAnalyse(bsParseStatement(sheets),name));
+  }catch(e){
+    if(e&&e.code==='badpw'){bsAskPassword(orig,name,'Wrong password. Please try again.');return;}
+    bsPending=null;
+    bsError(e&&e.message?e.message:'Could not read this file.');
+  }
+}
+async function bsHandleFile(inp){
+  const f=inp.files&&inp.files[0]; if(!f)return;
+  const el=document.getElementById('bankCheckResult');
+  el.innerHTML=`<div style="font-size:0.78rem;color:var(--muted);text-align:center;padding:10px;">⏳ Reading ${bsEsc(f.name)}…</div>`;
+  try{
+    const buf=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=()=>rej(new Error('Could not read the selected file.'));rd.readAsArrayBuffer(f);});
+    await bsProcess(buf,f.name);
+  }catch(e){bsError(e&&e.message?e.message:'Could not read this file.');}
+  inp.value='';
 }
 
 // ═══════════════════════════════════════
