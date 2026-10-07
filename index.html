@@ -743,6 +743,35 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .inv-actions .inv-cancel{flex:1;background:none;border:1.5px solid var(--border);color:var(--muted);}
 .inv-actions .inv-save{flex:2;border:none;color:#fff;}
 .inv-actions .inv-save:disabled{opacity:.6;}
+/* Trading Desk tab */
+.tr-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px;}
+.tr-title{font-size:.8rem;font-weight:800;margin:0 0 8px;}
+.tr-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.tr-box{background:var(--bg);border-radius:10px;padding:8px 10px;}
+.tr-box .l{font-size:.64rem;font-weight:700;color:var(--muted);}
+.tr-box .v{font-size:.92rem;font-weight:800;margin-top:1px;}
+.tr-quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.tr-quick button{padding:10px 4px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:.76rem;cursor:pointer;color:var(--text);font-family:var(--font);}
+.tr-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.tr-dow{font-size:.58rem;font-weight:700;color:var(--muted);text-align:center;padding-bottom:2px;}
+.tr-cell{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.6rem;line-height:1.15;border:1.5px solid transparent;cursor:pointer;background:var(--bg);color:var(--muted);padding:0;font-family:var(--font);}
+.tr-cell b{font-size:.56rem;font-weight:800;}
+.tr-cell.empty{background:none;cursor:default;}
+.tr-cell.today{border-color:#1565c0;}
+.tr-cell.sel{box-shadow:0 0 0 2px #1565c0;}
+.tr-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.tr-nav button{width:32px;height:32px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);cursor:pointer;font-weight:800;color:var(--text);}
+.tr-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:.78rem;}
+.tr-row:last-child{border-bottom:none;}
+.tr-mini{border:none;background:none;cursor:pointer;font-size:.9rem;padding:2px 4px;}
+.inv-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.inv-chip{padding:6px 10px;border-radius:16px;border:1.5px solid var(--border);background:var(--bg);font-size:.72rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);text-align:left;max-width:100%;}
+.inv-chip.on{background:#ffebee;border-color:#ef9a9a;color:#c62828;}
+.inv-chip.ok{background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;}
+.tr-quick{grid-template-columns:repeat(4,1fr)!important;}
+.tr-quick button{font-size:.7rem!important;line-height:1.35;padding:8px 2px!important;}
+
+
 
 </style>
 </head>
@@ -824,6 +853,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
   <div class="topbar">
     <span class="app-logo">💰 Money Manager Pro</span>
     <div class="topbar-right">
+      <button class="icon-btn" id="nwCornerBtn" onclick="showTab('networth')" title="Net Worth">💎</button>
       <button class="icon-btn" id="darkToggleBtn" onclick="toggleDark()" title="Toggle Dark Mode">🌙</button>
       <div class="user-chip" id="userChip">
         <div class="user-avatar" id="topAvatar"></div><span id="userChipName" style="font-size:0.78rem;font-weight:700;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -1325,8 +1355,15 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       </div>
     </div>
 
+    <!-- TRADING TAB -->
+    <div id="tab-trading" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:2px 0 10px;"><h2 style="font-size:1.05rem;margin:0;">💹 Trading Desk</h2><span style="font-size:.68rem;color:var(--muted);">Based on your closed trades</span></div>
+      <div id="invTradingBody"></div>
+    </div>
+
     <!-- NET WORTH TAB -->
     <div id="tab-networth" style="display:none;">
+      <button type="button" onclick="showTab('home')" style="background:none;border:none;color:var(--muted);font-weight:700;font-size:.8rem;cursor:pointer;padding:2px 0 8px;font-family:var(--font);">← Back to Home</button>
 
       <!-- SMS Auto-Read Panel -->
       <div class="sms-panel" id="smsPanel">
@@ -1661,7 +1698,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <button class="nav-item" id="nav-report" onclick="showTab('report')"><span class="nav-icon">📊</span><span class="nav-label">Reports</span></button>
     <button class="nav-item" id="nav-register" onclick="showTab('register')"><span class="nav-icon">📋</span><span class="nav-label">Register</span></button>
     <button class="nav-item" id="nav-loans" onclick="showTab('loans')"><span class="nav-icon">🏦</span><span class="nav-label">Loans</span></button>
-    <button class="nav-item" id="nav-networth" onclick="showTab('networth')"><span class="nav-icon">💎</span><span class="nav-label">Worth</span></button>
+    <button class="nav-item" id="nav-trading" onclick="showTab('trading')"><span class="nav-icon">💹</span><span class="nav-label">Trading</span></button>
     <button class="nav-item" id="nav-investments" onclick="showTab('investments')"><span class="nav-icon">📈</span><span class="nav-label">Investments</span></button><button class="nav-item" id="nav-settings" onclick="showTab('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></button>
   </div>
 </div>
@@ -1849,7 +1886,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div class="inv-sep"></div>
       <div class="form-group"><label>Stop-loss price (optional)</label><input type="number" class="form-input" id="invPurchaseStopLoss" min="0" step="0.01" inputmode="decimal" oninput="calcInvestmentPurchase()"></div>
       <div class="form-group"><label>&nbsp;</label><div id="invPurchaseRisk" class="inv-risk"></div></div>
+      <div class="form-group"><label>Target price (optional)</label><input type="number" class="form-input" id="invPurchaseTarget" min="0" step="0.01" inputmode="decimal" oninput="calcInvestmentPurchase()"></div>
+      <div class="form-group"><label>Setup</label><select class="form-input" id="invPurchaseSetup"><option value="">— None —</option><option value="Breakout">Breakout</option><option value="Pullback">Pullback</option><option value="Reversal">Reversal</option><option value="Trend following">Trend following</option><option value="Gap">Gap</option><option value="News / event">News / event</option><option value="Expiry play">Expiry play</option><option value="Other">Other</option></select></div>
       <div class="form-group inv-full"><label>Why this trade? (plan / reason, optional)</label><textarea class="form-input" id="invPurchasePlan" rows="2" placeholder="Setup, target, exit rule…" style="resize:vertical;"></textarea></div>
+      <div class="form-group inv-full" id="invPurchaseChecklistWrap" style="display:none;"><label>Pre-trade checklist (tap each item once it is true)</label><div id="invPurchaseChecklist" class="inv-chips"></div></div>
     </div>
     <div class="inv-actions">
       <button type="button" class="inv-cancel" onclick="closeModal('investmentPurchaseModal')">Cancel</button>
@@ -1875,6 +1915,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div class="form-group"><label>Sell amount</label><input type="number" class="form-input" id="invSaleAmount" readonly></div>
       <div class="inv-sep"></div>
       <div class="form-group inv-full"><label>Did you follow your plan?</label><select class="form-input" id="invSaleFollowed"><option value="">— Not marked —</option><option value="yes">Yes, followed my plan</option><option value="no">No, broke my plan</option></select></div>
+      <div class="form-group inv-full"><label>Mistakes made (tap any that apply)</label><div id="invSaleMistakes" class="inv-chips"></div></div>
     </div>
     <div class="inv-actions">
       <button type="button" class="inv-cancel" onclick="closeModal('investmentSaleModal')">Cancel</button>
@@ -1883,6 +1924,43 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
   </div>
 </div>
 
+<!-- POSITION SIZE CALCULATOR (popup) -->
+<div class="modal-overlay" id="invPosModal">
+  <div class="modal-sheet inv-form">
+    <div class="inv-head" style="--acc:#6a1b9a;"><h3>🧮 Position Size Calculator</h3></div>
+    <div class="inv-grid">
+      <div class="form-group"><label>Trading capital (₹)</label><input type="number" class="form-input" id="invPsCapital" min="0" step="any" inputmode="decimal" oninput="invPosCalc()"></div>
+      <div class="form-group"><label>Risk per trade (%)</label><input type="number" class="form-input" id="invPsRiskPct" min="0" step="any" inputmode="decimal" oninput="invPosCalc()"></div>
+      <div class="form-group"><label>Entry price</label><input type="number" class="form-input" id="invPsEntry" min="0" step="0.01" inputmode="decimal" oninput="invPosCalc()"></div>
+      <div class="form-group"><label>Stop-loss price</label><input type="number" class="form-input" id="invPsStop" min="0" step="0.01" inputmode="decimal" oninput="invPosCalc()"></div>
+      <div class="form-group"><label>Target (optional)</label><input type="number" class="form-input" id="invPsTarget" min="0" step="0.01" inputmode="decimal" oninput="invPosCalc()"></div>
+      <div class="form-group"><label>Lot size (F &amp; O, optional)</label><input type="number" class="form-input" id="invPsLot" min="0" step="1" inputmode="numeric" oninput="invPosCalc()"></div>
+      <div class="inv-sep"></div>
+      <div class="inv-full" id="invPsOut" style="font-size:.8rem;line-height:1.6;min-height:60px;"></div>
+    </div>
+    <div class="inv-actions">
+      <button type="button" class="inv-cancel" onclick="closeModal('invPosModal')">Close</button>
+      <button type="button" class="inv-save" style="background:#6a1b9a;" onclick="invPosUse()">Use in new purchase</button>
+    </div>
+  </div>
+</div>
+<!-- TRADING FUNDS LEDGER (popup) -->
+<div class="modal-overlay" id="invFundModal">
+  <div class="modal-sheet inv-form">
+    <div class="inv-head" style="--acc:#00796b;"><h3 id="invFundTitle">💰 Add Funds</h3></div>
+    <input type="hidden" id="invFundId">
+    <div class="inv-grid">
+      <div class="form-group"><label>Type</label><select class="form-input" id="invFundType"><option value="deposit">Deposit (money added)</option><option value="withdraw">Withdrawal (money taken out)</option></select></div>
+      <div class="form-group"><label>Date</label><input type="date" class="form-input" id="invFundDate"></div>
+      <div class="form-group inv-full"><label>Amount (₹)</label><input type="number" class="form-input" id="invFundAmount" min="0" step="0.01" inputmode="decimal"></div>
+      <div class="form-group inv-full"><label>Note (optional)</label><input type="text" class="form-input" id="invFundNote" placeholder="e.g. Added to Zerodha"></div>
+    </div>
+    <div class="inv-actions">
+      <button type="button" class="inv-cancel" onclick="closeModal('invFundModal')">Cancel</button>
+      <button type="button" class="inv-save" style="background:#00796b;" onclick="saveInvFund()">Save</button>
+    </div>
+  </div>
+</div>
 <!-- TRADING PERFORMANCE (popup) -->
 <div class="modal-overlay" id="invPerformanceModal">
   <div class="modal-sheet">
@@ -1899,6 +1977,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <div class="form-group"><label>Max risk per trade (% of capital)</label><input type="number" class="form-input" id="invRuleRiskPct" min="0" step="any" inputmode="decimal"></div>
     <div class="form-group"><label>Daily loss limit (₹)</label><input type="number" class="form-input" id="invRuleDailyLoss" min="0" step="any" inputmode="decimal"></div>
     <div class="form-group"><label>Pause after this many losing trades in a row</label><input type="number" class="form-input" id="invRuleMaxLosses" min="0" step="1" inputmode="numeric"></div>
+    <div class="form-group"><label>Pre-trade checklist (one rule per line, max 8)</label><textarea class="form-input" id="invRuleChecklist" rows="4" placeholder="Trend is with me&#10;Stop-loss placed&#10;Risk within limit" style="resize:vertical;height:auto;"></textarea></div>
     <button type="button" onclick="saveInvRules()" style="width:100%;padding:12px;background:#1565c0;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer">Save Rules</button>
     <button type="button" class="modal-close" onclick="closeModal('invRulesModal')">Cancel</button>
   </div>
@@ -5186,38 +5265,251 @@ function invSyncSaleTypeFromLot(){
   invTradeTypeChanged('Sale');
 }
 
+// ── Tags, checklist, position size ──
+const INV_MISTAKES=['FOMO','Revenge trade','Overtrading','No stop-loss','Moved stop-loss','Averaged down','Oversized','Exited early','Exited late','Ignored plan'];
+function invSetMistakeChips(sel){
+  const el=document.getElementById('invSaleMistakes');if(!el)return;
+  sel=Array.isArray(sel)?sel:[];
+  el.innerHTML=INV_MISTAKES.map(t=>'<button type="button" class="inv-chip'+(sel.indexOf(t)>=0?' on':'')+'" data-tag="'+invEsc(t)+'" onclick="this.classList.toggle(\'on\')">'+invEsc(t)+'</button>').join('');
+}
+function invGetMistakeChips(){
+  return Array.prototype.slice.call(document.querySelectorAll('#invSaleMistakes .inv-chip.on')).map(b=>b.getAttribute('data-tag'));
+}
+function invRenderChecklist(show){
+  const wrap=document.getElementById('invPurchaseChecklistWrap'),box=document.getElementById('invPurchaseChecklist');
+  if(!wrap||!box)return;
+  const items=(invRules&&invRules.checklist)||[];
+  if(!show||!items.length){wrap.style.display='none';box.innerHTML='';return;}
+  wrap.style.display='';
+  box.innerHTML=items.map(t=>'<button type="button" class="inv-chip" onclick="this.classList.toggle(\'ok\')">'+invEsc(t)+'</button>').join('');
+}
+let invPsLast=null;
+function openInvPosSize(){
+  const dep=invFunds.filter(f=>f.type==='deposit').reduce((s,f)=>s+Number(f.amount||0),0),wd=invFunds.filter(f=>f.type==='withdraw').reduce((s,f)=>s+Number(f.amount||0),0);
+  const cap=invRules.capital>0?invRules.capital:(dep-wd>0?dep-wd:'');
+  document.getElementById('invPsCapital').value=cap;
+  document.getElementById('invPsRiskPct').value=invRules.maxRiskPct>0?invRules.maxRiskPct:1;
+  ['invPsEntry','invPsStop','invPsTarget','invPsLot'].forEach(id=>{document.getElementById(id).value='';});
+  invPosCalc();openModal('invPosModal');
+}
+function invPosCalc(){
+  const g=id=>Number(document.getElementById(id).value||0);
+  const cap=g('invPsCapital'),rp=g('invPsRiskPct'),en=g('invPsEntry'),sl=g('invPsStop'),tg=g('invPsTarget'),lot=g('invPsLot');
+  const out=document.getElementById('invPsOut');invPsLast=null;
+  if(!(cap>0&&rp>0&&en>0&&sl>0)){out.innerHTML='<span style="color:var(--muted);">Enter capital, risk %, entry and stop-loss to see your size.</span>';return;}
+  if(sl>=en){out.innerHTML='<span style="color:#ff6b6b;">⚠️ Stop-loss must be below the entry price.</span>';return;}
+  const riskAmt=cap*rp/100,per=en-sl;let qty=Math.floor(riskAmt/per),lots=null;
+  if(lot>0){lots=Math.floor(qty/lot);qty=lots*lot;}
+  if(qty<=0){out.innerHTML='<span style="color:#ff6b6b;">⚠️ Even the smallest size breaks your limit: risk per unit '+fmt(per)+' vs allowed '+fmt(riskAmt)+'.</span>';return;}
+  const value=qty*en,risk=qty*per;
+  let t='<b>Quantity: '+qty+'</b>'+(lots!==null?' ('+lots+' lot'+(lots>1?'s':'')+')':'')
+    +'<br>Position value: '+fmt(value)+' ('+(value/cap*100).toFixed(0)+'% of capital)'
+    +'<br>Money at risk: <b style="color:#ff6b6b">'+fmt(risk)+'</b> ('+(risk/cap*100).toFixed(2)+'% of capital)';
+  if(tg>en)t+='<br>Reward if target hit: <b style="color:#00b894">'+fmt((tg-en)*qty)+'</b> · R:R 1:'+((tg-en)/per).toFixed(1);
+  else if(tg>0)t+='<br><span style="color:#ff6b6b;">⚠️ Target must be above the entry price.</span>';
+  if(value>cap)t+='<br><span style="color:#e65100;">Position value is above your capital, so this needs margin or leverage.</span>';
+  out.innerHTML=t;
+  invPsLast={qty:qty,en:en,sl:sl,tg:tg>en?tg:0};
+}
+function invPosUse(){
+  if(!invPsLast){showToast('Calculate a size first.');return;}
+  const L=invPsLast;
+  closeModal('invPosModal');
+  openInvestmentPurchaseModal();
+  const m=document.getElementById('investmentPurchaseModal');
+  if(!m||!m.classList.contains('open'))return;
+  document.getElementById('invPurchaseQty').value=L.qty;
+  document.getElementById('invPurchaseRate').value=L.en;
+  document.getElementById('invPurchaseStopLoss').value=L.sl;
+  document.getElementById('invPurchaseTarget').value=L.tg||'';
+  calcInvestmentPurchase();
+}
+
+// ── Trading Desk: funds ledger, equity curve, P&L calendar ──
+let invFunds=[],invCalMonth='',invCalSel='';
+async function loadInvFunds(){
+  try{
+    if(!db||!currentUser){invFunds=[];return;}
+    const r=await dbGet('settings','inv_funds_'+currentUser.username);
+    const v=r&&r.value?JSON.parse(await decryptData(r.value)):[];
+    invFunds=Array.isArray(v)?v:[];
+  }catch(e){invFunds=[];}
+}
+async function saveInvFunds(){
+  if(!currentUser)return;
+  await dbPut('settings',{key:'inv_funds_'+currentUser.username,value:await encryptData(JSON.stringify(invFunds))});
+}
+async function invPersistRules(){
+  if(!currentUser)return;
+  await dbPut('settings',{key:'inv_rules_'+currentUser.username,value:JSON.stringify(invRules)});
+}
+function invNormRules(v){
+  v=v||{};
+  return {capital:Math.max(0,Number(v.capital)||0),
+    maxRiskPct:(v.maxRiskPct===undefined||v.maxRiskPct===null)?2:Math.max(0,Number(v.maxRiskPct)||0),
+    dailyLossLimit:Math.max(0,Number(v.dailyLossLimit)||0),
+    maxLosses:(v.maxLosses===undefined||v.maxLosses===null)?3:Math.max(0,Math.floor(Number(v.maxLosses))||0),
+    checklist:Array.isArray(v.checklist)?v.checklist.map(x=>String(x).trim().slice(0,80)).filter(Boolean).slice(0,8):[]};
+}
+function openInvFund(id){
+  const f=id?invFunds.find(x=>x.id===id):null;
+  document.getElementById('invFundId').value=f?f.id:'';
+  document.getElementById('invFundType').value=f?f.type:'deposit';
+  document.getElementById('invFundDate').value=f?f.date:invTodayISO();
+  document.getElementById('invFundAmount').value=f?f.amount:'';
+  document.getElementById('invFundNote').value=f?(f.note||''):'';
+  document.getElementById('invFundTitle').textContent=f?'✏️ Edit Funds Entry':'💰 Add Funds';
+  openModal('invFundModal');
+}
+async function saveInvFund(){
+  const id=Number(document.getElementById('invFundId').value||0),type=document.getElementById('invFundType').value;
+  const date=document.getElementById('invFundDate').value,amount=Number(document.getElementById('invFundAmount').value||0);
+  const note=document.getElementById('invFundNote').value.trim();
+  if(!date){showToast('Select a date!');return;}
+  if(!(amount>0)){showToast('Enter a valid amount!');return;}
+  const snapshot=invFunds.slice();
+  if(id){const f=invFunds.find(x=>x.id===id);if(f){f.type=type;f.date=date;f.amount=amount;f.note=note;}}
+  else invFunds.push({id:Date.now(),type:type,date:date,amount:amount,note:note});
+  try{await saveInvFunds();closeModal('invFundModal');showToast(id?'Entry updated!':'Funds entry saved!');renderTrading();}
+  catch(e){invFunds=snapshot;showToast('⚠️ Could not save. Try again.');}
+}
+async function deleteInvFund(id){
+  if(!confirm('Delete this funds entry?'))return;
+  const snapshot=invFunds.slice();
+  invFunds=invFunds.filter(x=>x.id!==id);
+  try{await saveInvFunds();renderTrading();}catch(e){invFunds=snapshot;showToast('⚠️ Could not delete.');}
+}
+// Annualised return from dated cash flows [{t:ms,v:number}] (deposits negative, withdrawals and final value positive)
+function invXirr(flows){
+  if(flows.length<2)return null;
+  const neg=flows.some(f=>f.v<0),pos=flows.some(f=>f.v>0);
+  if(!neg||!pos)return null;
+  const t0=Math.min(...flows.map(f=>f.t)),span=(Math.max(...flows.map(f=>f.t))-t0)/86400000;
+  if(span<30)return null;
+  const fn=r=>flows.reduce((s,f)=>s+f.v/Math.pow(1+r,(f.t-t0)/31557600000),0);
+  let lo=-0.9999,hi=1000,flo=fn(lo),fhi=fn(hi);
+  if(!isFinite(flo)||!isFinite(fhi)||flo*fhi>0)return null;
+  for(let i=0;i<120;i++){const mid=(lo+hi)/2,fm=fn(mid);if(flo*fm<=0){hi=mid;fhi=fm;}else{lo=mid;flo=fm;}}
+  return (lo+hi)/2*100;
+}
+function invCompact(v){
+  const a=Math.abs(v);let t;
+  if(a>=100000)t=(a/100000).toFixed(a>=1000000?0:1).replace(/\.0$/,'')+'L';
+  else if(a>=1000)t=(a/1000).toFixed(a>=10000?0:1).replace(/\.0$/,'')+'k';
+  else t=String(Math.round(a));
+  return (v<0?'-':'+')+t;
+}
+function invEquityCurveSvg(trades){
+  const W=320,H=120,pad=8,cum=[0];
+  trades.forEach(t=>cum.push(cum[cum.length-1]+t.net));
+  const mn=Math.min(0,...cum),mx=Math.max(0,...cum),rng=(mx-mn)||1;
+  const X=i=>pad+(cum.length>1?i/(cum.length-1):0)*(W-2*pad),Y=v=>H-pad-(v-mn)/rng*(H-2*pad);
+  const pts=cum.map((v,i)=>X(i).toFixed(1)+','+Y(v).toFixed(1));
+  const last=cum[cum.length-1],col=last>=0?'#00b894':'#ff6b6b',zy=Y(0).toFixed(1);
+  const area='M'+X(0).toFixed(1)+','+zy+' L'+pts.join(' L')+' L'+X(cum.length-1).toFixed(1)+','+zy+' Z';
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="120" preserveAspectRatio="none" style="display:block;">'
+   +'<line x1="'+pad+'" y1="'+zy+'" x2="'+(W-pad)+'" y2="'+zy+'" stroke="var(--border)" stroke-width="1" stroke-dasharray="4 3"/>'
+   +'<path d="'+area+'" fill="'+col+'" opacity=".12"/>'
+   +'<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>';
+}
+function invMaxDrawdown(trades){
+  let cum=0,peak=0,dd=0;
+  trades.forEach(t=>{cum+=t.net;if(cum>peak)peak=cum;if(peak-cum>dd)dd=peak-cum;});
+  return dd;
+}
+function invCalShift(d){
+  const p=invCalMonth.split('-').map(Number),dt=new Date(p[0],p[1]-1+d,1);
+  invCalMonth=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');invCalSel='';renderTrading();
+}
+function invCalPick(date){invCalSel=invCalSel===date?'':date;renderTrading();}
+function renderTrading(){
+  const el=document.getElementById('invTradingBody');if(!el)return;
+  const all=invClosedTrades(),S=invPerfStats(all),today=invTodayISO();
+  if(!/^\d{4}-\d{2}$/.test(invCalMonth))invCalMonth=today.slice(0,7);
+  // quick actions
+  let h='<div class="tr-quick"><button type="button" onclick="openInvFund()">💰<br>Funds</button><button type="button" onclick="openInvPerformance()">📊<br>Stats</button><button type="button" onclick="openInvRules()">🎯<br>Rules</button><button type="button" onclick="openInvPosSize()">🧮<br>Size</button></div>';
+  // account card
+  const dep=invFunds.filter(f=>f.type==='deposit').reduce((s,f)=>s+Number(f.amount||0),0),wd=invFunds.filter(f=>f.type==='withdraw').reduce((s,f)=>s+Number(f.amount||0),0);
+  const cap=dep-wd,equity=cap+S.net;
+  let roi='—',xirr='—',roiCol='';
+  if(dep>0){const r=S.net/dep*100;roi=(r>=0?'+':'')+r.toFixed(2)+'%';roiCol=invSign(S.net);
+    const flows=invFunds.map(f=>({t:new Date(f.date+'T00:00:00').getTime(),v:f.type==='deposit'?-Number(f.amount):Number(f.amount)}));
+    flows.push({t:Date.now(),v:Math.max(equity,0)});
+    const x=invXirr(flows);if(x!==null)xirr=x>999?'>999%':((x>=0?'+':'')+x.toFixed(1)+'%');}
+  const bx=(l,v,c)=>'<div class="tr-box"><div class="l">'+l+'</div><div class="v"'+(c?' style="color:'+c+';"':'')+'>'+v+'</div></div>';
+  h+='<div class="tr-card"><div class="tr-title">Account</div><div class="tr-grid">'
+    +bx('Net capital added',invMoney(cap))+bx('Realised P&amp;L',invMoney(S.net),invSign(S.net))
+    +bx('Account value',invMoney(equity),invSign(equity-cap))+bx('Return on capital',roi+(xirr!=='—'?' · '+xirr+' p.a.':''),roiCol)
+    +'</div>'+(dep>0?'':'<div style="font-size:.72rem;color:var(--muted);margin-top:8px;">Add your first deposit to see your return on capital.</div>')+'</div>';
+  // equity curve
+  if(!all.length){
+    h+='<div class="tr-card"><div class="tr-title">Equity curve &amp; calendar</div><div style="text-align:center;color:var(--muted);font-size:.8rem;padding:10px 0;">Record a sale in Investments to start your equity curve and daily P&amp;L calendar.</div><button type="button" onclick="showTab(\'investments\')" style="width:100%;padding:10px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-weight:700;font-size:.8rem;cursor:pointer;color:var(--text);font-family:var(--font);">Go to Investments</button></div>';
+  }else{
+    const dd=invMaxDrawdown(all);
+    let ddTxt=dd>0?('Max drawdown <b style="color:#ff6b6b">'+fmt(dd)+'</b>'+(cap>0?' ('+(dd/cap*100).toFixed(1)+'% of capital)':'')):'No drawdown yet';
+    h+='<div class="tr-card"><div class="tr-title">Equity curve <span style="font-weight:600;color:var(--muted);">· cumulative net P&amp;L, '+all.length+' trades</span></div>'+invEquityCurveSvg(all)
+      +'<div style="display:flex;justify-content:space-between;font-size:.66rem;color:var(--muted);margin-top:4px;"><span>'+invEsc(all[0].date)+'</span><span>'+invEsc(all[all.length-1].date)+'</span></div>'
+      +'<div style="font-size:.76rem;margin-top:6px;">'+ddTxt+'</div></div>';
+    // calendar
+    const p=invCalMonth.split('-').map(Number),y=p[0],m=p[1]-1,dim=new Date(y,m+1,0).getDate(),first=new Date(y,m,1).getDay();
+    const days={};all.filter(t=>t.date.slice(0,7)===invCalMonth).forEach(t=>{const d=Number(t.date.slice(8,10));(days[d]=days[d]||{net:0,n:0}).net+=t.net;days[d].n++;});
+    const keys=Object.keys(days),mx=Math.max(1,...keys.map(k=>Math.abs(days[k].net)));
+    const mNet=keys.reduce((s,k)=>s+days[k].net,0),green=keys.filter(k=>days[k].net>0).length,red=keys.filter(k=>days[k].net<0).length;
+    const mn=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    let cells='';
+    ['S','M','T','W','T','F','S'].forEach(d=>{cells+='<div class="tr-dow">'+d+'</div>';});
+    for(let i=0;i<first;i++)cells+='<div class="tr-cell empty"></div>';
+    for(let d=1;d<=dim;d++){
+      const iso=invCalMonth+'-'+String(d).padStart(2,'0'),info=days[d];
+      let st='',inner='<span>'+d+'</span>';
+      if(info&&info.net!==0){const a=0.18+0.62*Math.abs(info.net)/mx,rgb=info.net>0?'0,184,148':'255,107,107';st='background:rgba('+rgb+','+a.toFixed(2)+');color:'+(a>0.5?'#fff':'var(--text)')+';';inner+='<b>'+invCompact(info.net)+'</b>';}
+      else if(info){inner+='<b>0</b>';}
+      cells+='<button type="button" class="tr-cell'+(iso===today?' today':'')+(iso===invCalSel?' sel':'')+'" style="'+st+'" onclick="invCalPick(\''+iso+'\')">'+inner+'</button>';
+    }
+    h+='<div class="tr-card"><div class="tr-nav"><button type="button" onclick="invCalShift(-1)" aria-label="Previous month">‹</button><div style="text-align:center;"><div style="font-size:.86rem;font-weight:800;">'+mn[m]+' '+y+'</div><div style="font-size:.7rem;color:var(--muted);">'+(keys.length?('Net <b style="color:'+invSign(mNet)+'">'+invMoney(mNet)+'</b> · '+green+' green / '+red+' red days'):'No closed trades this month')+'</div></div><button type="button" onclick="invCalShift(1)" aria-label="Next month">›</button></div><div class="tr-cal">'+cells+'</div>';
+    if(invCalSel&&invCalSel.slice(0,7)===invCalMonth){
+      const dl=all.filter(t=>t.date===invCalSel);
+      h+='<div style="margin-top:10px;"><div style="font-size:.74rem;font-weight:800;margin-bottom:2px;">'+invEsc(invCalSel)+'</div>'+(dl.length?dl.map(t=>'<div class="tr-row"><span><b>'+invEsc(t.stock)+'</b> <span style="color:var(--muted);font-size:.68rem;">'+invEsc(INV_TRADE_TYPES[t.type]||t.type)+(t.followed==='yes'?' · plan ✓':(t.followed==='no'?' · plan ✗':''))+'</span></span><b style="color:'+invSign(t.net)+'">'+invMoney(t.net)+'</b></div>').join(''):'<div style="font-size:.74rem;color:var(--muted);padding:6px 0;">No closed trades on this day.</div>')+'</div>';
+    }
+    h+='</div>';
+  }
+  // funds ledger
+  const rows=invFunds.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))||b.id-a.id);
+  h+='<details class="tr-card"><summary style="cursor:pointer;font-size:.8rem;font-weight:800;">Funds ledger <span style="font-weight:600;color:var(--muted);">· '+rows.length+' entr'+(rows.length===1?'y':'ies')+'</span></summary><div style="margin-top:8px;">'
+    +(rows.length?rows.map(f=>'<div class="tr-row"><span><b style="color:'+(f.type==='deposit'?'#00b894':'#ff6b6b')+'">'+(f.type==='deposit'?'+ ':'− ')+fmt(Number(f.amount))+'</b><br><span style="color:var(--muted);font-size:.68rem;">'+invEsc(f.date)+(f.note?' · '+invEsc(f.note):'')+'</span></span><span><button type="button" class="tr-mini" aria-label="Edit" onclick="openInvFund('+f.id+')">✏️</button><button type="button" class="tr-mini" aria-label="Delete" onclick="deleteInvFund('+f.id+')">🗑️</button></span></div>').join(''):'<div style="font-size:.76rem;color:var(--muted);padding:6px 0;">No funds entries yet.</div>')
+    +'</div></details>';
+  h+='<div style="font-size:.64rem;color:var(--muted);text-align:center;line-height:1.5;padding:2px 8px 10px;">For record-keeping and self-review only. Not investment advice.</div>';
+  el.innerHTML=h;
+}
+
 // ── Trading performance, risk & discipline ──
 let invRules={capital:0,maxRiskPct:2,dailyLossLimit:0,maxLosses:3};
 let invPerfPeriod='month';
 async function loadInvRules(){
   try{
     if(!db||!currentUser)return;
-    const r=await dbGet('settings','inv_rules_'+currentUser.username),v=r&&r.value?JSON.parse(r.value):{};
-    invRules={
-      capital:Math.max(0,Number(v.capital)||0),
-      maxRiskPct:(v.maxRiskPct===undefined||v.maxRiskPct===null)?2:Math.max(0,Number(v.maxRiskPct)||0),
-      dailyLossLimit:Math.max(0,Number(v.dailyLossLimit)||0),
-      maxLosses:(v.maxLosses===undefined||v.maxLosses===null)?3:Math.max(0,Math.floor(Number(v.maxLosses))||0)
-    };
-  }catch(e){invRules={capital:0,maxRiskPct:2,dailyLossLimit:0,maxLosses:3};}
+    const r=await dbGet('settings','inv_rules_'+currentUser.username);
+    invRules=invNormRules(r&&r.value?JSON.parse(r.value):null);
+  }catch(e){invRules=invNormRules(null);}
 }
 function openInvRules(){
   document.getElementById('invRuleCapital').value=invRules.capital||'';
   document.getElementById('invRuleRiskPct').value=invRules.maxRiskPct;
   document.getElementById('invRuleDailyLoss').value=invRules.dailyLossLimit||'';
   document.getElementById('invRuleMaxLosses').value=invRules.maxLosses;
+  document.getElementById('invRuleChecklist').value=(invRules.checklist||[]).join('\n');
   openModal('invRulesModal');
 }
 async function saveInvRules(){
   const g=id=>document.getElementById(id).value.trim(),n=id=>g(id)===''?0:Number(g(id));
-  const next={capital:n('invRuleCapital'),maxRiskPct:n('invRuleRiskPct'),dailyLossLimit:n('invRuleDailyLoss'),maxLosses:Math.floor(n('invRuleMaxLosses'))};
-  if(Object.values(next).some(v=>!Number.isFinite(v)||v<0)){showToast('⚠️ Enter valid, non-negative values.');return;}
-  if(next.maxRiskPct>100){showToast('⚠️ Risk per trade cannot be above 100%.');return;}
+  const nums={capital:n('invRuleCapital'),maxRiskPct:n('invRuleRiskPct'),dailyLossLimit:n('invRuleDailyLoss'),maxLosses:Math.floor(n('invRuleMaxLosses'))};
+  if(Object.values(nums).some(v=>!Number.isFinite(v)||v<0)){showToast('⚠️ Enter valid, non-negative values.');return;}
+  if(nums.maxRiskPct>100){showToast('⚠️ Risk per trade cannot be above 100%.');return;}
+  const next=invNormRules({...nums,checklist:document.getElementById('invRuleChecklist').value.split('\n')});
   const prev=invRules;invRules=next;
   try{
-    if(!currentUser)throw new Error('no user');
-    await dbPut('settings',{key:'inv_rules_'+currentUser.username,value:JSON.stringify(invRules)});
-    showToast('✅ Trading rules saved!');closeModal('invRulesModal');renderInvestments();
+    await invPersistRules();
+    showToast('✅ Trading rules saved!');closeModal('invRulesModal');renderInvestments();if(typeof renderTrading==='function')renderTrading();
   }catch(e){invRules=prev;showToast('⚠️ Could not save rules.');}
 }
 // One closed trade per sale entry. Net = sale - cost - sale charges - purchase charges for the quantity sold (same basis as the Investment Statement).
@@ -5230,7 +5522,8 @@ function invClosedTrades(){
       const q=Number(z.qty||0),r=Number(z.rate||0);
       if(!(q>0)||!z.date)return;
       const charges=Number(z.charges||0)+(bq>0?bc*Math.min(q/bq,1):0),gross=q*(r-br);
-      out.push({id:Number(z.id||0),date:z.date,stock:x.stock,type:z.tradeType||x.tradeType||'delivery',gross:gross,charges:charges,net:gross-charges,followed:z.followed||''});
+      const sl=Number(x.stopLoss||0),risk=(sl>0&&br>sl)?q*(br-sl):0;
+      out.push({id:Number(z.id||0),date:z.date,stock:x.stock,type:z.tradeType||x.tradeType||'delivery',gross:gross,charges:charges,net:gross-charges,followed:z.followed||'',setup:x.setup||'',mistakes:Array.isArray(z.mistakes)?z.mistakes:[],risk:risk,r:risk>0?(gross-charges)/risk:null});
     });
   });
   return out.sort((a,b)=>String(a.date).localeCompare(String(b.date))||a.id-b.id);
@@ -5280,11 +5573,13 @@ function invDisciplineAlert(){
 }
 function invUpdateRiskReadout(){
   const el=document.getElementById('invPurchaseRisk');if(!el)return;
-  const q=Number(document.getElementById('invPurchaseQty').value||0),r=Number(document.getElementById('invPurchaseRate').value||0),sl=Number(document.getElementById('invPurchaseStopLoss').value||0);
+  const q=Number(document.getElementById('invPurchaseQty').value||0),r=Number(document.getElementById('invPurchaseRate').value||0),sl=Number(document.getElementById('invPurchaseStopLoss').value||0),tg=Number(document.getElementById('invPurchaseTarget')?.value||0);
   if(!(q>0&&r>0&&sl>0)){el.textContent='';return;}
   if(sl>=r){el.style.color='#ff6b6b';el.textContent='⚠️ Stop-loss should be below the buy rate.';return;}
-  const risk=(r-sl)*q;let t='Capital at risk: '+fmt(risk),bad=false;
-  if(invRules.capital>0){const p=risk/invRules.capital*100;t+=' ('+p.toFixed(2)+'% of capital)';if(invRules.maxRiskPct>0&&p>invRules.maxRiskPct){t+=' ⚠️ above your '+invRules.maxRiskPct+'% limit';bad=true;}}
+  const risk=(r-sl)*q;let t='Risk '+fmt(risk),bad=false;
+  if(invRules.capital>0){const p=risk/invRules.capital*100;t+=' ('+p.toFixed(2)+'%)';if(invRules.maxRiskPct>0&&p>invRules.maxRiskPct){t+=' ⚠️ over your '+invRules.maxRiskPct+'% limit';bad=true;}}
+  if(tg>r)t+=' · R:R 1:'+((tg-r)/(r-sl)).toFixed(1);
+  else if(tg>0){t+=' · ⚠️ target must be above buy rate';bad=true;}
   el.style.color=bad?'#ff6b6b':'#2e7d32';el.textContent=t;
 }
 function openInvPerformance(){renderInvPerformance();openModal('invPerformanceModal');}
@@ -5297,6 +5592,7 @@ function renderInvPerformance(){
   const rulesBtn=`<button type="button" onclick="openInvRules()" style="width:100%;padding:10px;margin-top:10px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-weight:700;font-size:.8rem;cursor:pointer;color:var(--text);font-family:var(--font);">🎯 Trading Rules (capital, risk &amp; loss limits)</button>`;
   if(!S.n){el.innerHTML=`<div style="${card}">${head}<div style="text-align:center;color:var(--muted);font-size:.8rem;padding:8px 0;">No closed trades in this period yet. Record a Sale to see your win rate, expectancy and charges.</div>${rulesBtn}</div>`;return;}
   const pfTxt=S.pf===Infinity?'∞':S.pf.toFixed(2);
+  const rt=tr.filter(t=>t.r!==null&&t.r!==undefined),avgR=rt.length?rt.reduce((a,t)=>a+t.r,0)/rt.length:null;
   let html=`<div style="${card}">${head}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       ${box('Net P&amp;L (after charges)',invMoney(S.net),invSign(S.net))}
@@ -5307,6 +5603,8 @@ function renderInvPerformance(){
       ${box('Avg loss',fmt(S.avgLoss),'#ff6b6b')}
       ${box('Expectancy / trade',invMoney(S.expectancy),invSign(S.expectancy))}
       ${box('Best / Worst',invMoney(S.best)+' / '+invMoney(S.worst))}
+      ${box('Avg R-multiple',avgR===null?'—':((avgR>=0?'+':'')+avgR.toFixed(2)+'R ('+rt.length+')'),avgR===null?'':invSign(avgR))}
+      ${box('Trades with stop-loss',Math.round(rt.length/S.n*100)+'%',rt.length/S.n>=0.8?'#00b894':'#ff6b6b')}
     </div>`;
   // Insights
   const tips=[];
@@ -5317,10 +5615,23 @@ function renderInvPerformance(){
   const fy=tr.filter(t=>t.followed==='yes'),fn=tr.filter(t=>t.followed==='no');
   if(fy.length&&fn.length){const a=invPerfStats(fy),b=invPerfStats(fn);tips.push('Plan followed: '+fy.length+' trades, avg '+invMoney(a.expectancy)+'. Plan broken: '+fn.length+' trades, avg '+invMoney(b.expectancy)+'.');}
   else if(fn.length)tips.push('You marked '+fn.length+' trade(s) as breaking your plan, worth '+invMoney(invPerfStats(fn).net)+' net.');
+  {const mk0={};tr.forEach(t=>(t.mistakes||[]).forEach(k=>{(mk0[k]=mk0[k]||[]).push(t);}));const worst=Object.keys(mk0).map(k=>({k:k,p:invPerfStats(mk0[k])})).sort((a,b)=>a.p.net-b.p.net)[0];if(worst&&worst.p.net<0)tips.push('Your costliest mistake: '+worst.k+' ('+invMoney(worst.p.net)+' across '+worst.p.n+' trade'+(worst.p.n>1?'s':'')+').');}
   if(tips.length)html+=`<div style="margin-top:10px;padding:10px;background:#fff8e1;border-radius:10px;font-size:.76rem;color:#5d4037;line-height:1.5;">${tips.map(t=>'💡 '+invEsc(t)).join('<br>')}</div>`;
   // By trade type
   const rows=Object.keys(INV_TRADE_TYPES).map(k=>{const l=tr.filter(t=>t.type===k);if(!l.length)return '';const p=invPerfStats(l);return `<tr><td style="padding:6px 4px;font-weight:700;">${INV_TRADE_TYPES[k]}</td><td style="padding:6px 4px;text-align:right;">${p.n}</td><td style="padding:6px 4px;text-align:right;">${p.winRate.toFixed(0)}%</td><td style="padding:6px 4px;text-align:right;color:var(--muted);">${fmtR(p.charges)}</td><td style="padding:6px 4px;text-align:right;font-weight:800;color:${invSign(p.net)};">${invMoney(p.net)}</td></tr>`;}).join('');
   html+=`<div style="margin-top:12px;overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:.78rem;"><thead><tr style="color:var(--muted);font-size:.68rem;"><th style="text-align:left;padding:4px;">Type</th><th style="text-align:right;padding:4px;">Trades</th><th style="text-align:right;padding:4px;">Win%</th><th style="text-align:right;padding:4px;">Charges</th><th style="text-align:right;padding:4px;">Net P&amp;L</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  // By setup
+  const su={};tr.forEach(t=>{if(!t.setup)return;(su[t.setup]=su[t.setup]||[]).push(t);});
+  const suKeys=Object.keys(su).sort((a,b)=>invPerfStats(su[b]).net-invPerfStats(su[a]).net);
+  if(suKeys.length){
+    html+=`<div style="margin-top:12px;"><div style="font-size:.7rem;font-weight:700;color:var(--muted);margin-bottom:4px;">By setup</div>${suKeys.map(k=>{const p=invPerfStats(su[k]);return `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.78rem;"><span><b>${invEsc(k)}</b> <span style="color:var(--muted);font-size:.68rem;">${p.n} trade${p.n>1?'s':''} · ${p.winRate.toFixed(0)}% win</span></span><b style="color:${invSign(p.net)}">${invMoney(p.net)}</b></div>`;}).join('')}</div>`;
+  }
+  // Mistakes and what they cost
+  const mk={};tr.forEach(t=>(t.mistakes||[]).forEach(k=>{(mk[k]=mk[k]||[]).push(t);}));
+  const mkKeys=Object.keys(mk).sort((a,b)=>invPerfStats(mk[a]).net-invPerfStats(mk[b]).net);
+  if(mkKeys.length){
+    html+=`<div style="margin-top:12px;"><div style="font-size:.7rem;font-weight:700;color:var(--muted);margin-bottom:4px;">Mistakes and the net result of trades tagged with them</div>${mkKeys.map(k=>{const p=invPerfStats(mk[k]);return `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.78rem;"><span><b>${invEsc(k)}</b> <span style="color:var(--muted);font-size:.68rem;">${p.n} trade${p.n>1?'s':''}</span></span><b style="color:${invSign(p.net)}">${invMoney(p.net)}</b></div>`;}).join('')}</div>`;
+  }
   // Monthly net P&L, last 6 months (always from all trades)
   const mm={};all.forEach(t=>{const k=String(t.date).slice(0,7);mm[k]=(mm[k]||0)+t.net;});
   const keys=Object.keys(mm).sort().slice(-6),mx=Math.max(1,...keys.map(k=>Math.abs(mm[k])));
@@ -5346,7 +5657,7 @@ function invPerfFYEnd(){const d=new Date(),y=d.getFullYear(),fy=d.getMonth()>=3?
 
 function invTodayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 // ── Purchase entry ──
-function clearInvestmentPurchaseForm(){['invPurchaseId','invPurchaseDate','invPurchaseStock','invPurchaseQty','invPurchaseRate','invPurchaseAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const at=document.getElementById('invPurchaseAssetType');if(at)at.value='equity';const pd=document.getElementById('invPurchaseDate');if(pd)pd.value=invTodayISO();setInvestmentCategoryOptions();invResetChargeFields('Purchase');{const a=document.getElementById('invPurchaseStopLoss'),b=document.getElementById('invPurchasePlan'),c=document.getElementById('invPurchaseRisk');if(a)a.value='';if(b)b.value='';if(c)c.textContent='';}document.getElementById('investmentPurchaseModalTitle').textContent='📈 Investment Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Save Purchase';}
+function clearInvestmentPurchaseForm(){['invPurchaseId','invPurchaseDate','invPurchaseStock','invPurchaseQty','invPurchaseRate','invPurchaseAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const at=document.getElementById('invPurchaseAssetType');if(at)at.value='equity';const pd=document.getElementById('invPurchaseDate');if(pd)pd.value=invTodayISO();setInvestmentCategoryOptions();invResetChargeFields('Purchase');{const a=document.getElementById('invPurchaseStopLoss'),b=document.getElementById('invPurchasePlan'),c=document.getElementById('invPurchaseRisk');if(a)a.value='';if(b)b.value='';if(c)c.textContent='';}{const t=document.getElementById('invPurchaseTarget'),u=document.getElementById('invPurchaseSetup');if(t)t.value='';if(u)u.value='';}invRenderChecklist(true);document.getElementById('investmentPurchaseModalTitle').textContent='📈 Investment Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Save Purchase';}
 function openInvestmentPurchaseModal(){const w=invDisciplineMessages();if(w.length&&!confirm('⚠️ '+w.join('\n')+'\n\nYour own rules say to pause. Continue anyway?'))return;clearInvestmentPurchaseForm();openModal('investmentPurchaseModal');}
 function calcInvestmentPurchase(){const q=Number(document.getElementById('invPurchaseQty').value||0),r=Number(document.getElementById('invPurchaseRate').value||0);invRefreshCharges('Purchase');const chg=Number(document.getElementById('invPurchaseCharges').value||0);document.getElementById('invPurchaseAmount').value=q&&r>=0?(q*r+chg).toFixed(2):'';invUpdateRiskReadout();}
 async function saveInvestmentPurchase(){
@@ -5358,6 +5669,12 @@ async function saveInvestmentPurchase(){
   if(!(charges>=0)){showToast('Charges cannot be negative!');return;}
   const stopLoss=Number(document.getElementById('invPurchaseStopLoss').value||0),plan=document.getElementById('invPurchasePlan').value.trim();
   if(stopLoss<0||(stopLoss>0&&stopLoss>=buyRate)){showToast('Stop-loss must be below the buy rate!');return;}
+  const target=Number(document.getElementById('invPurchaseTarget').value||0),setup=document.getElementById('invPurchaseSetup').value;
+  if(target<0||(target>0&&target<=buyRate)){showToast('Target must be above the buy rate!');return;}
+  if(!id){
+    const wrapOn=document.getElementById('invPurchaseChecklistWrap').style.display!=='none',open=document.querySelectorAll('#invPurchaseChecklist .inv-chip:not(.ok)').length;
+    if(wrapOn&&open>0&&!confirm('⚠️ '+open+' item(s) on your pre-trade checklist are not ticked.\n\nSave anyway?'))return;
+  }
   if(stopLoss>0&&invRules.capital>0&&invRules.maxRiskPct>0){
     const riskPct=(buyRate-stopLoss)*qty/invRules.capital*100;
     if(riskPct>invRules.maxRiskPct&&!confirm('⚠️ This trade risks '+riskPct.toFixed(2)+'% of your capital, above your '+invRules.maxRiskPct+'% limit.\n\nSave it anyway?'))return;
@@ -5366,7 +5683,7 @@ async function saveInvestmentPurchase(){
   if(id&&!old){showToast('⚠️ Investment record not found!');return;}
   if(old&&qty<Number(old.qtySold||0)-1e-9){showToast('Quantity cannot be less than already sold quantity ('+old.qtySold+')!');return;}
   btn.disabled=true;
-  const item=old?{...old,date,category,assetType,stock,qty,buyRate,tradeType,instrument,charges,stopLoss,plan}:{id:Date.now(),date,category,assetType,stock,qty,buyRate,tradeType,instrument,charges,stopLoss,plan,sales:[],createdAt:Date.now()};
+  const item=old?{...old,date,category,assetType,stock,qty,buyRate,tradeType,instrument,charges,stopLoss,target,setup,plan}:{id:Date.now(),date,category,assetType,stock,qty,buyRate,tradeType,instrument,charges,stopLoss,target,setup,plan,sales:[],createdAt:Date.now()};
   recalcInvestment(item);
   const prev=investments.slice();
   if(old)investments[investments.findIndex(x=>x.id===id)]=item;else investments.unshift(item);
@@ -5381,7 +5698,7 @@ async function saveInvestmentPurchase(){
     showToast('⚠️ Could not save purchase: '+(e&&e.name?e.name:'error'));
   }finally{btn.disabled=false;}
 }
-function editInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;clearInvestmentPurchaseForm();document.getElementById('invPurchaseId').value=x.id;document.getElementById('invPurchaseDate').value=x.date;document.getElementById('invPurchaseCategory').value=x.category||INVESTMENT_CATS[0]?.name||'';const at=document.getElementById('invPurchaseAssetType');if(at)at.value=x.assetType||'equity';document.getElementById('invPurchaseStock').value=x.stock;document.getElementById('invPurchaseQty').value=x.qty;document.getElementById('invPurchaseRate').value=x.buyRate;invLoadChargeFields('Purchase',x);document.getElementById('invPurchaseStopLoss').value=x.stopLoss||'';document.getElementById('invPurchasePlan').value=x.plan||'';calcInvestmentPurchase();document.getElementById('investmentPurchaseModalTitle').textContent='✏️ Edit Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Update Purchase';openModal('investmentPurchaseModal');}
+function editInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;clearInvestmentPurchaseForm();document.getElementById('invPurchaseId').value=x.id;document.getElementById('invPurchaseDate').value=x.date;document.getElementById('invPurchaseCategory').value=x.category||INVESTMENT_CATS[0]?.name||'';const at=document.getElementById('invPurchaseAssetType');if(at)at.value=x.assetType||'equity';document.getElementById('invPurchaseStock').value=x.stock;document.getElementById('invPurchaseQty').value=x.qty;document.getElementById('invPurchaseRate').value=x.buyRate;invLoadChargeFields('Purchase',x);document.getElementById('invPurchaseStopLoss').value=x.stopLoss||'';document.getElementById('invPurchasePlan').value=x.plan||'';document.getElementById('invPurchaseTarget').value=x.target||'';document.getElementById('invPurchaseSetup').value=x.setup||'';invRenderChecklist(false);calcInvestmentPurchase();document.getElementById('investmentPurchaseModalTitle').textContent='✏️ Edit Purchase';document.getElementById('investmentPurchaseSaveBtn').textContent='Update Purchase';openModal('investmentPurchaseModal');}
 async function deleteInvestment(id){const x=investments.find(i=>i.id===id);if(!x)return;const n=(x.sales||[]).length;if(!confirm('Delete purchase of '+x.stock+(n?' and its '+n+' sale entr'+(n>1?'ies':'y'):'')+'?'))return;const prev=investments.slice();investments=investments.filter(i=>i.id!==id);try{await saveInvestments();showToast('🗑️ Deleted!');}catch(e){investments=prev;showToast('⚠️ Could not delete.');}renderInvestments();}
 
 // ── Sale entry (separate from purchase) ──
@@ -5399,7 +5716,7 @@ function updateInvestmentSaleBalance(){
   invSyncSaleTypeFromLot();
 }
 function calcInvestmentSale(){const q=Number(document.getElementById('invSaleQty').value||0),r=Number(document.getElementById('invSaleRate').value||0);document.getElementById('invSaleAmount').value=q&&r>=0?(q*r).toFixed(2):'';invRefreshCharges('Sale');}
-function clearInvestmentSaleForm(){['invSaleId','invSaleDate','invSaleQty','invSaleRate','invSaleAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});document.getElementById('invSalePurchase').disabled=false;const sd=document.getElementById('invSaleDate');if(sd)sd.value=invTodayISO();invResetChargeFields('Sale');{const f=document.getElementById('invSaleFollowed');if(f)f.value='';}document.getElementById('investmentSaleModalTitle').textContent='📉 Investment Sale';document.getElementById('investmentSaleSaveBtn').textContent='Save Sale';}
+function clearInvestmentSaleForm(){['invSaleId','invSaleDate','invSaleQty','invSaleRate','invSaleAmount'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});document.getElementById('invSalePurchase').disabled=false;const sd=document.getElementById('invSaleDate');if(sd)sd.value=invTodayISO();invResetChargeFields('Sale');{const f=document.getElementById('invSaleFollowed');if(f)f.value='';}invSetMistakeChips([]);document.getElementById('investmentSaleModalTitle').textContent='📉 Investment Sale';document.getElementById('investmentSaleSaveBtn').textContent='Save Sale';}
 function openInvestmentSaleModal(purchaseId){
   if(!investments.some(p=>invBalanceQty(p)>1e-9)){showToast('Add a purchase first (or nothing left to sell).');return;}
   clearInvestmentSaleForm();fillInvestmentSaleLots(purchaseId);updateInvestmentSaleBalance();openModal('investmentSaleModal');
@@ -5414,10 +5731,10 @@ async function saveInvestmentSale(){
   const tradeType=document.getElementById('invSaleTradeType').value,instrument=document.getElementById('invSaleInstrument').value,charges=Number(document.getElementById('invSaleCharges').value||0);
   if(!(charges>=0)){showToast('Charges cannot be negative!');return;}
   if(qty>invBalanceQty(p,sid)+1e-9){showToast('Sell quantity exceeds available quantity!');return;}
-  const followed=document.getElementById('invSaleFollowed')?.value||'';
+  const followed=document.getElementById('invSaleFollowed')?.value||'',mistakes=invGetMistakeChips();
   btn.disabled=true;
   const prev=investments.map(x=>({...x,sales:(x.sales||[]).map(z=>({...z}))}));
-  if(sid){const z=p.sales.find(z=>z.id===sid);if(z){z.date=date;z.qty=qty;z.rate=rate;z.tradeType=tradeType;z.instrument=instrument;z.charges=charges;z.followed=followed;}}else p.sales.push({id:newInvSaleId(),date,qty,rate,tradeType,instrument,charges,followed});
+  if(sid){const z=p.sales.find(z=>z.id===sid);if(z){z.date=date;z.qty=qty;z.rate=rate;z.tradeType=tradeType;z.instrument=instrument;z.charges=charges;z.followed=followed;z.mistakes=mistakes;}}else p.sales.push({id:newInvSaleId(),date,qty,rate,tradeType,instrument,charges,followed,mistakes});
   recalcInvestment(p);
   try{
     await saveInvestments();
@@ -5435,7 +5752,7 @@ function editInvestmentSale(pid,sid){
   clearInvestmentSaleForm();fillInvestmentSaleLots(pid);
   document.getElementById('invSalePurchase').disabled=true;
   document.getElementById('invSaleId').value=z.id;document.getElementById('invSaleDate').value=z.date||'';document.getElementById('invSaleQty').value=z.qty;document.getElementById('invSaleRate').value=z.rate;
-  invLoadChargeFields('Sale',z);calcInvestmentSale();updateInvestmentSaleBalance();{const f=document.getElementById('invSaleFollowed');if(f)f.value=z.followed||'';}
+  invLoadChargeFields('Sale',z);calcInvestmentSale();updateInvestmentSaleBalance();{const f=document.getElementById('invSaleFollowed');if(f)f.value=z.followed||'';}invSetMistakeChips(Array.isArray(z.mistakes)?z.mistakes:[]);
   document.getElementById('investmentSaleModalTitle').textContent='✏️ Edit Sale';document.getElementById('investmentSaleSaveBtn').textContent='Update Sale';
   openModal('investmentSaleModal');
 }
@@ -5459,7 +5776,7 @@ async function saveInvestments(){
     tx.onabort=()=>reject(tx.error||new Error('Transaction aborted'));
   });
 }
-async function loadInvestments(){if(!db||!currentUser)return;const u=currentUser.username,all=await dbGetAll('investments');investments=(await Promise.all(all.filter(x=>x._user===u).map(async x=>{try{return x._enc?JSON.parse(await decryptData(x._enc)):x;}catch{return x;}}))).map(normalizeInvestment);await loadInvChargesMaster();await loadInvRules();}
+async function loadInvestments(){if(!db||!currentUser)return;const u=currentUser.username,all=await dbGetAll('investments');investments=(await Promise.all(all.filter(x=>x._user===u).map(async x=>{try{return x._enc?JSON.parse(await decryptData(x._enc)):x;}catch{return x;}}))).map(normalizeInvestment);await loadInvChargesMaster();await loadInvRules();await loadInvFunds();}
 
 // ── Averaging (average buy price after buying more) ──
 function avgHoldings(){
@@ -5767,7 +6084,7 @@ async function buildBackupObj(){
     username:currentUser.username,
     exported:new Date().toISOString(),
     transactions,budgets,goals,emis,recurringTxns,loans,
-    INCOME_CATS,EXPENSE_CATS,INVESTMENT_CATS,investments,invChargesMaster,
+    INCOME_CATS,EXPENSE_CATS,INVESTMENT_CATS,investments,invChargesMaster,invFunds,invRules,
     reminders:remindersData,
     netWorth:netWorthData,
     register:registerData,
@@ -6290,6 +6607,8 @@ async function applyBackupData(data){
   await saveRegister();
   await dbPut('settings',{key:'daily_limit_'+currentUser.username,value:String(dailyLimit)});
   if(data.invChargesMaster){invChargesMaster=invMergeMaster(data.invChargesMaster);await saveInvChargesMaster();}
+  invFunds=Array.isArray(data.invFunds)?data.invFunds:[];await saveInvFunds();
+  if(data.invRules&&typeof data.invRules==='object'){invRules=invNormRules(data.invRules);await invPersistRules();}
 
   // Remove all existing notes for this user, then restore every date-wise note from the backup.
   const allSettings=await dbGetAll('settings');
@@ -6349,6 +6668,7 @@ async function clearAllData(){
   reminders=[];netWorthItems=[];regSheets=[];
   await saveData();
   try{await saveInvestments();}catch(e){console.error('Investment clear error',e);showToast('⚠️ Could not clear investment data.');}
+  try{invFunds=[];await saveInvFunds();invRules=invNormRules(null);await invPersistRules();}catch(e){console.error('Trading data clear error',e);}
   await dbPut('settings',{key:'reminders_'+currentUser.username,  value:'[]'});
   await dbPut('settings',{key:'networth_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'register_'+currentUser.username,    value:'[]'});
@@ -6386,7 +6706,7 @@ async function clearAllData(){
 // ═══════════════════════════════════════
 function showTab(tab,pushHistory=true){
   if(pushHistory) history.pushState({tab:tab},'');
-  ['home','report','goals','budget','loans','reminders','networth','register','investments','settings'].forEach(t=>{
+  ['home','report','goals','budget','loans','reminders','networth','register','investments','trading','settings'].forEach(t=>{
     const tabEl=document.getElementById('tab-'+t);
     const navEl=document.getElementById('nav-'+t);
     if(tabEl) tabEl.style.display=t===tab?'block':'none';
@@ -6401,6 +6721,7 @@ function showTab(tab,pushHistory=true){
   if(tab==='reminders'){renderReminders();}
   if(tab==='register'){renderRegister(); if(typeof renderRegFeatureMode==='function') renderRegFeatureMode();}
   if(tab==='networth'){renderNetWorth();}
+  if(tab==='trading'){renderTrading();}
   // Show/hide premium strip
   const strip=document.getElementById('premiumStrip');
   if(strip) strip.style.display=(!currentUser||isPremium())?'none':'flex';
@@ -7267,7 +7588,8 @@ window.addEventListener('popstate',e=>{
   }
   // If on a non-home tab, go back to home
   const activeNav=document.querySelector('.nav-item.active');
-  if(activeNav&&activeNav.id!=='nav-home'){
+  const nwTab=document.getElementById('tab-networth');
+  if((activeNav&&activeNav.id!=='nav-home')||(nwTab&&nwTab.style.display==='block')){
     showTab('home',false);
     return;
   }
