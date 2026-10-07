@@ -366,6 +366,9 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .modal-sheet{background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px;padding-bottom:calc(24px + var(--safe-bottom));width:100%;max-width:500px;max-height:85vh;overflow-y:auto;}
 .modal-sheet h3{font-size:1rem;font-weight:700;margin-bottom:14px;}
 .modal-close{width:100%;padding:12px;background:var(--text);border:none;border-radius:12px;color:var(--surface);font-weight:700;font-size:0.9rem;cursor:pointer;margin-top:12px;font-family:var(--font);}
+.modal-back-bar{position:sticky;top:0;z-index:6;background:var(--surface);margin:-6px 0 8px;padding:0 0 2px;display:flex;align-items:center;}
+.modal-back{background:none;border:none;color:var(--muted);font-weight:800;font-size:.8rem;cursor:pointer;padding:6px 10px 6px 0;font-family:var(--font);display:inline-flex;align-items:center;gap:5px;}
+.modal-back span{font-size:1.05rem;line-height:1;}
 
 @keyframes slideUp{from{opacity:0;transform:translateY(40px);}to{opacity:1;transform:none;}}
 @keyframes popIn{from{opacity:0;transform:scale(0.9);}to{opacity:1;transform:none;}}
@@ -3086,10 +3089,12 @@ function addTransaction(){
   const note=document.getElementById('txnNote').value.trim();
   if(!amount||amount<=0){showToast('⚠️ Enter valid amount!');return;}
   if(!date){showToast('⚠️ Select a date!');return;}
+  if(currentType==='expense'&&!budgetConfirm(category,amount,date,null,0))return;
   transactions.unshift({id:Date.now(),type:currentType,amount,category,date,note,createdAt:Date.now()});
   saveData();renderAll();
   document.getElementById('txnAmount').value='';document.getElementById('txnNote').value='';
-  showToast(currentType==='income'?'💰 Income added!':'💸 Expense recorded!');
+  const bn=currentType==='expense'?budgetNotice(category,date):null;
+  showToast(bn||(currentType==='income'?'💰 Income added!':'💸 Expense recorded!'),bn?3600:1800);
   checkBudgetAlert();
 }
 // ═══════════════════════════════════════
@@ -3279,9 +3284,11 @@ function qaSave(){
   const p=_qaPending;
   if(!p.amount||p.amount<=0){showToast('⚠️ Enter valid amount!');return;}
   if(!p.date){showToast('⚠️ Select a date!');return;}
+  if(p.type==='expense'&&!budgetConfirm(p.category,p.amount,p.date,null,0))return;
   transactions.unshift({id:Date.now(),type:p.type,amount:p.amount,category:p.category,date:p.date,note:p.note,createdAt:Date.now()});
   saveData();renderAll();checkBudgetAlert();
-  showToast(p.type==='income'?'💰 Income added!':'💸 Expense recorded!');
+  const bn=p.type==='expense'?budgetNotice(p.category,p.date):null;
+  showToast(bn||(p.type==='income'?'💰 Income added!':'💸 Expense recorded!'),bn?3600:1800);
   document.getElementById('qaInput').value='';
   _qaPending=null;qaRenderCard();
 }
@@ -4056,6 +4063,7 @@ function applyRecurring(id){
   const r=recurringTxns.find(r=>r.id===id);
   if(!r)return;
   const today=new Date().toISOString().split('T')[0];
+  if(r.type==='expense'&&!budgetConfirm(r.category,r.amount,today,null,0))return;
   transactions.unshift({id:Date.now(),type:r.type,amount:r.amount,category:r.category,date:today,note:r.name+' (Recurring)',createdAt:Date.now()});
   r.lastAdded=today;saveData();renderAll();showToast(`✅ ${r.name} added!`);
 }
@@ -4123,6 +4131,7 @@ function payEmi(id){
   const emi=emis.find(e=>e.id===id);
   if(!emi)return;
   const today=new Date().toISOString().split('T')[0];
+  if(!budgetConfirm('Bills',emi.amount,today,null,0))return;
   transactions.unshift({id:Date.now(),type:'expense',amount:emi.amount,category:'Bills',date:today,note:emi.name+' EMI',createdAt:Date.now()});
   emi.paid=Math.min(emi.months,(emi.paid||0)+1);
   saveData();renderAll();showToast(`✅ EMI paid! (${emi.paid}/${emi.months})`);
@@ -4273,6 +4282,38 @@ function renderBudget(){
 function saveBudgets(){
   EXPENSE_CATS.forEach(cat=>{const v=parseFloat(document.getElementById('budget-'+cat.name)?.value)||0;budgets[cat.name]=v;});
   saveData();renderBudget();checkBudgetAlert();showToast('✅ Budgets saved!');
+}
+// ── Budget guard: warn before an expense pushes a category past its monthly budget ──
+function budgetSpentFor(category,date,excludeId){
+  const ym=String(date||'').slice(0,7);
+  return opTxns().filter(t=>t.type==='expense'&&t.category===category&&String(t.date||'').slice(0,7)===ym&&t.id!==excludeId).reduce((s,t)=>s+Number(t.amount||0),0);
+}
+// Returns true to go ahead and save. Asks first when this expense would take the category over its budget.
+// credit = amount this same entry already contributed to the same category/month (used when editing).
+function budgetConfirm(category,amount,date,excludeId,credit){
+  try{
+    const limit=Number(budgets[category]||0);
+    if(!(limit>0))return true;
+    credit=Number(credit||0);
+    const base=budgetSpentFor(category,date,excludeId),after=base+Number(amount||0);
+    if(!(after>limit)||!(Number(amount)>credit))return true;
+    const mon=new Date(date+'T00:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+    return confirm('⚠️ Budget alert — '+category+'\n\nMonthly budget: '+fmt(limit)+'\nSpent so far ('+mon+'): '+fmt(base)+'\nThis expense: '+fmt(amount)+'\nNew total: '+fmt(after)+' ('+fmt(after-limit)+' over budget)\n\nSave this expense anyway?');
+  }catch(e){console.error('Budget check error',e);return true;}
+}
+// Message shown after saving when the category is over budget or has reached 80%; null if nothing to say.
+function budgetNotice(category,date){
+  try{
+    const limit=Number(budgets[category]||0);
+    if(!(limit>0))return null;
+    const spent=budgetSpentFor(category,date),pct=Math.round(spent/limit*100);
+    if(spent>limit){
+      if(navigator.vibrate)try{navigator.vibrate([200,100,200]);}catch(e){}
+      return '⚠️ '+category+' budget exceeded by '+fmt(spent-limit);
+    }
+    if(pct>=80)return '⚡ '+category+' is at '+pct+'% of its '+fmt(limit)+' budget';
+    return null;
+  }catch(e){return null;}
 }
 function checkBudgetAlert(){
   const monthExpTxns=getMonthTxns();
@@ -6082,9 +6123,15 @@ function saveEdit(){
   if(!date){showToast('⚠️ Select a date!');return;}
   const idx=transactions.findIndex(t=>t.id===id);
   if(idx===-1){showToast('⚠️ Transaction not found!');return;}
+  if(editType==='expense'){
+    const o=transactions[idx];
+    const credit=(o.type==='expense'&&!isLoanPrincipalTxn(o)&&o.category===category&&String(o.date).slice(0,7)===String(date).slice(0,7))?Number(o.amount||0):0;
+    if(!budgetConfirm(category,amount,date,id,credit))return;
+  }
   transactions[idx]={...transactions[idx],type:editType,amount,category,date,note};
   saveData();closeModal('editModal');renderAll();checkBudgetAlert();
-  showToast('✅ Transaction updated!');
+  const bn=editType==='expense'?budgetNotice(category,date):null;
+  showToast(bn||'✅ Transaction updated!',bn?3600:1800);
 }
 
 // ═══════════════════════════════════════
@@ -7614,6 +7661,26 @@ document.addEventListener('keypress',e=>{
   if(e.key==='Enter'&&['loginUser','loginPass'].includes(document.activeElement.id))doLogin();
 });
 
+// ── Back arrow on every popup page ──
+// Pressing it does exactly what that popup's own Cancel / Close / Done button does.
+function initModalBackArrows(){
+  document.querySelectorAll('.modal-overlay').forEach(ov=>{
+    const id=ov.id,sheet=ov.querySelector('.modal-sheet');
+    if(!id||!sheet||id==='alarmPopupModal'||sheet.querySelector('.modal-back-bar'))return;
+    const bar=document.createElement('div');bar.className='modal-back-bar';
+    const btn=document.createElement('button');btn.type='button';btn.className='modal-back';btn.setAttribute('aria-label','Back');
+    btn.innerHTML='<span aria-hidden="true">←</span> Back';
+    btn.addEventListener('click',()=>{
+      const key="closeModal('"+id+"')";
+      const dismiss=Array.prototype.slice.call(sheet.querySelectorAll('button[onclick]')).find(b=>(b.getAttribute('onclick')||'').indexOf(key)>=0);
+      if(dismiss)dismiss.click();else closeModal(id);
+    });
+    bar.appendChild(btn);sheet.insertBefore(bar,sheet.firstChild);
+  });
+}
+// 13 popups (Edit, Loans, Net Worth, Register, Tax…) are defined after this script in the page, so wait until the whole page has loaded.
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initModalBackArrows);else initModalBackArrows();
+
 // ── BACK BUTTON HANDLER ──
 window.addEventListener('popstate',e=>{
   // If any modal is open, close it
@@ -7904,6 +7971,7 @@ async function markReminderPaid(id){
   showToast('✅ '+r.name+' marked as paid!');
   // Auto-add as expense transaction
   if(confirm('Add '+r.name+' ('+fmt(r.amount)+') as expense transaction?')){
+    if(!budgetConfirm(r.category,r.amount,new Date().toISOString().split('T')[0],null,0)){showToast('Expense not added to your records.');return;}
     transactions.push({id:Date.now(),type:'expense',amount:r.amount,category:r.category,date:new Date().toISOString().split('T')[0],note:r.name+' bill',emoji:r.emoji});
     await saveData();renderAll();
   }
