@@ -764,6 +764,12 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .tr-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:.78rem;}
 .tr-row:last-child{border-bottom:none;}
 .tr-mini{border:none;background:none;cursor:pointer;font-size:.9rem;padding:2px 4px;}
+.inv-seg{display:flex;align-items:center;gap:6px;margin:4px 0;}
+.inv-seg>b{font-size:.68rem;color:var(--muted);width:50px;flex:none;}
+.inv-radio{position:relative;flex:1;min-width:0;}
+.inv-radio input{position:absolute;opacity:0;width:0;height:0;margin:0;padding:0;}
+.inv-radio span{display:block;text-align:center;padding:7px 2px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text);}
+.inv-radio input:checked+span{background:#1565c0;border-color:#1565c0;color:#fff;}
 .inv-chips{display:flex;flex-wrap:wrap;gap:6px;}
 .inv-chip{padding:6px 10px;border-radius:16px;border:1.5px solid var(--border);background:var(--bg);font-size:.72rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);text-align:left;max-width:100%;}
 .inv-chip.on{background:#ffebee;border-color:#ef9a9a;color:#c62828;}
@@ -1445,6 +1451,19 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     </div>
     <div id="investmentSummary"></div>
     <div style="display:flex;gap:8px;margin:10px 0 14px;"><button type="button" onclick="openInvestmentEntriesModal()" style="flex:1;padding:11px 6px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📋 Edit Entries</button><button type="button" onclick="openInvPerformance()" style="flex:1;padding:11px 6px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📊 Trading Performance</button></div>
+    <div id="invStmtFilters" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 10px;margin-bottom:10px;">
+      <div class="inv-seg"><b>Segment</b>
+        <label class="inv-radio"><input type="radio" name="invSegF" value="all" checked onchange="setInvFilter('seg','all')"><span>All</span></label>
+        <label class="inv-radio"><input type="radio" name="invSegF" value="eq" onchange="setInvFilter('seg','eq')"><span>EQ</span></label>
+        <label class="inv-radio"><input type="radio" name="invSegF" value="fno" onchange="setInvFilter('seg','fno')"><span>F&amp;O</span></label>
+        <label class="inv-radio"><input type="radio" name="invSegF" value="other" onchange="setInvFilter('seg','other')"><span>Other</span></label>
+      </div>
+      <div class="inv-seg"><b>Status</b>
+        <label class="inv-radio"><input type="radio" name="invStatF" value="all" checked onchange="setInvFilter('status','all')"><span>All</span></label>
+        <label class="inv-radio"><input type="radio" name="invStatF" value="open" onchange="setInvFilter('status','open')"><span>Open</span></label>
+        <label class="inv-radio"><input type="radio" name="invStatF" value="closed" onchange="setInvFilter('status','closed')"><span>Closed</span></label>
+      </div>
+    </div>
     <div id="investmentReportInline"></div>
 
     <!-- TAX & CAPITAL GAINS CENTER -->
@@ -5905,7 +5924,18 @@ function investmentBritishDate(value){
 }
 // Rows for the Investment Statement between two dates (inclusive). A purchase appears if it was bought
 // in the range or has sale entries in the range; sale figures/profit cover only sales dated in the range.
-function investmentStatementRows(from,to){
+let invSegFilter='all',invStatusFilter='all',invPdfFiltered=false;
+// EQ = equity stocks (delivery or intraday); F&O = futures and options; Other = mutual funds, gold, crypto, etc.
+function invSegOf(x){return x.tradeType==='fno'?'fno':((x.assetType||'equity')==='equity'?'eq':'other');}
+function invFilterLabel(){
+  const sg={eq:'EQ',fno:'F&O',other:'Other'}[invSegFilter],st={open:'Open',closed:'Closed'}[invStatusFilter];
+  return [sg,st].filter(Boolean).join(' · ');
+}
+function setInvFilter(kind,val){
+  if(kind==='seg')invSegFilter=val;else invStatusFilter=val;
+  renderInvestmentDateWise('investmentReportInline');
+}
+function investmentStatementRows(from,to,useFilter){
   const inR=d=>!!d&&(!from||d>=from)&&(!to||d<=to);
   const out=[];
   investments.forEach(x=>{
@@ -5916,7 +5946,9 @@ function investmentStatementRows(from,to){
     const q=sales.reduce((t,z)=>t+Number(z.qty||0),0),amt=sales.reduce((t,z)=>t+Number(z.qty||0)*Number(z.rate||0),0);
     const soldDates=[...new Set(sales.map(z=>z.date).filter(Boolean))].sort();
     const sc=sales.reduce((t,z)=>t+Number(z.charges||0),0),bc=Number(x.charges||0),bq=Number(x.qty||0);
-    out.push({date:x.date,stock:x.stock,qty:x.qty,buyRate:x.buyRate,buyCharges:bc,buyAmount:x.buyAmount,bought:bought,qtySold:q,sellRate:q?amt/q:0,sellCharges:sc,soldAmount:amt,soldDates:soldDates,profit:amt-sc-q*Number(x.buyRate||0)-(bq>0?bc*Math.min(q/bq,1):0)});
+    const isOpen=Number(invBalanceQty(x).toFixed(4))>0,seg=invSegOf(x);
+    if(useFilter&&((invSegFilter!=='all'&&seg!==invSegFilter)||(invStatusFilter==='open'&&!isOpen)||(invStatusFilter==='closed'&&isOpen)))return;
+    out.push({seg:seg,open:isOpen,date:x.date,stock:x.stock,qty:x.qty,buyRate:x.buyRate,buyCharges:bc,buyAmount:x.buyAmount,bought:bought,qtySold:q,sellRate:q?amt/q:0,sellCharges:sc,soldAmount:amt,soldDates:soldDates,profit:amt-sc-q*Number(x.buyRate||0)-(bq>0?bc*Math.min(q/bq,1):0)});
   });
   return out.sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.stock).localeCompare(String(b.stock)));
 }
@@ -5941,7 +5973,8 @@ function renderInvestmentDateWise(targetId){
   const rc=document.getElementById(targetId);
   if(!rc)return;
   invReportDefaults();
-  const rows=investmentStatementRows(invFrom,invTo);
+  const useF=targetId==='investmentReportInline';
+  const rows=investmentStatementRows(invFrom,invTo,useF);
   const buyTotal=rows.filter(r=>r.bought).reduce((s,r)=>s+Number(r.buyAmount||0),0),sellTotal=rows.reduce((s,r)=>s+Number(r.soldAmount||0),0),totalProfit=rows.reduce((s,r)=>s+Number(r.profit||0),0);
   const buyChargesTotal=rows.filter(r=>r.bought).reduce((s,r)=>s+Number(r.buyCharges||0),0),sellChargesTotal=rows.reduce((s,r)=>s+Number(r.sellCharges||0),0);
   const cell='padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;';
@@ -5953,10 +5986,11 @@ function renderInvestmentDateWise(targetId){
       <span style="font-weight:700;color:var(--muted);font-size:0.8rem;">to</span>
       <input type="date" class="date-filter-input" id="${toId}" value="${invTo}"/>
       <button class="date-filter-btn" onclick="applyInvestmentFilter('${targetId}')">Go</button>
-    </div><div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;text-align:center;">Investment Statement: ${investmentBritishDate(invFrom)} to ${investmentBritishDate(invTo)} · change dates &amp; tap Go</div>
+    </div><div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;text-align:center;">Investment Statement: ${investmentBritishDate(invFrom)} to ${investmentBritishDate(invTo)} · change dates &amp; tap Go${useF&&invFilterLabel()?' · <b>'+invFilterLabel()+'</b>':''}</div>
     <div class="investment-report-table-wrap" style="overflow:auto;background:var(--surface);border-radius:12px;border:1px solid var(--border);max-height:64vh;-webkit-overflow-scrolling:touch;"><table style="width:max-content;min-width:0;border-collapse:collapse;font-size:.85rem;"><thead><tr style="background:#e3f2fd;color:#1a2e1a;"><th style="${cell}text-align:left;">Date</th><th style="${cell}text-align:left;">Scrip</th><th style="${cell}text-align:right;">Qty</th><th style="${cell}text-align:right;">Buy_Rate</th><th style="${cell}text-align:right;">Charges</th><th style="${cell}text-align:right;">Amount</th><th style="${cell}text-align:left;">Date sold</th><th style="${cell}text-align:right;">Sell qty</th><th style="${cell}text-align:right;">Sell rate</th><th style="${cell}text-align:right;">Charges</th><th style="${cell}text-align:right;">Sell Amt</th><th style="${cell}text-align:right;">Profit</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="${cell}${mu(r)}">${investmentBritishDate(r.date)}</td><td style="${cell}font-weight:700;">${invEsc(r.stock)}</td><td style="${cell}text-align:right;${mu(r)}">${r.qty}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyRate)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyCharges||0)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyAmount)}</td><td style="${cell}">${(r.soldDates&&r.soldDates.length)?r.soldDates.map(d=>investmentBritishDate(d)).join(', '):''}</td><td style="${cell}text-align:right;">${r.qtySold||0}</td><td style="${cell}text-align:right;">${r.sellRate?fmtR(r.sellRate):''}</td><td style="${cell}text-align:right;">${fmtR(r.sellCharges||0)}</td><td style="${cell}text-align:right;">${fmtR(r.soldAmount||0)}</td><td style="${cell}text-align:right;font-weight:800;">${r.profit<0?'-':''}${fmtR(Math.abs(r.profit||0))}</td></tr>`).join('')||'<tr><td colspan="12" style="padding:24px;text-align:center;color:var(--muted)">No investment entries in this date range.</td></tr>'}</tbody><tfoot><tr style="font-weight:800;background:var(--bg);"><td colspan="4" style="padding:9px 10px;text-align:right;">Total</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyChargesTotal)}</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyTotal)}</td><td colspan="3"></td><td style="padding:9px 10px;text-align:right;">${fmtR(sellChargesTotal)}</td><td style="padding:9px 10px;text-align:right;">${fmtR(sellTotal)}</td><td style="padding:9px 10px;text-align:right;">${totalProfit<0?'-':''}${fmtR(Math.abs(totalProfit))}</td></tr></tfoot></table></div>
+    ${rows.length?'':'<div style="text-align:center;padding:14px;color:var(--muted);font-size:0.8rem;">No entries match this filter.</div>'}
     <div style="font-size:0.68rem;color:var(--muted);margin:6px 2px;">Greyed purchase details = bought before this range; only sales inside the range are counted.</div>
-    <button class="stmt-print-btn" onclick="printInvestmentStatement()">🖨️ Save Investment Statement as PDF</button>`;
+    <button class="stmt-print-btn" onclick="printInvestmentStatement(${useF})">🖨️ Save Investment Statement as PDF</button>`;
 }
 
 // ═══════════════════════════════════════
@@ -6439,7 +6473,7 @@ async function savePdfDoc(p,name,label){
 
 function buildInvestmentPdf(){
   invReportDefaults();
-  const rows=investmentStatementRows(invFrom,invTo);
+  const rows=investmentStatementRows(invFrom,invTo,invPdfFiltered);
   const buyTotal=rows.filter(r=>r.bought).reduce((t,r)=>t+Number(r.buyAmount||0),0),sellTotal=rows.reduce((t,r)=>t+Number(r.soldAmount||0),0),totalProfit=rows.reduce((t,r)=>t+Number(r.profit||0),0);
   const p=new PdfBuilder(true);
   p.heading('Investment Statement',16,true);
@@ -6527,9 +6561,11 @@ function buildLoanPdf(loan){
   p.row(['Outstanding Balance','Rs. '+pdfMoney(outstanding)],sf,sa,{bold:true,fill:PDF_TOTAL_FILL});
   return {pdf:p,name:'Loan-Statement-'+safeFileName(loan.person)+'-'+new Date().toISOString().split('T')[0]+'.pdf'};
 }
-function printInvestmentStatement(){
+function printInvestmentStatement(useFilter){
+  invPdfFiltered=!!useFilter;
   try{savePdfDoc(buildInvestmentPdf(),'Investment-Statement-'+invFrom+'_to_'+invTo+'.pdf','Investment Statement PDF');}
   catch(e){console.error('PDF error',e);showToast('⚠️ Could not create PDF: '+(e&&e.message?e.message:'error'));}
+  finally{invPdfFiltered=false;}
 }
 function printStatement(){
   try{
