@@ -1,34 +1,3 @@
-/**
- * Money Manager Pro — share price service (Google Apps Script)
- *
- * WHY THIS EXISTS
- * A web app cannot read NSE / BSE / Yahoo pages directly: they refuse requests that come
- * from a browser. This small script runs on Google's servers (free), fetches the prices
- * for the symbols the app asks for, and hands them back as JSON.
- *
- * SET UP (about 5 minutes, needs a Google account)
- * 1. Open https://script.google.com  ->  New project.
- * 2. Delete the sample code and paste this whole file.
- * 3. (Optional) Change ACCESS_CODE below to any secret word. Enter the same word in the app
- *    under Investments -> Statement -> Settings -> "Access code". Leave it '' for no code.
- * 4. Click Deploy -> New deployment -> type "Web app".
- *      Execute as:      Me
- *      Who has access:  Anyone
- *    Click Deploy and approve the permission prompts.
- * 5. Copy the Web app URL (it ends in /exec) and paste it into the app as the
- *    "Price service address".
- * 6. After you ever change this code: Deploy -> Manage deployments -> edit -> New version.
- *
- * WHAT IS SENT
- * Only share symbols such as RELIANCE.NS. The app never sends quantities, rates or amounts.
- *
- * GOOD TO KNOW
- * - Prices come from Yahoo Finance's unofficial chart service. It is free, may be delayed
- *   by a few minutes, and Yahoo can change or block it without notice.
- * - Symbols: NSE shares end in .NS (RELIANCE.NS), BSE shares in .BO (500325.BO).
- * - Results are cached for 90 seconds so opening the statement repeatedly is quick.
- */
-
 var ACCESS_CODE = '';        // optional secret, must match the app's "Access code"
 var MAX_SYMBOLS = 40;        // per request
 var CACHE_SECONDS = 90;
