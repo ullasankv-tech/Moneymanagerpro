@@ -1044,7 +1044,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <!-- REPORTS -->
     <div id="tab-report" style="display:none;">
       <div class="panel">
-        <h3>📊 Reports</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;"><h3 style="margin-bottom:0;">📊 Reports</h3><button type="button" onclick="openTaxCenter()" style="padding:7px 11px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-weight:700;font-size:.74rem;cursor:pointer;font-family:var(--font);white-space:nowrap;">🧾 Tax &amp; Capital Gains</button></div>
         <div class="report-tabs" id="reportMainTabs">
           <button type="button" class="report-tab active" id="rmGeneral" onclick="setReportMain('general')">📊 General Reports</button>
           <button type="button" class="report-tab" id="rmBalance" onclick="openBalanceSheetFrom('report')">⚖️ Balance Sheet</button>
@@ -1471,67 +1471,6 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     </div>
     <div id="investmentReportInline"></div>
 
-    <!-- TAX & CAPITAL GAINS CENTER -->
-    <div class="panel" style="margin-top:4px;">
-      <h3>🧾 Tax & Capital Gains</h3>
-      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:12px;">Educational estimate based on your investment sales. Not tax advice.</p>
-
-      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1.5px solid var(--border);">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;">🧮 Income Tax Estimator</div>
-        <div style="display:flex;gap:8px;margin-bottom:8px;">
-          <button type="button" id="taxRegimeNewBtn" onclick="setTaxRegime('new')" style="flex:1;padding:9px;border-radius:10px;border:2px solid #1565c0;background:#1565c0;color:#fff;font-weight:700;font-size:0.8rem;cursor:pointer;font-family:var(--font);">New Regime</button>
-          <button type="button" id="taxRegimeOldBtn" onclick="setTaxRegime('old')" style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--border);background:var(--bg);color:var(--text);font-weight:700;font-size:0.8rem;cursor:pointer;font-family:var(--font);">Old Regime</button>
-        </div>
-        <div style="margin-bottom:8px;">
-          <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Annual Income — Salary + Other (before deductions) ₹</label>
-          <input type="number" id="taxAnnualIncome" placeholder="e.g. 900000" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;" onchange="saveTaxSettingsFromUI()"/>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
-          <div>
-            <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Age Group (Old Regime)</label>
-            <select id="taxAgeGroup" style="width:100%;padding:9px;border:2px solid var(--border);border-radius:10px;font-size:0.8rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;" onchange="saveTaxSettingsFromUI()">
-              <option value="below60">Below 60</option>
-              <option value="60to80">60 – 80 yrs</option>
-              <option value="above80">Above 80</option>
-            </select>
-          </div>
-          <div style="display:flex;align-items:flex-end;">
-            <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:700;color:var(--muted);padding-bottom:9px;">
-              <input type="checkbox" id="taxIsSalaried" checked onchange="saveTaxSettingsFromUI()" style="width:16px;height:16px;"/> Salaried
-            </label>
-          </div>
-        </div>
-        <div style="font-size:0.68rem;color:var(--muted);">Standard deduction (₹75,000 new / ₹50,000 old) applies only if salaried. Age group affects Old Regime slabs only.</div>
-      </div>
-
-      <div id="taxCenterSummary"></div>
-      <div style="margin-top:12px;padding-top:12px;border-top:1.5px solid var(--border);">
-        <div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;">📌 Section 80C Tracker</div>
-        <div style="margin-bottom:8px;">
-          <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Investment / Payment</label>
-          <select id="tax80cType" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;">
-            <option value="">— Select 80C item —</option>
-            <option value="Life insurance premium">Life insurance premium</option>
-            <option value="PPF">PPF</option>
-            <option value="EPF/Employee PF">EPF / Employee PF</option>
-            <option value="ELSS mutual funds">ELSS mutual funds</option>
-            <option value="NSC">NSC</option>
-            <option value="Children tuition fees">Children's tuition fees (eligible conditions)</option>
-            <option value="Home-loan principal repayment">Home-loan principal repayment</option>
-            <option value="5-year tax-saving FD">5-year tax-saving fixed deposit</option>
-            <option value="Sukanya Samriddhi Scheme">Sukanya Samriddhi Scheme</option>
-          </select>
-        </div>
-        <div style="margin-bottom:8px;">
-          <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Amount (₹)</label>
-          <input type="number" id="tax80cAmount" placeholder="Amount invested / paid" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;"/>
-        </div>
-        <button onclick="add80CEntry()" style="width:100%;padding:10px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">+ Add 80C Entry</button>
-        <div id="tax80cList" style="margin-top:10px;"></div>
-        <div id="tax80cTotal" style="margin-top:8px;font-size:0.85rem;font-weight:800;"></div>
-      </div>
-      <button onclick="openTaxReport()" style="width:100%;padding:11px;margin-top:12px;background:linear-gradient(135deg,#1a1a2e,#1565c0);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">📄 Full Tax Report</button>
-    </div>
   </div>
 </div>
 
@@ -1719,11 +1658,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
   <div class="bottom-nav" id="bottomNav">
     <button class="nav-item active" id="nav-home" onclick="showTab('home')"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
-    <button class="nav-item" id="nav-report" onclick="showTab('report')"><span class="nav-icon">📊</span><span class="nav-label">Reports</span></button>
     <button class="nav-item" id="nav-register" onclick="showTab('register')"><span class="nav-icon">📋</span><span class="nav-label">Register</span></button>
     <button class="nav-item" id="nav-loans" onclick="showTab('loans')"><span class="nav-icon">🏦</span><span class="nav-label">Loans</span></button>
     <button class="nav-item" id="nav-trading" onclick="showTab('trading')"><span class="nav-icon">💹</span><span class="nav-label">Trading</span></button>
-    <button class="nav-item" id="nav-investments" onclick="showTab('investments')"><span class="nav-icon">📈</span><span class="nav-label">Investments</span></button><button class="nav-item" id="nav-settings" onclick="showTab('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></button>
+    <button class="nav-item" id="nav-investments" onclick="showTab('investments')"><span class="nav-icon">📈</span><span class="nav-label">Investments</span></button><button class="nav-item" id="nav-report" onclick="showTab('report')"><span class="nav-icon">📊</span><span class="nav-label">Reports</span></button><button class="nav-item" id="nav-settings" onclick="showTab('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></button>
   </div>
 </div>
 
@@ -1888,8 +1826,8 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <input type="hidden" id="invPurchaseId">
     <div class="inv-grid">
       <div class="form-group"><label>Purchase date</label><input type="date" class="form-input" id="invPurchaseDate"></div>
-      <div class="form-group"><label>Trade type</label><select class="form-input" id="invPurchaseTradeType" onchange="invTradeTypeChanged('Purchase')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option></select></div>
-      <div class="form-group inv-full" id="invPurchaseInstrWrap" style="display:none;"><label>F &amp; O instrument</label><select class="form-input" id="invPurchaseInstrument" onchange="invTradeTypeChanged('Purchase')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
+      <div class="form-group"><label>Trade type</label><select class="form-input" id="invPurchaseTradeType" onchange="invTradeTypeChanged('Purchase')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option><option value="commodity">Commodity</option></select></div>
+      <div class="form-group inv-full" id="invPurchaseInstrWrap" style="display:none;"><label>Instrument (futures / options)</label><select class="form-input" id="invPurchaseInstrument" onchange="invTradeTypeChanged('Purchase')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
       <div class="form-group"><label>Category</label><select class="form-input" id="invPurchaseCategory"></select></div>
       <div class="form-group"><label>Asset type</label>
         <select class="form-input" id="invPurchaseAssetType">
@@ -1930,8 +1868,8 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div class="form-group inv-full"><label>Against purchase</label><div class="voice-field-row"><select class="form-input" id="invSalePurchase" onchange="updateInvestmentSaleBalance()"></select><button type="button" class="voice-mic-btn" aria-label="Speak scrip name" onclick="invVoiceScrip(this)">🎤</button></div></div>
       <div id="invSaleBalance" class="inv-full inv-bal"></div>
       <div class="form-group"><label>Sale date</label><input type="date" class="form-input" id="invSaleDate"></div>
-      <div class="form-group"><label>Trade type</label><select class="form-input" id="invSaleTradeType" onchange="invTradeTypeChanged('Sale')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option></select></div>
-      <div class="form-group inv-full" id="invSaleInstrWrap" style="display:none;"><label>F &amp; O instrument</label><select class="form-input" id="invSaleInstrument" onchange="invTradeTypeChanged('Sale')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
+      <div class="form-group"><label>Trade type</label><select class="form-input" id="invSaleTradeType" onchange="invTradeTypeChanged('Sale')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option><option value="commodity">Commodity</option></select></div>
+      <div class="form-group inv-full" id="invSaleInstrWrap" style="display:none;"><label>Instrument (futures / options)</label><select class="form-input" id="invSaleInstrument" onchange="invTradeTypeChanged('Sale')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
       <div class="inv-sep"></div>
       <div class="form-group"><label>Sell quantity</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleQty" min="0.0001" step="0.0001" inputmode="decimal" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell quantity" onclick="invVoiceNumber('invSaleQty',this)">🎤</button></div></div>
       <div class="form-group"><label>Sell rate</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleRate" min="0" step="0.01" inputmode="decimal" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell rate" onclick="invVoiceNumber('invSaleRate',this)">🎤</button></div></div>
@@ -1979,6 +1917,70 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <button type="button" class="inv-cancel" onclick="clearInvPrice()">Remove price</button>
       <button type="button" class="inv-save" style="background:#00796b;" onclick="saveInvPriceEdit()">Save</button>
     </div>
+  </div>
+</div>
+<!-- TAX & CAPITAL GAINS (popup, opened from Reports) -->
+<div class="modal-overlay" id="taxCenterModal">
+  <div class="modal-sheet" style="max-width:600px;">
+      <h3>🧾 Tax & Capital Gains</h3>
+      <p style="font-size:0.72rem;color:var(--muted);margin-bottom:12px;">Educational estimate based on your investment sales. Not tax advice.</p>
+
+      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1.5px solid var(--border);">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;">🧮 Income Tax Estimator</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <button type="button" id="taxRegimeNewBtn" onclick="setTaxRegime('new')" style="flex:1;padding:9px;border-radius:10px;border:2px solid #1565c0;background:#1565c0;color:#fff;font-weight:700;font-size:0.8rem;cursor:pointer;font-family:var(--font);">New Regime</button>
+          <button type="button" id="taxRegimeOldBtn" onclick="setTaxRegime('old')" style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--border);background:var(--bg);color:var(--text);font-weight:700;font-size:0.8rem;cursor:pointer;font-family:var(--font);">Old Regime</button>
+        </div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Annual Income — Salary + Other (before deductions) ₹</label>
+          <input type="number" id="taxAnnualIncome" placeholder="e.g. 900000" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;" onchange="saveTaxSettingsFromUI()"/>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
+          <div>
+            <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Age Group (Old Regime)</label>
+            <select id="taxAgeGroup" style="width:100%;padding:9px;border:2px solid var(--border);border-radius:10px;font-size:0.8rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;" onchange="saveTaxSettingsFromUI()">
+              <option value="below60">Below 60</option>
+              <option value="60to80">60 – 80 yrs</option>
+              <option value="above80">Above 80</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:700;color:var(--muted);padding-bottom:9px;">
+              <input type="checkbox" id="taxIsSalaried" checked onchange="saveTaxSettingsFromUI()" style="width:16px;height:16px;"/> Salaried
+            </label>
+          </div>
+        </div>
+        <div style="font-size:0.68rem;color:var(--muted);">Standard deduction (₹75,000 new / ₹50,000 old) applies only if salaried. Age group affects Old Regime slabs only.</div>
+      </div>
+
+      <div id="taxCenterSummary"></div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1.5px solid var(--border);">
+        <div style="font-size:0.82rem;font-weight:700;margin-bottom:8px;">📌 Section 80C Tracker</div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Investment / Payment</label>
+          <select id="tax80cType" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;">
+            <option value="">— Select 80C item —</option>
+            <option value="Life insurance premium">Life insurance premium</option>
+            <option value="PPF">PPF</option>
+            <option value="EPF/Employee PF">EPF / Employee PF</option>
+            <option value="ELSS mutual funds">ELSS mutual funds</option>
+            <option value="NSC">NSC</option>
+            <option value="Children tuition fees">Children's tuition fees (eligible conditions)</option>
+            <option value="Home-loan principal repayment">Home-loan principal repayment</option>
+            <option value="5-year tax-saving FD">5-year tax-saving fixed deposit</option>
+            <option value="Sukanya Samriddhi Scheme">Sukanya Samriddhi Scheme</option>
+          </select>
+        </div>
+        <div style="margin-bottom:8px;">
+          <label style="font-size:0.7rem;font-weight:700;color:var(--muted);">Amount (₹)</label>
+          <input type="number" id="tax80cAmount" placeholder="Amount invested / paid" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;"/>
+        </div>
+        <button onclick="add80CEntry()" style="width:100%;padding:10px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">+ Add 80C Entry</button>
+        <div id="tax80cList" style="margin-top:10px;"></div>
+        <div id="tax80cTotal" style="margin-top:8px;font-size:0.85rem;font-weight:800;"></div>
+      </div>
+      <button onclick="openTaxReport()" style="width:100%;padding:11px;margin-top:12px;background:linear-gradient(135deg,#1a1a2e,#1565c0);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">📄 Full Tax Report</button>
+    <button type="button" class="modal-close" onclick="closeModal('taxCenterModal')">Close</button>
   </div>
 </div>
 <!-- POSITION SIZE CALCULATOR (popup) -->
@@ -3701,6 +3703,10 @@ function calcIncomeTax(gains){
     cryptoGains, taxOnCrypto, cess, totalTax, totalTaxableIncome, basicExemption};
 }
 
+function openTaxCenter(){
+  try{renderTaxCenter();}catch(e){console.error('Tax center error',e);}
+  openModal('taxCenterModal');
+}
 function renderTaxCenter(){
   const el = document.getElementById('taxCenterSummary');
   if(!el) return;
@@ -5207,8 +5213,8 @@ function invIsLTCG(assetType, buyDate, sellDate){
 }
 function invBalanceQty(p,exceptSaleId){return Number(p.qty||0)-(p.sales||[]).reduce((s,z)=>z.id===exceptSaleId?s:s+Number(z.qty||0),0);}
 
-// ── Charges Master (Delivery / Intraday / F & O) ──
-const INV_TRADE_TYPES={delivery:'Delivery',intraday:'Intraday',fno:'F & O'};
+// ── Charges Master (Delivery / Intraday / F & O / Commodity) ──
+const INV_TRADE_TYPES={delivery:'Delivery',intraday:'Intraday',fno:'F & O',commodity:'Commodity'};
 const INV_CHARGE_SCHEMA={
   delivery:[
     {k:'brokerageFlat',l:'Brokerage per order (₹)',d:0},
@@ -5238,6 +5244,19 @@ const INV_CHARGE_SCHEMA={
     {k:'sttOptSell',l:'STT – Options premium, sell side (%)',d:0.15},
     {k:'exchFut',l:'Exchange charges – Futures (%)',d:0.00173},
     {k:'exchOpt',l:'Exchange charges – Options (% of premium)',d:0.03503},
+    {k:'sebi',l:'SEBI turnover fee (%)',d:0.0001},
+    {k:'stampFut',l:'Stamp duty – Futures, buy side (%)',d:0.002},
+    {k:'stampOpt',l:'Stamp duty – Options, buy side (%)',d:0.003},
+    {k:'gst',l:'GST (%) on brokerage + exchange charges',d:18}
+  ],
+  // MCX commodity futures / options. CTT replaces STT. Exchange charges default to MCX rates (NSE commodity rates are lower: edit if you trade there).
+  commodity:[
+    {k:'brokerageFlat',l:'Brokerage per order (₹)',d:20},
+    {k:'brokeragePct',l:'Brokerage (% of turnover)',d:0},
+    {k:'cttFutSell',l:'CTT – Futures, sell side (%)',d:0.01},
+    {k:'cttOptSell',l:'CTT – Options premium, sell side (%)',d:0.05},
+    {k:'exchFut',l:'Exchange charges – Futures (%)',d:0.0021},
+    {k:'exchOpt',l:'Exchange charges – Options (% of premium)',d:0.0418},
     {k:'sebi',l:'SEBI turnover fee (%)',d:0.0001},
     {k:'stampFut',l:'Stamp duty – Futures, buy side (%)',d:0.002},
     {k:'stampOpt',l:'Stamp duty – Options, buy side (%)',d:0.003},
@@ -5296,16 +5315,22 @@ function resetInvChargesForm(){
   invRenderChargesFields(invMergeMaster(null)[invChargesEditType]);
   showToast('Defaults loaded – tap Save Charges to keep them.');
 }
+// Transaction tax on futures / options: STT for F & O, CTT for Commodity. Sell side only.
+function invDerivTaxPct(type,m,opt,side){
+  if(side!=='sell')return 0;
+  if(type==='commodity')return opt?m.cttOptSell:m.cttFutSell;
+  return opt?m.sttOptSell:m.sttFutSell;
+}
 // Total charges for one entry. side: 'buy' | 'sell'. turnover = qty × rate.
 function invComputeCharges(type,instr,side,turnover){
   const m=invChargesMaster[type];turnover=Number(turnover||0);
   if(!m||!(turnover>0))return 0;
   const brokerage=Number(m.brokerageFlat||0)+Number(m.brokeragePct||0)/100*turnover;
   let exchPct,sttPct,stampPct;
-  if(type==='fno'){
+  if(type==='fno'||type==='commodity'){
     const opt=instr==='options';
     exchPct=opt?m.exchOpt:m.exchFut;
-    sttPct=side==='sell'?(opt?m.sttOptSell:m.sttFutSell):0;
+    sttPct=invDerivTaxPct(type,m,opt,side);
     stampPct=side==='buy'?(opt?m.stampOpt:m.stampFut):0;
   }else{
     exchPct=m.exch;
@@ -5322,7 +5347,7 @@ function invSttPart(type,instr,side,turnover){
   const m=invChargesMaster[type];turnover=Number(turnover||0);
   if(!m||!(turnover>0))return 0;
   let sttPct;
-  if(type==='fno'){const opt=instr==='options';sttPct=side==='sell'?(opt?m.sttOptSell:m.sttFutSell):0;}
+  if(type==='fno'||type==='commodity'){sttPct=invDerivTaxPct(type,m,instr==='options',side);}
   else sttPct=side==='buy'?m.sttBuy:m.sttSell;
   return Math.round(turnover*Number(sttPct||0)/100*100)/100;
 }
@@ -5332,7 +5357,7 @@ function invDeductibleCharges(type,instr,side,turnover,stored){
 }
 // Entry-form helpers (kind = 'Purchase' | 'Sale')
 function invChargeIds(kind){const pu=kind==='Purchase';return {type:'inv'+kind+'TradeType',instr:'inv'+kind+'Instrument',wrap:'inv'+kind+'InstrWrap',ch:'inv'+kind+'Charges',qty:pu?'invPurchaseQty':'invSaleQty',rate:pu?'invPurchaseRate':'invSaleRate'};}
-function invToggleInstr(kind){const i=invChargeIds(kind),t=document.getElementById(i.type),w=document.getElementById(i.wrap);if(t&&w)w.style.display=t.value==='fno'?'':'none';}
+function invToggleInstr(kind){const i=invChargeIds(kind),t=document.getElementById(i.type),w=document.getElementById(i.wrap);if(t&&w)w.style.display=(t.value==='fno'||t.value==='commodity')?'':'none';}
 function invRefreshCharges(kind){
   const i=invChargeIds(kind),ch=document.getElementById(i.ch);
   if(!ch||ch.dataset.manual==='1')return;
@@ -5747,12 +5772,12 @@ function renderInvPerformance(){
   let rk=`Today's P&amp;L: <b style="color:${invSign(tNet)}">${invMoney(tNet)}</b>`;
   if(invRules.dailyLossLimit>0)rk+=` · limit ${fmt(invRules.dailyLossLimit)}`;
   if(orisk.risk>0){rk+=`<br>Open risk (stop-losses): <b>${fmt(orisk.risk)}</b>`;if(invRules.capital>0)rk+=` (${(orisk.risk/invRules.capital*100).toFixed(1)}% of capital)`;}
-  if(orisk.noSl>0)rk+=`<br>⚠️ ${orisk.noSl} open Intraday/F&amp;O position(s) have no stop-loss.`;
+  if(orisk.noSl>0)rk+=`<br>⚠️ ${orisk.noSl} open Intraday/F&amp;O/Commodity position(s) have no stop-loss.`;
   if(dm.length)rk+=`<br><span style="color:#ff6b6b;font-weight:700;">${dm.map(invEsc).join('<br>')}</span>`;
   html+=`<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:10px;font-size:.78rem;line-height:1.55;">${rk}</div>`;
   // F&O turnover for tax time (indicative)
-  const fno=all.filter(t=>t.type==='fno'&&t.date>=invPerfFYStart()&&t.date<=invPerfFYEnd());
-  if(fno.length){const to=fno.reduce((s,t)=>s+Math.abs(t.gross),0),fs=invPerfStats(fno);html+=`<div style="margin-top:10px;font-size:.72rem;color:var(--muted);line-height:1.5;">F&amp;O this FY: ${fno.length} trades · net ${invMoney(fs.net)} · turnover (sum of absolute trade P&amp;L, indicative) ${fmt(to)}. Audit and ITR rules depend on turnover and your profile, so confirm with a CA. This is not tax advice.</div>`;}
+  const fno=all.filter(t=>(t.type==='fno'||t.type==='commodity')&&t.date>=invPerfFYStart()&&t.date<=invPerfFYEnd());
+  if(fno.length){const to=fno.reduce((s,t)=>s+Math.abs(t.gross),0),fs=invPerfStats(fno);html+=`<div style="margin-top:10px;font-size:.72rem;color:var(--muted);line-height:1.5;">F&amp;O and commodity this FY: ${fno.length} trades · net ${invMoney(fs.net)} · turnover (sum of absolute trade P&amp;L, indicative) ${fmt(to)}. Audit and ITR rules depend on turnover and your profile, so confirm with a CA. This is not tax advice.</div>`;}
   el.innerHTML=html+rulesBtn+'</div>';
 }
 function invPerfFYStart(){const d=new Date(),y=d.getFullYear(),fy=d.getMonth()>=3?y:y-1;return fy+'-04-01';}
@@ -5988,7 +6013,7 @@ function renderInvestments(){
     </div>
     <div style="padding:10px 0;display:flex;align-items:center;gap:10px;border-bottom:1.5px solid var(--border);">
       <label for="invTradeTypeSel" style="font-size:0.78rem;font-weight:800;color:var(--muted);white-space:nowrap;">⚙️ Trade Type</label>
-      <select id="invTradeTypeSel" class="form-input" style="flex:1;" onchange="openInvChargesMaster(this.value);this.value='';"><option value="">Select to set charges…</option><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option></select>
+      <select id="invTradeTypeSel" class="form-input" style="flex:1;" onchange="openInvChargesMaster(this.value);this.value='';"><option value="">Select to set charges…</option><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option><option value="commodity">Commodity</option></select>
     </div>`;
   list.innerHTML=investments.length?investments.map(x=>{
     const bal=Number(invBalanceQty(x).toFixed(4));
@@ -6168,8 +6193,8 @@ async function clearInvPrice(){
 }
 
 let invSegFilter='all',invStatusFilter='all',invPdfFiltered=false;
-// EQ = equity stocks (delivery or intraday); F&O = futures and options; Other = mutual funds, gold, crypto, etc.
-function invSegOf(x){return x.tradeType==='fno'?'fno':((x.assetType||'equity')==='equity'?'eq':'other');}
+// EQ = equity stocks (delivery or intraday); F&O = futures and options; Other = commodity, mutual funds, gold, crypto, etc.
+function invSegOf(x){return x.tradeType==='fno'?'fno':(x.tradeType==='commodity'?'other':((x.assetType||'equity')==='equity'?'eq':'other'));}
 function invFilterLabel(){
   const sg={eq:'EQ',fno:'F&O',other:'Other'}[invSegFilter],st={open:'Open',closed:'Closed'}[invStatusFilter];
   return [sg,st].filter(Boolean).join(' · ');
