@@ -1044,10 +1044,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <!-- REPORTS -->
     <div id="tab-report" style="display:none;">
       <div class="panel">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;"><h3 style="margin-bottom:0;">📊 Reports</h3><button type="button" onclick="openTaxCenter()" style="padding:7px 11px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-weight:700;font-size:.74rem;cursor:pointer;font-family:var(--font);white-space:nowrap;">🧾 Tax &amp; Capital Gains</button></div>
-        <div class="report-tabs" id="reportMainTabs">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;"><h3 style="margin-bottom:0;">📊 Reports</h3><button type="button" onclick="openTaxCenter()" style="padding:10px 14px;border-radius:12px;border:none;background:linear-gradient(135deg,#e65100,#f9ca24);color:#fff;font-weight:800;font-size:0.88rem;cursor:pointer;font-family:var(--font);white-space:nowrap;box-shadow:0 3px 12px rgba(230,81,0,0.35);letter-spacing:0.02em;">🧾 Income Tax &amp; Capital Gains</button></div>
+        <div class="report-tabs" id="reportMainTabs" style="justify-content:space-between;width:100%;">
           <button type="button" class="report-tab active" id="rmGeneral" onclick="setReportMain('general')">📊 General Reports</button>
-          <button type="button" class="report-tab" id="rmBalance" onclick="openBalanceSheetFrom('report')">⚖️ Balance Sheet</button>
+          <button type="button" class="report-tab" id="rmBalance" onclick="openBalanceSheetFrom('report')" style="margin-left:auto;">⚖️ Balance Sheet</button>
         </div>
         <div id="generalReportControls">
         <div class="month-pick">
@@ -1550,12 +1550,19 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           <label class="toggle"><input type="checkbox" id="darkModeToggle" onchange="toggleDark()"><span class="slider"></span></label>
         </div>
         <div class="settings-item">
-          <div><div class="settings-label">Daily Reminder</div><div class="settings-sub">Notification to enter transactions</div></div>
+          <div><div class="settings-label">Daily Reminder</div><div class="settings-sub">Mobile popup even when app is closed</div></div>
           <label class="toggle"><input type="checkbox" id="reminderToggle" onchange="saveSettings()"><span class="slider"></span></label>
         </div>
         <div id="reminderTimeRow" style="display:none;padding-top:10px;">
           <label style="font-size:0.78rem;font-weight:700;color:var(--muted);">Reminder Time:</label>
           <input type="time" id="reminderTime" value="20:00" style="margin-top:6px;width:100%;padding:9px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);" onchange="saveSettings()"/>
+          <div style="margin-top:10px;padding:10px 12px;background:#e8f4ff;border-radius:10px;border:1.5px solid #90caf9;font-size:0.72rem;color:#1565c0;line-height:1.55;">
+            <b>📱 For mobile popup when app is closed:</b><br>
+            1. Allow notifications when asked<br>
+            2. Install app to Home Screen (Install banner / browser menu)<br>
+            3. Reminder works even if you are logged out<br>
+            4. On Android Chrome, keep battery optimization off for the browser/app
+          </div>
         </div>
       </div>
 
@@ -2388,6 +2395,13 @@ async function loadSettings(){
   try{
     const s=await dbGet('settings','app_settings');
     if(s) settings=JSON.parse(s.value);
+    // Fallback: migrate old localStorage settings if IndexedDB empty of reminder prefs
+    if(settings.reminder===undefined){
+      try{
+        const ls=localStorage.getItem('mm_settings');
+        if(ls){ const old=JSON.parse(ls); if(old.reminder!==undefined) settings.reminder=old.reminder; if(old.reminderTime) settings.reminderTime=old.reminderTime; if(old.dark!==undefined && settings.dark===undefined) settings.dark=old.dark; }
+      }catch(e){}
+    }
     const pinRec  =await dbGet('settings','mm_pin');
     const pinEnRec=await dbGet('settings','mm_pin_enabled');
     const pin       =pinRec?pinRec.value:null;
@@ -2401,6 +2415,13 @@ async function loadSettings(){
     const abRec=await dbGet('settings','auto_backup_login');
     const abEl=document.getElementById('autoBackupOnLogin');
     if(abEl) abEl.checked = abRec ? abRec.value==='true' : false;
+    // Sync Daily Reminder UI
+    const rt=document.getElementById('reminderToggle');
+    if(rt) rt.checked=!!settings.reminder;
+    const rtime=document.getElementById('reminderTime');
+    if(rtime) rtime.value=settings.reminderTime||'20:00';
+    const rrow=document.getElementById('reminderTimeRow');
+    if(rrow) rrow.style.display=settings.reminder?'block':'none';
     return{pin,pinEnabled};
   }catch{return{pin:null,pinEnabled:false};}
 }
@@ -2833,12 +2854,25 @@ async function _oldLoadSettingsUnused(){
   if(settings.reminderTime)document.getElementById('reminderTime').value=settings.reminderTime;
   document.getElementById('reminderTimeRow').style.display=settings.reminder?'block':'none';
 }
-function saveSettings(){
+async function saveSettings(){
   settings.dark=document.getElementById('darkModeToggle').checked;
   settings.reminder=document.getElementById('reminderToggle').checked;
-  settings.reminderTime=document.getElementById('reminderTime').value;
+  settings.reminderTime=document.getElementById('reminderTime').value||'20:00';
   document.getElementById('reminderTimeRow').style.display=settings.reminder?'block':'none';
-  localStorage.setItem('mm_settings',JSON.stringify(settings));
+  try{ await dbPut('settings',{key:'app_settings',value:JSON.stringify(settings)}); }catch(e){}
+  try{ localStorage.setItem('mm_settings',JSON.stringify(settings)); }catch(e){}
+  if(settings.reminder){
+    if('Notification' in window && Notification.permission==='default'){
+      try{ await Notification.requestPermission(); }catch(e){}
+    }
+    if('Notification' in window && Notification.permission==='denied'){
+      showToast('⚠️ Notifications blocked — enable them in browser settings for Daily Reminder');
+    } else {
+      showToast('🔔 Daily reminder set for '+settings.reminderTime);
+    }
+  } else {
+    showToast('🔕 Daily reminder turned off');
+  }
   setupDailyReminder();
 }
 function toggleDark(){
@@ -2882,21 +2916,170 @@ async function changePin(){
   if(nw!==conf){showToast('❌ PINs do not match!');return;}
   await setPin(nw);closeModal('changePinModal');showToast('✅ PIN changed!');
 }
-function setupDailyReminder(){
-  if(!settings.reminder||!settings.reminderTime)return;
-  if(!('Notification' in window))return;
-  if(Notification.permission!=='granted'){Notification.requestPermission();}
-  const[h,m]=settings.reminderTime.split(':').map(Number);
-  const now=new Date();
-  const target=new Date();target.setHours(h,m,0,0);
-  if(target<=now)target.setDate(target.getDate()+1);
-  const ms=target-now;
-  setTimeout(()=>{
-    if(Notification.permission==='granted'){
-      new Notification("💰 Daily Reminder",{body:`Don't forget to record today's transactions in Money Manager!`});
+let _dailyReminderTimer=null;
+let _dailyReminderInterval=null;
+let _dailyReminderLastFire='';
+
+/** Tell the Service Worker to schedule / cancel background notification (works when app closed). */
+async function syncReminderToServiceWorker(enabled, timeStr){
+  try{
+    if(!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    if(!reg || !reg.active) return;
+    if(!enabled){
+      reg.active.postMessage({ type: 'CANCEL_REMINDER' });
+      return;
     }
+    const parts = String(timeStr||'20:00').split(':');
+    const hour = parseInt(parts[0],10);
+    const minute = parseInt(parts[1],10);
+    if(isNaN(hour)||isNaN(minute)) return;
+    reg.active.postMessage({ type: 'SCHEDULE_REMINDER', hour, minute, time: timeStr });
+    // Periodic Background Sync (Chrome Android) — wakes SW roughly daily even if closed
+    try{
+      if('periodicSync' in reg){
+        const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+        if(status.state === 'granted' || status.state === 'prompt'){
+          await reg.periodicSync.register('mm-daily-reminder', { minInterval: 12 * 60 * 60 * 1000 });
+        }
+      }
+    }catch(e){}
+  }catch(e){ console.log('SW reminder sync skipped:', e && e.message); }
+}
+
+function fireDailyReminder(){
+  const today=new Date().toISOString().split('T')[0];
+  if(_dailyReminderLastFire===today) return;
+  _dailyReminderLastFire=today;
+  try{ localStorage.setItem('mm_daily_reminder_last', today); }catch(e){}
+  const msg="Don't forget to record today's transactions in Money Manager Pro!";
+  // Prefer Service Worker notification (shows on lock screen / notification tray on mobile)
+  let notified=false;
+  try{
+    if(navigator.serviceWorker && navigator.serviceWorker.controller){
+      // SW will also fire from its own timer; still show from page if open
+    }
+    if('Notification' in window && Notification.permission==='granted'){
+      // Use SW registration when available so notification outlives the page
+      if(navigator.serviceWorker){
+        navigator.serviceWorker.ready.then(reg=>{
+          reg.showNotification('💰 Daily Reminder',{
+            body:msg,
+            tag:'mm-daily-reminder',
+            renotify:true,
+            requireInteraction:true,
+            vibrate:[200,100,200],
+            data:{url:'./'}
+          }).catch(()=>{
+            try{ new Notification('💰 Daily Reminder',{body:msg,tag:'mm-daily-reminder'}); }catch(e){}
+          });
+        });
+        notified=true;
+      } else {
+        new Notification('💰 Daily Reminder',{body:msg, tag:'mm-daily-reminder'});
+        notified=true;
+      }
+    }
+  }catch(e){}
+  // In-app popup only when app UI is visible
+  try{
+    const appOpen = document.getElementById('appScreen') && document.getElementById('appScreen').classList.contains('active');
+    if(appOpen && typeof showAlarmPopup==='function'){
+      showAlarmPopup('Daily Reminder', msg, '🔔');
+    } else if(appOpen){
+      showToast('🔔 '+msg, 5000);
+    }
+  }catch(e){}
+  return notified;
+}
+
+function checkDailyReminderNow(){
+  if(!settings.reminder||!settings.reminderTime) return;
+  const parts=String(settings.reminderTime).split(':');
+  if(parts.length<2) return;
+  const h=parseInt(parts[0],10), m=parseInt(parts[1],10);
+  if(isNaN(h)||isNaN(m)) return;
+  const now=new Date();
+  if(now.getHours()===h && now.getMinutes()===m){
+    fireDailyReminder();
+  }
+}
+
+function setupDailyReminder(){
+  if(_dailyReminderTimer){ clearTimeout(_dailyReminderTimer); _dailyReminderTimer=null; }
+  if(_dailyReminderInterval){ clearInterval(_dailyReminderInterval); _dailyReminderInterval=null; }
+
+  // Always sync SW (cancel if off) — works without login
+  if(!settings.reminder||!settings.reminderTime){
+    syncReminderToServiceWorker(false, null);
+    return;
+  }
+
+  try{ _dailyReminderLastFire = localStorage.getItem('mm_daily_reminder_last')||''; }catch(e){ _dailyReminderLastFire=''; }
+
+  if('Notification' in window && Notification.permission==='default'){
+    try{ Notification.requestPermission(); }catch(e){}
+  }
+
+  const parts=String(settings.reminderTime).split(':');
+  const h=parseInt(parts[0],10), m=parseInt(parts[1],10);
+  if(isNaN(h)||isNaN(m)) return;
+
+  // Background path via Service Worker (app closed / logged out)
+  syncReminderToServiceWorker(true, settings.reminderTime);
+
+  // Foreground path while this page is open
+  const scheduleNext=()=>{
+    const now=new Date();
+    const target=new Date();
+    target.setHours(h,m,0,0);
+    if(target<=now) target.setDate(target.getDate()+1);
+    const ms=Math.max(1000, target-now);
+    _dailyReminderTimer=setTimeout(()=>{
+      fireDailyReminder();
+      scheduleNext();
+    }, ms);
+  };
+  scheduleNext();
+  _dailyReminderInterval=setInterval(checkDailyReminderNow, 30000);
+}
+
+/** Load reminder prefs early (no login required) and arm notifications. */
+async function initReminderOnBoot(){
+  try{
+    // Prefer IndexedDB app_settings; fall back to localStorage
+    let loaded=false;
+    try{
+      if(typeof dbGet==='function'){
+        const s=await dbGet('settings','app_settings');
+        if(s && s.value){
+          const parsed=JSON.parse(s.value);
+          if(parsed.reminder!==undefined) settings.reminder=parsed.reminder;
+          if(parsed.reminderTime) settings.reminderTime=parsed.reminderTime;
+          if(parsed.dark!==undefined) settings.dark=parsed.dark;
+          loaded=true;
+        }
+      }
+    }catch(e){}
+    if(!loaded){
+      try{
+        const ls=localStorage.getItem('mm_settings');
+        if(ls){
+          const old=JSON.parse(ls);
+          if(old.reminder!==undefined) settings.reminder=old.reminder;
+          if(old.reminderTime) settings.reminderTime=old.reminderTime;
+        }
+      }catch(e){}
+    }
+    // Also mirror a dedicated key so SW path stays simple for page-side checks
+    try{
+      localStorage.setItem('mm_reminder_boot', JSON.stringify({
+        enabled: !!settings.reminder,
+        time: settings.reminderTime || '20:00'
+      }));
+    }catch(e){}
     setupDailyReminder();
-  },ms);
+  }catch(e){ console.log('initReminderOnBoot', e); }
 }
 
 // ═══════════════════════════════════════
@@ -9730,7 +9913,14 @@ function isWebView(){
 if('serviceWorker' in navigator && !isWebView()){
   window.addEventListener('load',()=>{
     navigator.serviceWorker.register('./sw.js')
-      .then(r=>console.log('✅ SW registered:',r.scope))
+      .then(async r=>{
+        console.log('✅ SW registered:',r.scope);
+        try{
+          await navigator.serviceWorker.ready;
+          // Re-sync reminder schedule into SW after registration
+          if(typeof setupDailyReminder==='function') setupDailyReminder();
+        }catch(e){}
+      })
       .catch(e=>console.log('SW skipped:',e.message));
   });
 } else {
@@ -9801,6 +9991,9 @@ window.onload=async()=>{
   // Remove loading splash — ALWAYS, even on error
   const sp=document.getElementById('dbSplash');
   if(sp)sp.remove();
+
+  // Arm Daily Reminder even if user is NOT logged in (background mobile popup)
+  try{ await initReminderOnBoot(); }catch(e){}
 
   try{
     const saved=getSession();
