@@ -773,6 +773,8 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .inv-radio input{position:absolute;opacity:0;width:0;height:0;margin:0;padding:0;}
 .inv-radio span{display:block;text-align:center;padding:7px 2px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text);}
 .inv-radio input:checked+span{background:#1565c0;border-color:#1565c0;color:#fff;}
+.inv-link{background:none;border:none;color:#1565c0;font-weight:700;font-size:inherit;cursor:pointer;padding:0 2px;font-family:var(--font);text-decoration:underline;}
+.inv-cmp{cursor:pointer;border-bottom:1px dotted var(--muted);}
 .inv-chips{display:flex;flex-wrap:wrap;gap:6px;}
 .inv-chip{padding:6px 10px;border-radius:16px;border:1.5px solid var(--border);background:var(--bg);font-size:.72rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);text-align:left;max-width:100%;}
 .inv-chip.on{background:#ffebee;border-color:#ef9a9a;color:#c62828;}
@@ -1946,6 +1948,39 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
   </div>
 </div>
 
+<!-- LIVE PRICE SETUP (popup) -->
+<div class="modal-overlay" id="invPriceSetupModal">
+  <div class="modal-sheet inv-form">
+    <div class="inv-head" style="--acc:#00796b;"><h3>💹 Live Market Prices</h3></div>
+    <div style="font-size:.72rem;color:var(--muted);line-height:1.5;margin:-4px 0 10px;">The statement asks your own price service for the current price of each share you still hold. Only share symbols are sent, never your quantities or amounts. Leave the address empty to turn this off.</div>
+    <div class="inv-grid">
+      <div class="form-group inv-full"><label>Price service address</label><input type="text" class="form-input" id="invPriceUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <div class="form-group"><label>Access code (optional)</label><input type="password" class="form-input" id="invPriceToken" autocomplete="off"></div>
+      <div class="form-group"><label>Default exchange</label><select class="form-input" id="invPriceEx"><option value="NS">NSE (.NS)</option><option value="BO">BSE (.BO)</option></select></div>
+    </div>
+    <div class="inv-actions">
+      <button type="button" class="inv-cancel" onclick="closeModal('invPriceSetupModal')">Cancel</button>
+      <button type="button" class="inv-save" style="background:#00796b;" onclick="saveInvPriceSetup()">Save &amp; Refresh</button>
+    </div>
+  </div>
+</div>
+<!-- SET PRICE / SYMBOL FOR ONE SHARE (popup) -->
+<div class="modal-overlay" id="invPriceEditModal">
+  <div class="modal-sheet inv-form">
+    <div class="inv-head" style="--acc:#00796b;"><h3 id="invPriceEditTitle">Share price</h3></div>
+    <input type="hidden" id="invPriceEditKey">
+    <div id="invPriceEditNote" style="font-size:.72rem;color:var(--muted);line-height:1.5;margin:-4px 0 10px;"></div>
+    <div class="inv-grid">
+      <div class="form-group inv-full"><label>Market symbol (optional, e.g. RELIANCE.NS or 500325.BO)</label><input type="text" class="form-input" id="invPriceEditSym" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+      <div class="form-group inv-full"><label>Price now (₹), enter by hand</label><input type="number" class="form-input" id="invPriceEditPrice" min="0" step="0.01" inputmode="decimal"></div>
+    </div>
+    <div class="inv-actions">
+      <button type="button" class="inv-cancel" onclick="closeModal('invPriceEditModal')">Cancel</button>
+      <button type="button" class="inv-cancel" onclick="clearInvPrice()">Remove price</button>
+      <button type="button" class="inv-save" style="background:#00796b;" onclick="saveInvPriceEdit()">Save</button>
+    </div>
+  </div>
+</div>
 <!-- POSITION SIZE CALCULATOR (popup) -->
 <div class="modal-overlay" id="invPosModal">
   <div class="modal-sheet inv-form">
@@ -5844,7 +5879,7 @@ async function saveInvestments(){
     tx.onabort=()=>reject(tx.error||new Error('Transaction aborted'));
   });
 }
-async function loadInvestments(){if(!db||!currentUser)return;const u=currentUser.username,all=await dbGetAll('investments');investments=(await Promise.all(all.filter(x=>x._user===u).map(async x=>{try{return x._enc?JSON.parse(await decryptData(x._enc)):x;}catch{return x;}}))).map(normalizeInvestment);await loadInvChargesMaster();await loadInvRules();await loadInvFunds();}
+async function loadInvestments(){if(!db||!currentUser)return;const u=currentUser.username,all=await dbGetAll('investments');investments=(await Promise.all(all.filter(x=>x._user===u).map(async x=>{try{return x._enc?JSON.parse(await decryptData(x._enc)):x;}catch{return x;}}))).map(normalizeInvestment);await loadInvChargesMaster();await loadInvRules();await loadInvFunds();await loadInvPriceData();}
 
 // ── Averaging (average buy price after buying more) ──
 function avgHoldings(){
@@ -5973,6 +6008,165 @@ function investmentBritishDate(value){
 }
 // Rows for the Investment Statement between two dates (inclusive). A purchase appears if it was bought
 // in the range or has sale entries in the range; sale figures/profit cover only sales dated in the range.
+// ── Live market prices for the Investment Statement ──
+// The browser cannot read exchange websites directly (they block it), so prices come from a small
+// price service that the user owns (see price-proxy.gs). Without it, prices can still be typed in by hand.
+let invPriceCfg={url:'',token:'',ex:'NS'},invSymMap={},invPrices={},invPriceTried={},invPriceBusy=false,invPriceState={status:'idle',at:0,missed:[]};
+function invStockKey(n){return String(n||'').trim().toUpperCase();}
+async function loadInvPriceData(){
+  invPriceCfg={url:'',token:'',ex:'NS'};invSymMap={};invPrices={};
+  try{
+    if(!db||!currentUser)return;
+    const r=await dbGet('settings','inv_price_'+currentUser.username);
+    const v=r&&r.value?JSON.parse(await decryptData(r.value)):{};
+    if(v.cfg&&typeof v.cfg==='object')invPriceCfg=Object.assign(invPriceCfg,v.cfg);
+    if(v.sym&&typeof v.sym==='object')invSymMap=v.sym;
+    if(v.prices&&typeof v.prices==='object')invPrices=v.prices;
+  }catch(e){}
+}
+async function saveInvPriceData(){
+  if(!currentUser)return;
+  await dbPut('settings',{key:'inv_price_'+currentUser.username,value:await encryptData(JSON.stringify({cfg:invPriceCfg,sym:invSymMap,prices:invPrices}))});
+}
+function invSymbolFor(key){
+  if(invSymMap[key])return invSymMap[key];
+  const k=key.replace(/\s+/g,'');
+  if(!k||!/^[A-Z0-9&\-.^]+$/.test(k))return '';
+  return /[.^]/.test(k)?k:k+'.'+(invPriceCfg.ex==='BO'?'BO':'NS');
+}
+// Shares still held (equity only) whose price should be fetched
+function invPriceKeys(){
+  const seen={};
+  investments.forEach(x=>{if(Number(invBalanceQty(x).toFixed(4))>0&&invSegOf(x)==='eq')seen[invStockKey(x.stock)]=1;});
+  return Object.keys(seen);
+}
+async function invEnsurePrices(force,timeoutMs){
+  if(!invPriceCfg.url)return 'nocfg';
+  if(invPriceBusy)return 'busy';
+  const keys=invPriceKeys();
+  if(!keys.length)return 'none';
+  const now=Date.now(),symKeys=keys.filter(k=>invSymbolFor(k));
+  if(!symKeys.length){invPriceState={status:'idle',at:now,missed:keys.slice()};return 'none';}
+  // Fresh = every share with a symbol was fetched or tried within the last 2 minutes (so a share the service cannot price never forces a refetch)
+  if(!force&&symKeys.every(k=>(invPrices[k]&&invPrices[k].src==='live'&&now-invPrices[k].at<120000)||(invPriceTried[k]&&now-invPriceTried[k]<120000)))return 'fresh';
+  invPriceBusy=true;invPriceState={status:'loading',at:now,missed:[]};
+  symKeys.forEach(k=>{invPriceTried[k]=now;});
+  let tm=null;
+  try{
+    const sym2key={};
+    keys.forEach(k=>{const sy=invSymbolFor(k);if(sy)sym2key[sy]=k;});
+    const syms=Object.keys(sym2key);
+    if(!syms.length)throw new Error('no symbols');
+    const u=invPriceCfg.url+(invPriceCfg.url.indexOf('?')>=0?'&':'?')+'symbols='+encodeURIComponent(syms.join(','))+(invPriceCfg.token?'&token='+encodeURIComponent(invPriceCfg.token):'');
+    const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+    if(ctl)tm=setTimeout(()=>ctl.abort(),timeoutMs||10000);
+    const res=await fetch(u,{cache:'no-store',redirect:'follow',signal:ctl?ctl.signal:undefined});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(!data||typeof data!=='object'||data.error)throw new Error((data&&data.error)||'bad reply');
+    let got=0;const missed=[];
+    syms.forEach(sy=>{
+      const d=data[sy],p=d?Number(d.price):0,k=sym2key[sy];
+      if(p>0&&isFinite(p)){invPrices[k]={price:p,at:Date.now(),src:'live',sym:sy};got++;}
+      else missed.push(k);
+    });
+    keys.forEach(k=>{if(!invSymbolFor(k)&&missed.indexOf(k)<0)missed.push(k);});
+    try{await saveInvPriceData();}catch(e){}
+    invPriceState={status:got?'ok':'fail',at:Date.now(),missed:missed};
+    return got?'ok':'fail';
+  }catch(e){
+    invPriceState={status:'fail',at:Date.now(),missed:[],err:String((e&&e.name==='AbortError')?'timed out':(e&&e.message)||e)};
+    return 'fail';
+  }finally{
+    if(tm)clearTimeout(tm);
+    invPriceBusy=false;
+  }
+}
+// Profit if the quantity still held were sold at the current price: after its share of the buy charges and estimated exit charges
+function invEstProfit(r){
+  if(!r||!r.open||!(r.bal>0))return null;
+  const p=invPrices[r.key];
+  if(!p||!(Number(p.price)>0))return null;
+  const price=Number(p.price),bq=Number(r.qty||0);
+  const buyCh=bq>0?Number(r.buyCharges||0)*Math.min(r.bal/bq,1):0;
+  const exit=invComputeCharges(r.tradeType||'delivery',r.instrument,'sell',r.bal*price);
+  return r.bal*(price-Number(r.buyRate||0))-buyCh-exit;
+}
+function invPriceAsOf(){
+  let t=0;
+  invPriceKeys().forEach(k=>{const p=invPrices[k];if(p&&p.src==='live'&&p.at>t)t=p.at;});
+  return t;
+}
+function invTimeText(t){return new Date(t).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+(new Date(t).toDateString()===new Date().toDateString()?'':' · '+new Date(t).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}));}
+function invPriceStatusHtml(){
+  const base='font-size:0.7rem;color:var(--muted);margin:-4px 0 8px;text-align:center;line-height:1.6;';
+  if(!invPriceCfg.url)return '<div style="'+base+'">💹 Live prices are off · <button type="button" class="inv-link" onclick="openInvPriceSetup()">Set up</button> · or tap a price to type it in</div>';
+  if(invPriceBusy||invPriceState.status==='loading')return '<div style="'+base+'">⏳ Updating prices…</div>';
+  const names=(invPriceState.missed||[]).slice(0,3).map(invEsc).join(', ');
+  const miss=names?'<br>No price for: <b>'+names+'</b> · tap the price cell to set its symbol or price':'';
+  const asOf=invPriceAsOf();
+  if(invPriceState.status==='fail')return '<div style="'+base+'">⚠️ Could not update prices'+(invPriceState.err?' ('+invEsc(invPriceState.err)+')':'')+(asOf?', showing saved prices from '+invTimeText(asOf):'')+' · <button type="button" class="inv-link" onclick="invRefreshPricesNow()">Retry</button> · <button type="button" class="inv-link" onclick="openInvPriceSetup()">Settings</button>'+miss+'</div>';
+  if(asOf)return '<div style="'+base+'">✅ Prices updated '+invTimeText(asOf)+' · <button type="button" class="inv-link" onclick="invRefreshPricesNow()">Refresh</button> · <button type="button" class="inv-link" onclick="openInvPriceSetup()">Settings</button>'+miss+'</div>';
+  return '<div style="'+base+'"><button type="button" class="inv-link" onclick="invRefreshPricesNow()">Fetch prices</button> · <button type="button" class="inv-link" onclick="openInvPriceSetup()">Settings</button>'+miss+'</div>';
+}
+async function invRefreshPricesNow(){
+  const p=invEnsurePrices(true);
+  renderInvestmentDateWise('investmentReportInline',true);
+  const r=await p;
+  renderInvestmentDateWise('investmentReportInline',true);
+  if(r==='ok')showToast('✅ Prices updated');else if(r==='none')showToast('No open equity shares to price.');else if(r==='fail')showToast('⚠️ Could not update prices');
+}
+function openInvPriceSetup(){
+  document.getElementById('invPriceUrl').value=invPriceCfg.url||'';
+  document.getElementById('invPriceToken').value=invPriceCfg.token||'';
+  document.getElementById('invPriceEx').value=invPriceCfg.ex==='BO'?'BO':'NS';
+  openModal('invPriceSetupModal');
+}
+async function saveInvPriceSetup(){
+  const url=document.getElementById('invPriceUrl').value.trim(),token=document.getElementById('invPriceToken').value.trim(),ex=document.getElementById('invPriceEx').value==='BO'?'BO':'NS';
+  if(url&&!/^https:\/\/[^\s]+$/i.test(url)){showToast('⚠️ The address must start with https://');return;}
+  if(url&&url!==invPriceCfg.url&&!confirm('Your share symbols (for example RELIANCE.NS) will be sent to this address each time the statement is generated. Quantities, rates and amounts are not sent.\n\nContinue?'))return;
+  const prev={cfg:invPriceCfg,prices:invPrices};
+  invPriceCfg={url:url,token:token,ex:ex};
+  if(!url)invPrices={};
+  try{await saveInvPriceData();}catch(e){invPriceCfg=prev.cfg;invPrices=prev.prices;showToast('⚠️ Could not save.');return;}
+  closeModal('invPriceSetupModal');
+  invPriceState={status:'idle',at:0,missed:[]};
+  if(!url){renderInvestmentDateWise('investmentReportInline',true);showToast('Live prices turned off');return;}
+  invRefreshPricesNow();
+}
+function openInvPriceEdit(key){
+  key=invStockKey(key);
+  const p=invPrices[key],isEq=invPriceKeys().indexOf(key)>=0;
+  document.getElementById('invPriceEditKey').value=key;
+  document.getElementById('invPriceEditTitle').textContent='💹 '+key;
+  document.getElementById('invPriceEditSym').value=invSymMap[key]||'';
+  document.getElementById('invPriceEditSym').placeholder=invSymbolFor(key)||'e.g. RELIANCE.NS';
+  document.getElementById('invPriceEditPrice').value=p?p.price:'';
+  document.getElementById('invPriceEditNote').textContent=isEq
+    ?(invPriceCfg.url?'The price is fetched automatically. If it keeps failing, enter the exact market symbol, or type the price by hand.':'Live prices are off. Type the current price by hand, or turn live prices on from the statement.')
+    :'Automatic prices work for NSE/BSE equity shares only. Type the current price by hand for this entry.';
+  openModal('invPriceEditModal');
+}
+async function saveInvPriceEdit(){
+  const key=document.getElementById('invPriceEditKey').value,sym=document.getElementById('invPriceEditSym').value.trim().toUpperCase(),pr=document.getElementById('invPriceEditPrice').value.trim();
+  if(sym&&!/^[A-Z0-9&\-.^]+$/.test(sym)){showToast('⚠️ Symbol can only have letters, numbers and . - & ^');return;}
+  if(pr!==''&&!(Number(pr)>0)){showToast('⚠️ Enter a valid price.');return;}
+  const prevSym=invSymMap[key],prevPrice=invPrices[key];
+  if(sym)invSymMap[key]=sym;else delete invSymMap[key];
+  if(pr!=='')invPrices[key]={price:Number(pr),at:Date.now(),src:'manual',sym:sym||invSymbolFor(key)};
+  try{await saveInvPriceData();}catch(e){if(prevSym===undefined)delete invSymMap[key];else invSymMap[key]=prevSym;if(prevPrice===undefined)delete invPrices[key];else invPrices[key]=prevPrice;showToast('⚠️ Could not save.');return;}
+  closeModal('invPriceEditModal');
+  renderInvestmentDateWise('investmentReportInline');
+}
+async function clearInvPrice(){
+  const key=document.getElementById('invPriceEditKey').value,prev=invPrices[key];
+  delete invPrices[key];
+  try{await saveInvPriceData();}catch(e){if(prev)invPrices[key]=prev;showToast('⚠️ Could not save.');return;}
+  closeModal('invPriceEditModal');
+  renderInvestmentDateWise('investmentReportInline',true);
+}
+
 let invSegFilter='all',invStatusFilter='all',invPdfFiltered=false;
 // EQ = equity stocks (delivery or intraday); F&O = futures and options; Other = mutual funds, gold, crypto, etc.
 function invSegOf(x){return x.tradeType==='fno'?'fno':((x.assetType||'equity')==='equity'?'eq':'other');}
@@ -5997,8 +6191,9 @@ function investmentStatementRows(from,to,useFilter){
     const sc=sales.reduce((t,z)=>t+Number(z.charges||0),0),bc=Number(x.charges||0),bq=Number(x.qty||0);
     const isOpen=Number(invBalanceQty(x).toFixed(4))>0,seg=invSegOf(x);
     if(useFilter&&((invSegFilter!=='all'&&seg!==invSegFilter)||(invStatusFilter==='open'&&!isOpen)||(invStatusFilter==='closed'&&isOpen)))return;
-    out.push({seg:seg,open:isOpen,date:x.date,stock:x.stock,qty:x.qty,buyRate:x.buyRate,buyCharges:bc,buyAmount:x.buyAmount,bought:bought,qtySold:q,sellRate:q?amt/q:0,sellCharges:sc,soldAmount:amt,soldDates:soldDates,profit:amt-sc-q*Number(x.buyRate||0)-(bq>0?bc*Math.min(q/bq,1):0)});
+    out.push({key:invStockKey(x.stock),bal:Number(invBalanceQty(x).toFixed(4)),tradeType:x.tradeType||'delivery',instrument:x.instrument||'',seg:seg,open:isOpen,date:x.date,stock:x.stock,qty:x.qty,buyRate:x.buyRate,buyCharges:bc,buyAmount:x.buyAmount,bought:bought,qtySold:q,sellRate:q?amt/q:0,sellCharges:sc,soldAmount:amt,soldDates:soldDates,profit:amt-sc-q*Number(x.buyRate||0)-(bq>0?bc*Math.min(q/bq,1):0)});
   });
+  out.forEach(r=>{const pp=invPrices[r.key];r.cmp=(r.open&&pp&&Number(pp.price)>0)?Number(pp.price):null;r.cmpManual=!!(r.cmp!==null&&pp.src==='manual');r.est=invEstProfit(r);});
   return out.sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.stock).localeCompare(String(b.stock)));
 }
 function invReportDefaults(){
@@ -6017,13 +6212,15 @@ function applyInvestmentFilter(targetId){
   if(invFrom&&invTo&&invFrom>invTo){showToast('From date cannot be after To date!');return;}
   renderInvestmentDateWise(targetId);
 }
-function renderInvestmentDateWise(targetId){
+function renderInvestmentDateWise(targetId,skipFetch){
   targetId=targetId||'reportContent';
   const rc=document.getElementById(targetId);
   if(!rc)return;
   invReportDefaults();
   const useF=targetId==='investmentReportInline';
+  const pricePromise=(useF&&!skipFetch)?invEnsurePrices(false):null;
   const rows=investmentStatementRows(invFrom,invTo,useF);
+  const estTotal=rows.reduce((s,r)=>s+(r.est===null?0:r.est),0),estAny=rows.some(r=>r.est!==null);
   const buyTotal=rows.filter(r=>r.bought).reduce((s,r)=>s+Number(r.buyAmount||0),0),sellTotal=rows.reduce((s,r)=>s+Number(r.soldAmount||0),0),totalProfit=rows.reduce((s,r)=>s+Number(r.profit||0),0);
   const buyChargesTotal=rows.filter(r=>r.bought).reduce((s,r)=>s+Number(r.buyCharges||0),0),sellChargesTotal=rows.reduce((s,r)=>s+Number(r.sellCharges||0),0);
   const cell='padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;';
@@ -6036,10 +6233,12 @@ function renderInvestmentDateWise(targetId){
       <input type="date" class="date-filter-input" id="${toId}" value="${invTo}"/>
       <button class="date-filter-btn" onclick="applyInvestmentFilter('${targetId}')">Go</button>
     </div><div style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;text-align:center;">Investment Statement: ${investmentBritishDate(invFrom)} to ${investmentBritishDate(invTo)} · change dates &amp; tap Go${useF&&invFilterLabel()?' · <b>'+invFilterLabel()+'</b>':''}</div>
-    <div class="investment-report-table-wrap" style="overflow:auto;background:var(--surface);border-radius:12px;border:1px solid var(--border);max-height:64vh;-webkit-overflow-scrolling:touch;"><table style="width:max-content;min-width:0;border-collapse:collapse;font-size:.85rem;"><thead><tr style="background:#e3f2fd;color:#1a2e1a;"><th style="${cell}text-align:left;">Date</th><th style="${cell}text-align:left;">Scrip</th><th style="${cell}text-align:right;">Qty</th><th style="${cell}text-align:right;">Buy_Rate</th><th style="${cell}text-align:right;">Charges</th><th style="${cell}text-align:right;">Amount</th><th style="${cell}text-align:left;">Date sold</th><th style="${cell}text-align:right;">Sell qty</th><th style="${cell}text-align:right;">Sell rate</th><th style="${cell}text-align:right;">Charges</th><th style="${cell}text-align:right;">Sell Amt</th><th style="${cell}text-align:right;">Profit</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="${cell}${mu(r)}">${investmentBritishDate(r.date)}</td><td style="${cell}font-weight:700;">${invEsc(r.stock)}</td><td style="${cell}text-align:right;${mu(r)}">${r.qty}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyRate)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyCharges||0)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyAmount)}</td><td style="${cell}">${(r.soldDates&&r.soldDates.length)?r.soldDates.map(d=>investmentBritishDate(d)).join(', '):''}</td><td style="${cell}text-align:right;">${r.qtySold||0}</td><td style="${cell}text-align:right;">${r.sellRate?fmtR(r.sellRate):''}</td><td style="${cell}text-align:right;">${fmtR(r.sellCharges||0)}</td><td style="${cell}text-align:right;">${fmtR(r.soldAmount||0)}</td><td style="${cell}text-align:right;font-weight:800;">${r.profit<0?'-':''}${fmtR(Math.abs(r.profit||0))}</td></tr>`).join('')||'<tr><td colspan="12" style="padding:24px;text-align:center;color:var(--muted)">No investment entries in this date range.</td></tr>'}</tbody><tfoot><tr style="font-weight:800;background:var(--bg);"><td colspan="4" style="padding:9px 10px;text-align:right;">Total</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyChargesTotal)}</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyTotal)}</td><td colspan="3"></td><td style="padding:9px 10px;text-align:right;">${fmtR(sellChargesTotal)}</td><td style="padding:9px 10px;text-align:right;">${fmtR(sellTotal)}</td><td style="padding:9px 10px;text-align:right;">${totalProfit<0?'-':''}${fmtR(Math.abs(totalProfit))}</td></tr></tfoot></table></div>
+    ${useF?invPriceStatusHtml():''}
+    <div class="investment-report-table-wrap" style="overflow:auto;background:var(--surface);border-radius:12px;border:1px solid var(--border);max-height:64vh;-webkit-overflow-scrolling:touch;"><table style="width:max-content;min-width:0;border-collapse:collapse;font-size:.85rem;"><thead><tr style="background:#e3f2fd;color:#1a2e1a;"><th style="${cell}text-align:left;">Date</th><th style="${cell}text-align:left;">Scrip</th><th style="${cell}text-align:right;">Qty</th><th style="${cell}text-align:right;">Buy_Rate</th><th style="${cell}text-align:right;">Charges</th><th style="${cell}text-align:right;">Amount</th><th style="${cell}text-align:left;">Date sold</th><th style="${cell}text-align:right;">Sell qty</th><th style="${cell}text-align:right;">Sell rate</th><th style="${cell}text-align:right;">Charges</th><th style="${cell}text-align:right;">Sell Amt</th><th style="${cell}text-align:right;">Profit</th><th style="${cell}text-align:right;">Current Mkt Price</th><th style="${cell}text-align:right;">Estimated Profit</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="${cell}${mu(r)}">${investmentBritishDate(r.date)}</td><td style="${cell}font-weight:700;">${invEsc(r.stock)}</td><td style="${cell}text-align:right;${mu(r)}">${r.qty}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyRate)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyCharges||0)}</td><td style="${cell}text-align:right;${mu(r)}">${fmtR(r.buyAmount)}</td><td style="${cell}">${(r.soldDates&&r.soldDates.length)?r.soldDates.map(d=>investmentBritishDate(d)).join(', '):''}</td><td style="${cell}text-align:right;">${r.qtySold||0}</td><td style="${cell}text-align:right;">${r.sellRate?fmtR(r.sellRate):''}</td><td style="${cell}text-align:right;">${fmtR(r.sellCharges||0)}</td><td style="${cell}text-align:right;">${fmtR(r.soldAmount||0)}</td><td style="${cell}text-align:right;font-weight:800;">${r.profit<0?'-':''}${fmtR(Math.abs(r.profit||0))}</td><td style="${cell}text-align:right;">${r.open?`<span class="inv-cmp" data-key="${invEsc(r.key)}" onclick="openInvPriceEdit(this.dataset.key)">${r.cmp!==null?fmtR(r.cmp)+(r.cmpManual?' ✎':''):'Set price'}</span>`:''}</td><td style="${cell}text-align:right;font-weight:800;${r.est===null?'':'color:'+(r.est>=0?'#00b894':'#ff6b6b')+';'}">${r.est===null?'':(r.est<0?'-':'')+fmtR(Math.abs(r.est))}</td></tr>`).join('')||'<tr><td colspan="14" style="padding:24px;text-align:center;color:var(--muted)">No investment entries in this date range.</td></tr>'}</tbody><tfoot><tr style="font-weight:800;background:var(--bg);"><td colspan="4" style="padding:9px 10px;text-align:right;">Total</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyChargesTotal)}</td><td style="padding:9px 10px;text-align:right;">${fmtR(buyTotal)}</td><td colspan="3"></td><td style="padding:9px 10px;text-align:right;">${fmtR(sellChargesTotal)}</td><td style="padding:9px 10px;text-align:right;">${fmtR(sellTotal)}</td><td style="padding:9px 10px;text-align:right;">${totalProfit<0?'-':''}${fmtR(Math.abs(totalProfit))}</td><td></td><td style="padding:9px 10px;text-align:right;${estAny?'color:'+(estTotal>=0?'#00b894':'#ff6b6b')+';':''}">${estAny?(estTotal<0?'-':'')+fmtR(Math.abs(estTotal)):''}</td></tr></tfoot></table></div>
     ${rows.length?'':'<div style="text-align:center;padding:14px;color:var(--muted);font-size:0.8rem;">No entries match this filter.</div>'}
     <div style="font-size:0.68rem;color:var(--muted);margin:6px 2px;">Greyed purchase details = bought before this range; only sales inside the range are counted.</div>
     <button class="stmt-print-btn" onclick="printInvestmentStatement(${useF})">🖨️ Save Investment Statement as PDF</button>`;
+  if(pricePromise)pricePromise.then(r=>{if(r==='ok'||r==='fail')renderInvestmentDateWise(targetId,true);});
 }
 
 // ═══════════════════════════════════════
@@ -6173,7 +6372,7 @@ async function buildBackupObj(){
     username:currentUser.username,
     exported:new Date().toISOString(),
     transactions,budgets,goals,emis,recurringTxns,loans,
-    INCOME_CATS,EXPENSE_CATS,INVESTMENT_CATS,investments,invChargesMaster,invFunds,invRules,
+    INCOME_CATS,EXPENSE_CATS,INVESTMENT_CATS,investments,invChargesMaster,invFunds,invRules,invPriceCfg,invSymMap,
     reminders:remindersData,
     netWorth:netWorthData,
     register:registerData,
@@ -6534,12 +6733,16 @@ function buildInvestmentPdf(){
   p.heading('Investment Statement',16,true);
   p.heading(((currentUser&&currentUser.name)||'')+'   |   Period: '+investmentBritishDate(invFrom)+' to '+investmentBritishDate(invTo),9,false);
   p.gap(8);
-  const fr=[.09,.16,.06,.08,.08,.10,.07,.08,.08,.10,.10],al=['l','l','r','r','r','r','r','r','r','r','r'];
-  const hd=['Date','Scrip','Qty','Buy_Rate','Charges','Amount','Sell qty','Sell rate','Charges','Sell Amt','Profit'],ho={bold:true,fill:PDF_HEAD_FILL,head:true};
+  const fr=[.075,.135,.05,.065,.065,.085,.055,.065,.065,.085,.085,.085,.085],al=['l','l','r','r','r','r','r','r','r','r','r','r','r'];
+  const hd=['Date','Scrip','Qty','Buy_Rate','Charges','Amount','Sell qty','Sell rate','Charges','Sell Amt','Profit','CMP','Est. Profit'],ho={bold:true,fill:PDF_HEAD_FILL,head:true};
   p.row(hd,fr,al,ho);p.header={cells:hd,fr:fr,al:al,o:ho};
-  rows.forEach(r=>p.row([investmentBritishDate(r.date),r.stock,r.qty,pdfMoney(r.buyRate),pdfMoney(r.buyCharges||0),pdfMoney(r.buyAmount),r.qtySold||0,r.sellRate?pdfMoney(r.sellRate):'',pdfMoney(r.sellCharges||0),pdfMoney(r.soldAmount),pdfSigned(r.profit)],fr,al));
+  rows.forEach(r=>p.row([investmentBritishDate(r.date),r.stock,r.qty,pdfMoney(r.buyRate),pdfMoney(r.buyCharges||0),pdfMoney(r.buyAmount),r.qtySold||0,r.sellRate?pdfMoney(r.sellRate):'',pdfMoney(r.sellCharges||0),pdfMoney(r.soldAmount),pdfSigned(r.profit),r.cmp!==null?pdfMoney(r.cmp):'',r.est!==null?pdfSigned(r.est):''],fr,al));
   if(!rows.length)p.row(['No investment entries in this date range.'],[1],['l']);
-  p.row(['Total','','','',pdfMoney(rows.filter(r=>r.bought).reduce((t,r)=>t+Number(r.buyCharges||0),0)),pdfMoney(buyTotal),'','',pdfMoney(rows.reduce((t,r)=>t+Number(r.sellCharges||0),0)),pdfMoney(sellTotal),pdfSigned(totalProfit)],fr,al,{bold:true,fill:PDF_TOTAL_FILL});
+  p.row(['Total','','','',pdfMoney(rows.filter(r=>r.bought).reduce((t,r)=>t+Number(r.buyCharges||0),0)),pdfMoney(buyTotal),'','',pdfMoney(rows.reduce((t,r)=>t+Number(r.sellCharges||0),0)),pdfMoney(sellTotal),pdfSigned(totalProfit),'',rows.some(r=>r.est!==null)?pdfSigned(rows.reduce((t,r)=>t+(r.est===null?0:r.est),0)):''],fr,al,{bold:true,fill:PDF_TOTAL_FILL});
+  p.gap(6);
+  const asOf=invPriceAsOf();
+  p.heading('CMP = current market price'+(asOf?' (updated '+invTimeText(asOf)+')':'')+'. Est. Profit = profit on the quantity still held if sold at CMP, after buy charges and estimated exit charges.',7,false);
+  p.heading('Estimates only. Prices come from a third-party source and may be delayed or entered by hand.',7,false);
   return p;
 }
 function buildIEPdf(){
@@ -6616,8 +6819,9 @@ function buildLoanPdf(loan){
   p.row(['Outstanding Balance','Rs. '+pdfMoney(outstanding)],sf,sa,{bold:true,fill:PDF_TOTAL_FILL});
   return {pdf:p,name:'Loan-Statement-'+safeFileName(loan.person)+'-'+new Date().toISOString().split('T')[0]+'.pdf'};
 }
-function printInvestmentStatement(useFilter){
+async function printInvestmentStatement(useFilter){
   invPdfFiltered=!!useFilter;
+  if(invPriceCfg.url){try{await invEnsurePrices(false,4000);}catch(e){}}
   try{savePdfDoc(buildInvestmentPdf(),'Investment-Statement-'+invFrom+'_to_'+invTo+'.pdf','Investment Statement PDF');}
   catch(e){console.error('PDF error',e);showToast('⚠️ Could not create PDF: '+(e&&e.message?e.message:'error'));}
   finally{invPdfFiltered=false;}
@@ -6700,6 +6904,7 @@ async function applyBackupData(data){
   if(data.invChargesMaster){invChargesMaster=invMergeMaster(data.invChargesMaster);await saveInvChargesMaster();}
   invFunds=Array.isArray(data.invFunds)?data.invFunds:[];await saveInvFunds();
   if(data.invRules&&typeof data.invRules==='object'){invRules=invNormRules(data.invRules);await invPersistRules();}
+  invPriceCfg=Object.assign({url:'',token:'',ex:'NS'},(data.invPriceCfg&&typeof data.invPriceCfg==='object')?data.invPriceCfg:{});invSymMap=(data.invSymMap&&typeof data.invSymMap==='object')?data.invSymMap:{};invPrices={};await saveInvPriceData();
 
   // Remove all existing notes for this user, then restore every date-wise note from the backup.
   const allSettings=await dbGetAll('settings');
@@ -6759,7 +6964,7 @@ async function clearAllData(){
   reminders=[];netWorthItems=[];regSheets=[];
   await saveData();
   try{await saveInvestments();}catch(e){console.error('Investment clear error',e);showToast('⚠️ Could not clear investment data.');}
-  try{invFunds=[];await saveInvFunds();invRules=invNormRules(null);await invPersistRules();}catch(e){console.error('Trading data clear error',e);}
+  try{invFunds=[];await saveInvFunds();invRules=invNormRules(null);await invPersistRules();invPriceCfg={url:'',token:'',ex:'NS'};invSymMap={};invPrices={};await saveInvPriceData();}catch(e){console.error('Trading data clear error',e);}
   await dbPut('settings',{key:'reminders_'+currentUser.username,  value:'[]'});
   await dbPut('settings',{key:'networth_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'register_'+currentUser.username,    value:'[]'});
