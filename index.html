@@ -4569,9 +4569,25 @@ function payEmi(id){
   if(!emi)return;
   const today=new Date().toISOString().split('T')[0];
   if(!budgetConfirm('Bills',emi.amount,today,null,0))return;
-  transactions.unshift({id:Date.now(),type:'expense',amount:emi.amount,category:'Bills',date:today,note:emi.name+' EMI',createdAt:Date.now()});
+  transactions.unshift({id:Date.now(),type:'expense',amount:emi.amount,category:'Bills',date:today,note:emi.name+' EMI',emiId:emi.id,createdAt:Date.now()});
   emi.paid=Math.min(emi.months,(emi.paid||0)+1);
   saveData();renderAll();renderEmis();showToast(`✅ EMI paid! (${emi.paid}/${emi.months})`);
+}
+async function cancelEmiPayment(id){
+  const emi=emis.find(e=>e.id===id);
+  if(!emi||!(emi.paid>0)){showToast('No paid EMI to cancel');return;}
+  if(!confirm('Cancel the last paid EMI of "'+emi.name+'"?\nThe same expense entry will also be removed from your transactions.'))return;
+  // newest linked entry first; older payments (made before this fix) are matched by note + amount
+  let idx=-1, best=-1;
+  transactions.forEach((t,i)=>{
+    const linked=(t.emiId===emi.id);
+    const legacy=(t.emiId===undefined && t.type==='expense' && t.category==='Bills' && t.note===(emi.name+' EMI') && Number(t.amount)===Number(emi.amount));
+    if(linked||legacy){ const k=(t.createdAt||t.id||0); if(k>best){best=k;idx=i;} }
+  });
+  if(idx>=0) transactions.splice(idx,1);
+  emi.paid=Math.max(0,(emi.paid||0)-1);
+  await saveData();renderAll();renderEmis();
+  showToast(idx>=0?`↩ EMI cancelled & expense removed (${emi.paid}/${emi.months})`:`↩ EMI cancelled (${emi.paid}/${emi.months}) — no matching expense found`);
 }
 function renderEmis(){
   const container=document.getElementById('emiList');
@@ -4598,6 +4614,7 @@ function renderEmis(){
       </div>
       <div style="display:flex;gap:8px;margin-top:10px;">
         <button onclick="payEmi(${e.id})" style="flex:1;padding:8px;background:linear-gradient(135deg,#ff6b6b,#ff922b);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:0.8rem;cursor:pointer;font-family:var(--font);">💳 Pay EMI</button>
+        ${paid>0?`<button onclick="cancelEmiPayment(${e.id})" style="padding:8px 10px;border:1.5px solid #ffe0b2;border-radius:10px;color:#e65100;background:none;cursor:pointer;font-size:0.74rem;font-weight:700;font-family:var(--font);">↩ Undo</button>`:''}
         <button onclick="deleteEmi(${e.id})" style="padding:8px 12px;border:1.5px solid #ffcdd2;border-radius:10px;color:#ff6b6b;background:none;cursor:pointer;font-size:0.8rem;font-family:var(--font);">🗑️</button>
       </div>
     </div>`;
@@ -6768,6 +6785,7 @@ function saveEdit(){
 async function buildBackupObj(){
   // Decrypt and read all settings-stored modules
   let remindersData=[],netWorthData=[],registerData=[],dailyLimitVal=0,homeNotesData=[];
+  let pocketsData=[],pocketSplitData=null,subsData=[],tax80cData=[],taxSettingsData=null;
   try{
     const r1=await dbGet('settings','reminders_'+currentUser.username);
     if(r1){ const dec=await decryptData(r1.value); remindersData=JSON.parse(dec); }
@@ -6777,6 +6795,18 @@ async function buildBackupObj(){
     if(r3){ const dec=await decryptData(r3.value); registerData=JSON.parse(dec); }
     const r4=await dbGet('settings','daily_limit_'+currentUser.username);
     if(r4) dailyLimitVal=parseFloat(r4.value)||0;
+    try{
+      const rp=await dbGet('settings','pockets_'+currentUser.username);
+      if(rp){ pocketsData=JSON.parse(await decryptData(rp.value)); }
+      const rs=await dbGet('settings','pocket_split_'+currentUser.username);
+      if(rs){ pocketSplitData=JSON.parse(rs.value); }
+      const rb=await dbGet('settings','subscriptions_'+currentUser.username);
+      if(rb){ subsData=JSON.parse(await decryptData(rb.value)); }
+      const r8=await dbGet('settings','tax80c_'+currentUser.username);
+      if(r8){ tax80cData=JSON.parse(await decryptData(r8.value)); }
+      const rt=await dbGet('settings','taxSettings_'+currentUser.username);
+      if(rt){ taxSettingsData=JSON.parse(await decryptData(rt.value)); }
+    }catch(e){ console.log('export smart modules read',e); }
     const allSettings=await dbGetAll('settings');
     const notePrefix='home_note_'+currentUser.username+'_';
     homeNotesData=allSettings.filter(x=>typeof x.key==='string'&&x.key.startsWith(notePrefix)).map(x=>({
@@ -6798,6 +6828,11 @@ async function buildBackupObj(){
     netWorth:netWorthData,
     register:registerData,
     dailyLimit:dailyLimitVal,
+    pockets:pocketsData,
+    pocketSplitRules:pocketSplitData,
+    subscriptions:subsData,
+    tax80c:tax80cData,
+    taxSettings:taxSettingsData,
     homeNotes:homeNotesData
   };
 }
@@ -7327,6 +7362,13 @@ async function applyBackupData(data){
   if(data.invRules&&typeof data.invRules==='object'){invRules=invNormRules(data.invRules);await invPersistRules();}
   invPriceCfg=Object.assign({url:'',token:'',ex:'NS'},(data.invPriceCfg&&typeof data.invPriceCfg==='object')?data.invPriceCfg:{});invSymMap=(data.invSymMap&&typeof data.invSymMap==='object')?data.invSymMap:{};invPrices={};await saveInvPriceData();
 
+  // Pockets / subscriptions / tax data (only replaced when present in the backup file)
+  if(Array.isArray(data.pockets)){ moneyPockets=data.pockets; await savePockets(); }
+  if(data.pocketSplitRules && typeof data.pocketSplitRules==='object'){ pocketSplitRules=data.pocketSplitRules; await dbPut('settings',{key:'pocket_split_'+currentUser.username,value:JSON.stringify(pocketSplitRules)}); }
+  if(Array.isArray(data.subscriptions)){ subscriptions=data.subscriptions; await saveSubscriptions(); }
+  if(Array.isArray(data.tax80c)){ tax80cEntries=data.tax80c; await save80C(); }
+  if(data.taxSettings && typeof data.taxSettings==='object'){ taxSettings=Object.assign({},TAX_SETTINGS_DEFAULT,data.taxSettings); await saveTaxSettings(); }
+
   // Remove all existing notes for this user, then restore every date-wise note from the backup.
   const allSettings=await dbGetAll('settings');
   const notePrefix='home_note_'+currentUser.username+'_';
@@ -7349,6 +7391,7 @@ async function applyBackupData(data){
   await loadCategories();
   if(typeof load80C==='function') await load80C();
   if(typeof loadTaxSettings==='function') await loadTaxSettings();
+  if(typeof loadRegSmartFeatures==='function') await loadRegSmartFeatures();
 
   renderAll();
   renderInvestments();
@@ -8492,7 +8535,10 @@ async function loadReminders(){
     const all=await dbGetAll('settings');
     const r=all.find(x=>x.key==='reminders_'+currentUser.username);
     reminders=r?JSON.parse(r.value):[];
+    const cm=mmCurMonthKey();
+    reminders.forEach(x=>{ if(x.paid && x.paidMonth && x.paidMonth!==cm){ x.paid=false; delete x.paidMonth; delete x.paidTxId; } });
   }catch{reminders=[];}
+  setTimeout(function(){ try{ syncBillAlarms(); }catch(e){} }, 3000);
 }
 async function saveReminders(){
   const enc=await encryptData(JSON.stringify(reminders));
@@ -8588,42 +8634,88 @@ async function saveReminder(){
   const category=document.getElementById('remCategory').value||'Bill';
   if(!name||!amount){showToast('⚠️ Please fill name and amount');return;}
   if(dueDay<1||dueDay>31){showToast('⚠️ Due day must be 1-31');return;}
-  reminders.push({id:Date.now(),name,amount,dueDay,emoji,category,paid:false,createdAt:new Date().toISOString()});
+  const alarmOn=!!(document.getElementById('remAlarmOn')||{}).checked;
+  const alarmTime=(document.getElementById('remAlarmTime')||{}).value||'09:00';
+  const alarmBefore=Math.min(7,Math.max(0,parseInt((document.getElementById('remAlarmBefore')||{}).value)||0));
+  reminders.push({id:Date.now(),name,amount,dueDay,emoji,category,paid:false,alarmOn,alarmTime,alarmBefore,createdAt:new Date().toISOString()});
   await saveReminders();
+  window._mmUserAction=true;
+  syncBillAlarms();
   closeModal('addReminderModal');
   renderReminders();
   showToast('✅ Bill reminder added!');
   // Clear form
   ['remName','remAmount','remDueDay'].forEach(id=>document.getElementById(id).value='');
 }
+function mmCurMonthKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 async function markReminderPaid(id){
   const r=reminders.find(x=>x.id===id);
-  if(!r)return;
-  r.paid=true;
+  if(!r||r.paid)return;
+  const today=localDateKey();
+  // Expense is recorded ONLY now, when the bill is marked as paid.
+  if(!budgetConfirm(r.category,r.amount,today,null,0)){showToast('Bill not marked as paid.');return;}
+  const txId=Date.now();
+  transactions.push({id:txId,type:'expense',amount:r.amount,category:r.category,date:today,note:r.name+' bill',emoji:r.emoji,billId:r.id,createdAt:txId});
+  r.paid=true; r.paidMonth=mmCurMonthKey(); r.paidTxId=txId;
+  await saveData();
   await saveReminders();
+  renderAll();
   renderReminders();
-  showToast('✅ '+r.name+' marked as paid!');
-  // Auto-add as expense transaction
-  if(confirm('Add '+r.name+' ('+fmt(r.amount)+') as expense transaction?')){
-    if(!budgetConfirm(r.category,r.amount,new Date().toISOString().split('T')[0],null,0)){showToast('Expense not added to your records.');return;}
-    transactions.push({id:Date.now(),type:'expense',amount:r.amount,category:r.category,date:new Date().toISOString().split('T')[0],note:r.name+' bill',emoji:r.emoji});
-    await saveData();renderAll();
-  }
+  showToast('✅ '+r.name+' paid — expense recorded');
 }
 async function markReminderUnpaid(id){
   const r=reminders.find(x=>x.id===id);
   if(!r)return;
-  r.paid=false;
+  // Remove the expense that was created when this bill was marked as paid.
+  const before=transactions.length;
+  transactions=transactions.filter(t=>!(t.billId===r.id && (!r.paidTxId || t.id===r.paidTxId)));
+  const removed=before-transactions.length;
+  r.paid=false; delete r.paidMonth; delete r.paidTxId;
+  await saveData();
   await saveReminders();
+  renderAll();
   renderReminders();
-  showToast('↩ Marked as unpaid');
+  showToast(removed?'↩ Marked unpaid — expense entry removed':'↩ Marked as unpaid');
 }
 async function deleteReminder(id){
   if(!confirm('Delete this reminder?'))return;
   reminders=reminders.filter(r=>r.id!==id);
   await saveReminders();
   renderReminders();
+  syncBillAlarms();
   showToast('🗑️ Reminder deleted');
+}
+
+/* ── Bill phone alarms (native, repeat every month, work with the app closed) ── */
+function mmBillNotifId(r){ return 100000 + (Math.abs(parseInt(r.id,10)||0) % 800000); }
+async function syncBillAlarms(){
+  if(typeof mmIsNative!=='function' || !mmIsNative()) return;
+  const C=window.Capacitor;
+  try{
+    if(!(C.Plugins&&C.Plugins.LocalNotifications)) return;
+    const pend=await capCall(C,'LocalNotifications','getPending',{});
+    const old=((pend&&pend.notifications)||[]).filter(n=>n.id>=100000 && n.id<900000).map(n=>({id:n.id}));
+    if(old.length) await capCall(C,'LocalNotifications','cancel',{notifications:old});
+    const list=(reminders||[]).filter(r=>r.alarmOn);
+    if(!list.length) return;
+    const ask=window._mmUserAction; window._mmUserAction=false;
+    if(!(await mmNativePrepare(C))) return;
+    await mmExactAlarmState(C, ask);
+    const notes=list.map(r=>{
+      const tm=String(r.alarmTime||'09:00').split(':');
+      let day=(parseInt(r.dueDay,10)||1)-(parseInt(r.alarmBefore,10)||0);
+      if(day<1) day=1;
+      const when=(r.alarmBefore>0)?('is due in '+r.alarmBefore+' day(s) (on the '+r.dueDay+getDaySuffix(r.dueDay)+')'):'is due TODAY';
+      return {
+        id:mmBillNotifId(r),
+        title:'⏰ Bill Reminder — '+(r.name||'Bill'),
+        body:(r.emoji||'🔔')+' '+(r.name||'Bill')+' ('+fmt(r.amount)+') '+when+'. Ignore if already paid.',
+        channelId:'mm-reminder-v2',
+        schedule:{on:{day:day,hour:parseInt(tm[0],10)||9,minute:parseInt(tm[1],10)||0},allowWhileIdle:true}
+      };
+    });
+    await capCall(C,'LocalNotifications','schedule',{notifications:notes});
+  }catch(e){ console.log('Bill alarm sync failed:',e&&e.message); }
 }
 
 // Check reminders on app open — notify if bills due today
@@ -10438,8 +10530,15 @@ window.onload=async()=>{
         </select>
       </div>
     </div>
-    <div style="background:#e8f4ff;border-radius:10px;padding:10px;font-size:0.72rem;color:#1565c0;margin-bottom:12px;">
-      💡 You will be reminded when this bill is due. You can mark it as paid and optionally add it as an expense transaction.
+    <div style="background:#fff8e1;border:1.5px solid #ffd54f;border-radius:10px;padding:10px;margin-bottom:12px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;font-weight:800;color:#8a5a00;cursor:pointer;">
+        <input type="checkbox" id="remAlarmOn" checked style="width:18px;height:18px;"/> ⏰ Phone alarm message (works even when app is closed)
+      </label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
+        <div class="form-group" style="margin:0;"><label style="font-size:0.7rem;">Alarm time</label><input type="time" id="remAlarmTime" value="09:00"/></div>
+        <div class="form-group" style="margin:0;"><label style="font-size:0.7rem;">Remind (days before)</label><input type="number" id="remAlarmBefore" value="0" min="0" max="7"/></div>
+      </div>
+      <div style="font-size:0.68rem;color:#8a5a00;margin-top:6px;line-height:1.5;">Needs Auto Start ON and notifications allowed for this app. An expense is recorded only when you tap ✅ Pay.</div>
     </div>
     <button class="btn-primary" onclick="saveReminder()">+ Add Reminder</button>
     <button class="modal-close" onclick="closeModal('addReminderModal')">Cancel</button>
