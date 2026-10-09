@@ -362,6 +362,8 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:none;align-items:flex-end;justify-content:center;}
+#alarmPopupModal{z-index:30000!important;align-items:center!important;}
+#alarmPopupModal .modal-sheet{border-radius:20px!important;margin:16px;max-width:360px;width:calc(100% - 32px);box-shadow:0 12px 40px rgba(0,0,0,0.35);}
 .modal-overlay.open{display:flex;}
 .modal-sheet{background:var(--surface);border-radius:24px 24px 0 0;padding:24px 20px;padding-bottom:calc(24px + var(--safe-bottom));width:100%;max-width:500px;max-height:85vh;overflow-y:auto;}
 .modal-sheet h3{font-size:1rem;font-weight:700;margin-bottom:14px;}
@@ -1556,12 +1558,13 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div id="reminderTimeRow" style="display:none;padding-top:10px;">
           <label style="font-size:0.78rem;font-weight:700;color:var(--muted);">Reminder Time:</label>
           <input type="time" id="reminderTime" value="20:00" style="margin-top:6px;width:100%;padding:9px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);" onchange="saveSettings()"/>
+          <button type="button" onclick="testDailyReminderNow()" style="width:100%;margin-top:10px;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#00b894,#4d96ff);color:#fff;font-weight:800;font-size:0.88rem;cursor:pointer;font-family:var(--font);">🔔 Test Reminder Now</button>
+          <div id="reminderStatusLine" style="margin-top:8px;font-size:0.72rem;font-weight:700;color:var(--muted);text-align:center;"></div>
           <div style="margin-top:10px;padding:10px 12px;background:#e8f4ff;border-radius:10px;border:1.5px solid #90caf9;font-size:0.72rem;color:#1565c0;line-height:1.55;">
-            <b>📱 For mobile popup when app is closed:</b><br>
-            1. Allow notifications when asked<br>
-            2. Install app to Home Screen (Install banner / browser menu)<br>
-            3. Reminder works even if you are logged out<br>
-            4. On Android Chrome, keep battery optimization off for the browser/app
+            <b>✅ How it works:</b><br>
+            • Tap <b>Test Reminder Now</b> — a popup with sound appears inside the app (no permission needed)<br>
+            • At the set time every day the same popup appears while the app is open<br>
+            • For lock-screen alerts, allow notifications when prompted. A browser/PWA needs a supported background notification mechanism; the Android app build may also require native alarm support
           </div>
         </div>
       </div>
@@ -2425,7 +2428,7 @@ async function loadSettings(){
     return{pin,pinEnabled};
   }catch{return{pin:null,pinEnabled:false};}
 }
-async function saveSettings(){
+async function persistAppSettings(){
   await dbPut('settings',{key:'app_settings',value:JSON.stringify(settings)});
 }
 async function saveAutoBackupPref(){
@@ -2584,7 +2587,10 @@ function openModal(id){
   history.pushState({modal:id},'');
 }
 function closeModal(id){
-  document.getElementById(id).classList.remove('open');
+  const el=document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('open');
+  if(id==='alarmPopupModal') el.style.display='';
 }
 function closeAllModals(){
   document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));
@@ -2855,25 +2861,32 @@ async function _oldLoadSettingsUnused(){
   document.getElementById('reminderTimeRow').style.display=settings.reminder?'block':'none';
 }
 async function saveSettings(){
-  settings.dark=document.getElementById('darkModeToggle').checked;
-  settings.reminder=document.getElementById('reminderToggle').checked;
-  settings.reminderTime=document.getElementById('reminderTime').value||'20:00';
-  document.getElementById('reminderTimeRow').style.display=settings.reminder?'block':'none';
+  const darkEl=document.getElementById('darkModeToggle');
+  const remEl=document.getElementById('reminderToggle');
+  const timeEl=document.getElementById('reminderTime');
+  if(darkEl) settings.dark=darkEl.checked;
+  if(remEl) settings.reminder=!!remEl.checked;
+  if(timeEl && timeEl.value) settings.reminderTime=timeEl.value;
+  if(!settings.reminderTime) settings.reminderTime='20:00';
+  const row=document.getElementById('reminderTimeRow');
+  if(row) row.style.display=settings.reminder?'block':'none';
   try{ await dbPut('settings',{key:'app_settings',value:JSON.stringify(settings)}); }catch(e){}
   try{ localStorage.setItem('mm_settings',JSON.stringify(settings)); }catch(e){}
+  // Ask for notification permission when the user explicitly enables Daily Reminder.
+  // This is required for lock-screen/system notifications. The in-app popup itself
+  // does not need permission.
   if(settings.reminder){
-    if('Notification' in window && Notification.permission==='default'){
-      try{ await Notification.requestPermission(); }catch(e){}
-    }
-    if('Notification' in window && Notification.permission==='denied'){
-      showToast('⚠️ Notifications blocked — enable them in browser settings for Daily Reminder');
-    } else {
-      showToast('🔔 Daily reminder set for '+settings.reminderTime);
-    }
+    try{
+      if('Notification' in window && Notification.permission === 'default'){
+        await Notification.requestPermission();
+      }
+    }catch(e){ console.warn('Notification permission request failed:',e); }
+    showToast('🔔 Reminder ON · '+settings.reminderTime, 2800);
   } else {
     showToast('🔕 Daily reminder turned off');
   }
   setupDailyReminder();
+  updateReminderStatusLine();
 }
 function toggleDark(){
   setTimeout(()=>{renderMiniChart();if(document.getElementById('catChart'))renderReport();},50);
@@ -2920,158 +2933,330 @@ let _dailyReminderTimer=null;
 let _dailyReminderInterval=null;
 let _dailyReminderLastFire='';
 
-/** Tell the Service Worker to schedule / cancel background notification (works when app closed). */
+function localDateKey(d){
+  d = d || new Date();
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+
+function updateReminderStatusLine(){
+  const el=document.getElementById('reminderStatusLine');
+  if(!el) return;
+  if(!settings.reminder){
+    el.textContent='Reminder is OFF';
+    return;
+  }
+  const t=settings.reminderTime||'20:00';
+  const parts=String(t).split(':');
+  const h=parseInt(parts[0],10), mi=parseInt(parts[1],10);
+  if(isNaN(h)||isNaN(mi)){ el.textContent='Invalid time'; return; }
+  const now=new Date();
+  const target=new Date();
+  target.setHours(h,mi,0,0);
+  if(target<=now) target.setDate(target.getDate()+1);
+  const diffMs=target-now;
+  const mins=Math.round(diffMs/60000);
+  let when;
+  if(mins<60) when='in '+mins+' min';
+  else if(mins<48*60) when='in '+Math.round(mins/60)+' hr';
+  else when='on '+target.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  el.textContent='Next reminder: '+t+' ('+when+')';
+}
+
+/* ── NATIVE (Capacitor) DAILY REMINDER ─────────────────────────────
+   Uses @capacitor/local-notifications: the notification is registered with
+   Android's AlarmManager, so it fires every day at the chosen time even when
+   the app is closed / swiped away / phone restarted. */
+const MM_REM_ID=9001, MM_REM_CHANNEL='mm-daily-reminder';
+function mmIsNative(){
+  try{
+    const C=window.Capacitor; if(!C) return false;
+    return typeof C.isNativePlatform==='function'?C.isNativePlatform():(typeof C.getPlatform==='function'&&C.getPlatform()!=='web');
+  }catch(e){return false;}
+}
+async function mmEnsureNotifPermission(C){
+  try{
+    let p=await capCall(C,'LocalNotifications','checkPermissions',{});
+    if(p&&p.display==='granted') return true;
+    p=await capCall(C,'LocalNotifications','requestPermissions',{});
+    return !!(p&&p.display==='granted');
+  }catch(e){return false;}
+}
+async function syncNativeReminder(enabled, timeStr){
+  if(!mmIsNative()) return false;
+  const C=window.Capacitor;
+  try{
+    await capCall(C,'LocalNotifications','cancel',{notifications:[{id:MM_REM_ID}]}).catch(()=>{});
+    if(!enabled) return true;
+    const parts=String(timeStr||'20:00').split(':');
+    const hour=parseInt(parts[0],10), minute=parseInt(parts[1],10);
+    if(isNaN(hour)||isNaN(minute)) return false;
+    if(!(await mmEnsureNotifPermission(C))){
+      try{showToast('⚠️ Allow notifications for Money Manager Pro in phone Settings to get the daily reminder',4000);}catch(e){}
+      return false;
+    }
+    try{
+      await capCall(C,'LocalNotifications','createChannel',{
+        id:MM_REM_CHANNEL,name:'Daily Reminder',description:'Reminds you to enter today\'s transactions',
+        importance:5,visibility:1,vibration:true
+      });
+    }catch(e){}
+    await capCall(C,'LocalNotifications','schedule',{notifications:[{
+      id:MM_REM_ID,
+      title:'💰 Daily Reminder',
+      body:"Don't forget to enter today's transactions in Money Manager Pro!",
+      channelId:MM_REM_CHANNEL,
+      schedule:{on:{hour:hour,minute:minute},allowWhileIdle:true}
+    }]});
+    return true;
+  }catch(e){
+    console.log('Native reminder sync failed:',e&&e.message);
+    return false;
+  }
+}
+/** Test: native notification in ~5 seconds (close the app to see it work). */
+async function mmNativeTestIn5s(){
+  if(!mmIsNative()) return false;
+  const C=window.Capacitor;
+  try{
+    if(!(await mmEnsureNotifPermission(C))) return false;
+    try{await capCall(C,'LocalNotifications','createChannel',{id:MM_REM_CHANNEL,name:'Daily Reminder',importance:5,visibility:1,vibration:true});}catch(e){}
+    await capCall(C,'LocalNotifications','schedule',{notifications:[{
+      id:9002,title:'💰 Daily Reminder (test)',
+      body:"Don't forget to enter today's transactions in Money Manager Pro!",
+      channelId:MM_REM_CHANNEL,
+      schedule:{at:new Date(Date.now()+5000),allowWhileIdle:true}
+    }]});
+    return true;
+  }catch(e){return false;}
+}
+
+/** Tell the Service Worker to schedule / cancel background notification. */
 async function syncReminderToServiceWorker(enabled, timeStr){
   try{
-    if(!('serviceWorker' in navigator)) return;
+    if(!('serviceWorker' in navigator)) return false;
     const reg = await navigator.serviceWorker.ready;
-    if(!reg || !reg.active) return;
+    const worker = reg.active || reg.waiting || reg.installing;
+    if(!worker) return false;
     if(!enabled){
-      reg.active.postMessage({ type: 'CANCEL_REMINDER' });
-      return;
+      worker.postMessage({ type: 'CANCEL_REMINDER' });
+      return true;
     }
     const parts = String(timeStr||'20:00').split(':');
     const hour = parseInt(parts[0],10);
     const minute = parseInt(parts[1],10);
-    if(isNaN(hour)||isNaN(minute)) return;
-    reg.active.postMessage({ type: 'SCHEDULE_REMINDER', hour, minute, time: timeStr });
-    // Periodic Background Sync (Chrome Android) — wakes SW roughly daily even if closed
+    if(isNaN(hour)||isNaN(minute)) return false;
+    worker.postMessage({ type: 'SCHEDULE_REMINDER', hour, minute, time: timeStr });
     try{
       if('periodicSync' in reg){
-        const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
-        if(status.state === 'granted' || status.state === 'prompt'){
-          await reg.periodicSync.register('mm-daily-reminder', { minInterval: 12 * 60 * 60 * 1000 });
+        await reg.periodicSync.register('mm-daily-reminder', { minInterval: 12 * 60 * 60 * 1000 });
+      }
+    }catch(e){}
+    return true;
+  }catch(e){
+    console.log('SW reminder sync skipped:', e && e.message);
+    return false;
+  }
+}
+
+/**
+ * Fire the daily reminder.
+ * @param {boolean} force - if true, ignore once-per-day lock (for Test button)
+ * @param {boolean} quietSys - if true, skip OS notification (in-app only)
+ */
+function ensureReminderOverlay(){
+  var el = document.getElementById('alarmPopupModal');
+  if(el) return el;
+  // Fallback overlay if modal missing from DOM
+  el = document.createElement('div');
+  el.id = 'alarmPopupModal';
+  el.className = 'modal-overlay';
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:30000;display:none;align-items:center;justify-content:center;';
+  el.innerHTML = '<div class="modal-sheet" style="text-align:center;border-radius:20px;margin:16px;max-width:360px;width:calc(100% - 32px);padding:24px 20px;background:var(--surface,#fff);">'
+    + '<div id="alarmPopupIcon" style="font-size:3rem;margin-bottom:6px;">🔔</div>'
+    + '<div id="alarmPopupTitle" style="font-size:1.05rem;font-weight:900;color:#e53935;margin-bottom:6px;">Daily Reminder</div>'
+    + '<div id="alarmPopupMsg" style="font-size:0.85rem;color:#666;margin-bottom:16px;"></div>'
+    + '<button type="button" onclick="closeModal(\'alarmPopupModal\')" style="width:100%;padding:12px;border:none;border-radius:12px;background:#e53935;color:#fff;font-weight:700;font-size:0.9rem;cursor:pointer;">OK, Got It</button>'
+    + '</div>';
+  document.body.appendChild(el);
+  return el;
+}
+
+function showInAppReminder(title, message, emoji){
+  try{
+    var el = ensureReminderOverlay();
+    var icon = document.getElementById('alarmPopupIcon');
+    var tit = document.getElementById('alarmPopupTitle');
+    var msg = document.getElementById('alarmPopupMsg');
+    if(icon) icon.textContent = emoji || '🔔';
+    if(tit) tit.textContent = title || 'Daily Reminder';
+    if(msg) msg.textContent = message || '';
+    el.classList.add('open');
+    el.style.display = 'flex';
+    try{ if(typeof playAlarmSound === 'function') playAlarmSound(); }catch(e){}
+    try{ if(navigator.vibrate) navigator.vibrate([300,150,300,150,300]); }catch(e){}
+    return true;
+  }catch(e){
+    console.warn('showInAppReminder failed', e);
+    try{ alert((title||'Reminder') + '\n\n' + (message||'')); }catch(e2){}
+    return false;
+  }
+}
+
+/**
+ * Fire the daily reminder.
+ * @param {boolean} force - ignore once-per-day lock (Test button)
+ * @param {boolean} tryOsNotify - also try system notification if permission already granted
+ */
+function fireDailyReminder(force, tryOsNotify){
+  var today = localDateKey();
+  if(!force && _dailyReminderLastFire === today){
+    console.log('Daily reminder already fired today');
+    return false;
+  }
+  if(!force){
+    _dailyReminderLastFire = today;
+    try{ localStorage.setItem('mm_daily_reminder_last', today); }catch(e){}
+  }
+
+  var body = "Don't forget to record today's transactions in Money Manager Pro!";
+
+  // ALWAYS show in-app popup first (no permission needed)
+  showInAppReminder('💰 Daily Reminder', body, '🔔');
+
+  // Optional OS notification ONLY if already granted — never prompt here
+  if(tryOsNotify){
+    try{
+      if('Notification' in window && Notification.permission === 'granted'){
+        if(navigator.serviceWorker){
+          navigator.serviceWorker.ready.then(function(reg){
+            return reg.showNotification('💰 Daily Reminder', {
+              body: body,
+              tag: 'mm-daily-reminder',
+              renotify: true,
+              requireInteraction: true,
+              vibrate: [200, 100, 200],
+              icon: './resources/icon-192.png'
+            });
+          }).catch(function(){
+            try{ new Notification('💰 Daily Reminder', { body: body, tag: 'mm-daily-reminder' }); }catch(e){}
+          });
+        } else {
+          try{ new Notification('💰 Daily Reminder', { body: body, tag: 'mm-daily-reminder' }); }catch(e){}
         }
       }
     }catch(e){}
-  }catch(e){ console.log('SW reminder sync skipped:', e && e.message); }
+  }
+  return true;
 }
 
-function fireDailyReminder(){
-  const today=new Date().toISOString().split('T')[0];
-  if(_dailyReminderLastFire===today) return;
-  _dailyReminderLastFire=today;
-  try{ localStorage.setItem('mm_daily_reminder_last', today); }catch(e){}
-  const msg="Don't forget to record today's transactions in Money Manager Pro!";
-  // Prefer Service Worker notification (shows on lock screen / notification tray on mobile)
-  let notified=false;
-  try{
-    if(navigator.serviceWorker && navigator.serviceWorker.controller){
-      // SW will also fire from its own timer; still show from page if open
-    }
-    if('Notification' in window && Notification.permission==='granted'){
-      // Use SW registration when available so notification outlives the page
-      if(navigator.serviceWorker){
-        navigator.serviceWorker.ready.then(reg=>{
-          reg.showNotification('💰 Daily Reminder',{
-            body:msg,
-            tag:'mm-daily-reminder',
-            renotify:true,
-            requireInteraction:true,
-            vibrate:[200,100,200],
-            data:{url:'./'}
-          }).catch(()=>{
-            try{ new Notification('💰 Daily Reminder',{body:msg,tag:'mm-daily-reminder'}); }catch(e){}
-          });
-        });
-        notified=true;
-      } else {
-        new Notification('💰 Daily Reminder',{body:msg, tag:'mm-daily-reminder'});
-        notified=true;
-      }
-    }
-  }catch(e){}
-  // In-app popup only when app UI is visible
-  try{
-    const appOpen = document.getElementById('appScreen') && document.getElementById('appScreen').classList.contains('active');
-    if(appOpen && typeof showAlarmPopup==='function'){
-      showAlarmPopup('Daily Reminder', msg, '🔔');
-    } else if(appOpen){
-      showToast('🔔 '+msg, 5000);
-    }
-  }catch(e){}
-  return notified;
+/** Immediate test from Settings — pure in-app, no permission dialog. */
+async function testDailyReminderNow(){
+  var toggle = document.getElementById('reminderToggle');
+  if(toggle && !toggle.checked){
+    toggle.checked = true;
+    var row = document.getElementById('reminderTimeRow');
+    if(row) row.style.display = 'block';
+  }
+  settings.reminder = true;
+  var timeEl = document.getElementById('reminderTime');
+  settings.reminderTime = (timeEl && timeEl.value) || settings.reminderTime || '20:00';
+
+  try{ await dbPut('settings', { key: 'app_settings', value: JSON.stringify(settings) }); }catch(e){}
+  try{ localStorage.setItem('mm_settings', JSON.stringify(settings)); }catch(e){}
+
+  setupDailyReminder();
+  // force + try OS only if already allowed (will NOT open Block/Allow dialog)
+  fireDailyReminder(true, true);
+  updateReminderStatusLine();
+  const nativeOk=await mmNativeTestIn5s();
+  try{ showToast(nativeOk?'🔔 Close the app now — a notification will arrive in 5 seconds':'🔔 Reminder popup shown', nativeOk?4000:2200); }catch(e){}
 }
 
 function checkDailyReminderNow(){
-  if(!settings.reminder||!settings.reminderTime) return;
-  const parts=String(settings.reminderTime).split(':');
-  if(parts.length<2) return;
-  const h=parseInt(parts[0],10), m=parseInt(parts[1],10);
-  if(isNaN(h)||isNaN(m)) return;
-  const now=new Date();
-  if(now.getHours()===h && now.getMinutes()===m){
-    fireDailyReminder();
+  if(!settings.reminder || !settings.reminderTime) return;
+  const parts = String(settings.reminderTime).split(':');
+  if(parts.length < 2) return;
+  const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+  if(isNaN(h) || isNaN(m)) return;
+  const now = new Date();
+  // Match the scheduled minute (also allow 1 minute late in case timer drifted)
+  if(now.getHours() === h && (now.getMinutes() === m || now.getMinutes() === (m + 1) % 60)){
+    fireDailyReminder(false, true);
   }
 }
 
 function setupDailyReminder(){
-  if(_dailyReminderTimer){ clearTimeout(_dailyReminderTimer); _dailyReminderTimer=null; }
-  if(_dailyReminderInterval){ clearInterval(_dailyReminderInterval); _dailyReminderInterval=null; }
+  if(_dailyReminderTimer){ clearTimeout(_dailyReminderTimer); _dailyReminderTimer = null; }
+  if(_dailyReminderInterval){ clearInterval(_dailyReminderInterval); _dailyReminderInterval = null; }
 
-  // Always sync SW (cancel if off) — works without login
-  if(!settings.reminder||!settings.reminderTime){
+  if(!settings.reminder || !settings.reminderTime){
+    syncNativeReminder(false, null);
     syncReminderToServiceWorker(false, null);
+    updateReminderStatusLine();
     return;
   }
 
-  try{ _dailyReminderLastFire = localStorage.getItem('mm_daily_reminder_last')||''; }catch(e){ _dailyReminderLastFire=''; }
+  try{ _dailyReminderLastFire = localStorage.getItem('mm_daily_reminder_last') || ''; }catch(e){ _dailyReminderLastFire = ''; }
 
-  if('Notification' in window && Notification.permission==='default'){
-    try{ Notification.requestPermission(); }catch(e){}
-  }
+  const parts = String(settings.reminderTime).split(':');
+  const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+  if(isNaN(h) || isNaN(m)) return;
 
-  const parts=String(settings.reminderTime).split(':');
-  const h=parseInt(parts[0],10), m=parseInt(parts[1],10);
-  if(isNaN(h)||isNaN(m)) return;
-
-  // Background path via Service Worker (app closed / logged out)
+  // Background path: native alarm (Android app) + Service Worker (browser/PWA)
+  syncNativeReminder(true, settings.reminderTime);
   syncReminderToServiceWorker(true, settings.reminderTime);
 
-  // Foreground path while this page is open
-  const scheduleNext=()=>{
-    const now=new Date();
-    const target=new Date();
-    target.setHours(h,m,0,0);
-    if(target<=now) target.setDate(target.getDate()+1);
-    const ms=Math.max(1000, target-now);
-    _dailyReminderTimer=setTimeout(()=>{
-      fireDailyReminder();
-      scheduleNext();
+  // Foreground path while this page is open.
+  // Recalculate the next target after every fire so clock changes/time-zone changes
+  // do not leave a stale timer behind.
+  const scheduleNext = function(){
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(h, m, 0, 0);
+    if(target <= now) target.setDate(target.getDate() + 1);
+    const ms = Math.max(1000, target.getTime() - now.getTime());
+    _dailyReminderTimer = setTimeout(function(){
+      try{ fireDailyReminder(false, true); }
+      finally{ scheduleNext(); }
     }, ms);
   };
   scheduleNext();
-  _dailyReminderInterval=setInterval(checkDailyReminderNow, 30000);
+
+  // Poll every 10s as a second foreground safety net. This also catches
+  // Android/browser timer throttling when the page briefly loses focus.
+  _dailyReminderInterval = setInterval(checkDailyReminderNow, 10000);
+  updateReminderStatusLine();
 }
 
 /** Load reminder prefs early (no login required) and arm notifications. */
 async function initReminderOnBoot(){
   try{
-    // Prefer IndexedDB app_settings; fall back to localStorage
-    let loaded=false;
+    let loaded = false;
     try{
-      if(typeof dbGet==='function'){
-        const s=await dbGet('settings','app_settings');
+      if(typeof dbGet === 'function'){
+        const s = await dbGet('settings', 'app_settings');
         if(s && s.value){
-          const parsed=JSON.parse(s.value);
-          if(parsed.reminder!==undefined) settings.reminder=parsed.reminder;
-          if(parsed.reminderTime) settings.reminderTime=parsed.reminderTime;
-          if(parsed.dark!==undefined) settings.dark=parsed.dark;
-          loaded=true;
+          const parsed = JSON.parse(s.value);
+          if(parsed.reminder !== undefined) settings.reminder = !!parsed.reminder;
+          if(parsed.reminderTime) settings.reminderTime = parsed.reminderTime;
+          if(parsed.dark !== undefined) settings.dark = parsed.dark;
+          loaded = true;
         }
       }
     }catch(e){}
     if(!loaded){
       try{
-        const ls=localStorage.getItem('mm_settings');
+        const ls = localStorage.getItem('mm_settings');
         if(ls){
-          const old=JSON.parse(ls);
-          if(old.reminder!==undefined) settings.reminder=old.reminder;
-          if(old.reminderTime) settings.reminderTime=old.reminderTime;
+          const old = JSON.parse(ls);
+          if(old.reminder !== undefined) settings.reminder = !!old.reminder;
+          if(old.reminderTime) settings.reminderTime = old.reminderTime;
         }
       }catch(e){}
     }
-    // Also mirror a dedicated key so SW path stays simple for page-side checks
     try{
       localStorage.setItem('mm_reminder_boot', JSON.stringify({
         enabled: !!settings.reminder,
