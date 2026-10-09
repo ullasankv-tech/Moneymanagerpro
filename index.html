@@ -1188,7 +1188,6 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;"><h3 style="margin-bottom:0;">📊 Reports</h3><button type="button" onclick="openTaxCenter()" style="padding:10px 14px;border-radius:12px;border:none;background:linear-gradient(135deg,#e65100,#f9ca24);color:#fff;font-weight:800;font-size:0.88rem;cursor:pointer;font-family:var(--font);white-space:nowrap;box-shadow:0 3px 12px rgba(230,81,0,0.35);letter-spacing:0.02em;">🧾 Income Tax &amp; Capital Gains</button></div>
         <div class="report-tabs" id="reportMainTabs" style="justify-content:space-between;width:100%;">
           <button type="button" class="report-tab active" id="rmGeneral" onclick="setReportMain('general')">📊 General Reports</button>
-          <button type="button" class="report-tab" id="rmBalance" onclick="openBalanceSheetFrom('report')" style="margin-left:auto;">⚖️ Balance Sheet</button>
         </div>
         <div id="generalReportControls">
         <div class="month-pick">
@@ -1386,6 +1385,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <button type="button" class="reg-feature-tab" id="rfTabSubs" onclick="setRegFeature('subs')">🔁 Subscriptions</button>
         <button type="button" class="reg-feature-tab" id="rfTabAI" onclick="setRegFeature('ai')">🤖 AI Insights</button>
         <button type="button" class="reg-feature-tab" id="rfTabBoost" onclick="setRegFeature('boost')">🚀 Goal Boost</button>
+        <button type="button" class="reg-feature-tab" id="rfTabCapital" onclick="setRegFeature('capital')">🏛️ Capital Account</button>
       </div>
 
       <!-- ═══ MODE: SHEETS (redesigned clean Daily Register) ═══ -->
@@ -1534,6 +1534,61 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           <button onclick="renderGoalBoost()" style="width:100%;margin-top:10px;padding:11px;background:linear-gradient(135deg,#00b894,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">🔄 Refresh</button>
         </div>
       </div>
+
+      <!-- ═══ MODE: CAPITAL ACCOUNT (was Balance Sheet) ═══ -->
+      <div id="regModeCapital" style="display:none;">
+        <div class="statement-header" style="background:linear-gradient(135deg,#1a1a2e,#1565c0);">
+          <h2>🏛️ Capital Account</h2>
+          <p style="font-size:0.88rem;margin-top:4px;opacity:0.9;" id="nwUserName"></p>
+          <p style="font-size:0.8rem;opacity:0.85;margin-top:3px;" id="nwAsOnDate"></p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+          <div style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border-radius:14px;padding:12px;text-align:center;">
+            <div style="font-size:0.62rem;font-weight:800;color:#2e7d32;text-transform:uppercase;">Assets</div>
+            <div style="font-size:0.95rem;font-weight:900;color:#1b5e20;" id="nwAssetsSummaryTop">₹0</div>
+          </div>
+          <div style="background:linear-gradient(135deg,#ffebee,#ffcdd2);border-radius:14px;padding:12px;text-align:center;">
+            <div style="font-size:0.62rem;font-weight:800;color:#c62828;text-transform:uppercase;">Liabilities</div>
+            <div style="font-size:0.95rem;font-weight:900;color:#b71c1c;" id="nwLiabSummaryTop">₹0</div>
+          </div>
+          <div style="background:linear-gradient(135deg,#e3f2fd,#bbdefb);border-radius:14px;padding:12px;text-align:center;">
+            <div style="font-size:0.62rem;font-weight:800;color:#1565c0;text-transform:uppercase;">Capital</div>
+            <div style="font-size:0.95rem;font-weight:900;color:#0d47a1;" id="nwTotalTop">₹0</div>
+          </div>
+        </div>
+
+        <div class="ie-statement">
+          <div class="ie-side ie-debit">
+            <div class="ie-head"><span>Liabilities</span><span>Amount</span></div>
+            <div class="ie-body" id="nwLiabilitiesList"></div>
+            <div class="ie-total"><span>Total</span><span id="nwLiabilitiesTotal">₹0</span></div>
+          </div>
+          <div class="ie-side ie-credit">
+            <div class="ie-head"><span>Assets</span><span>Amount</span></div>
+            <div class="ie-body" id="nwAssetsList"></div>
+            <div class="ie-total"><span>Total</span><span id="nwAssetsTotal">₹0</span></div>
+          </div>
+        </div>
+
+        <div class="stmt-summary-box" style="margin-top:12px;">
+          <div class="stmt-summary-row"><span class="stmt-summary-label">✅ Total Assets</span><span class="stmt-summary-val" style="color:#00897b;" id="nwAssetsSummary">₹0</span></div>
+          <div class="stmt-summary-row"><span class="stmt-summary-label">❌ Total Liabilities</span><span class="stmt-summary-val" style="color:#e53935;" id="nwLiabSummary">₹0</span></div>
+          <div class="stmt-summary-row"><span class="stmt-summary-label" style="font-size:0.95rem;">🏛️ Capital (Net Worth)</span><span class="stmt-summary-val" style="font-size:1.05rem;" id="nwTotal">₹0</span></div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button class="bs-action-btn" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;" onclick="openAddNetWorth('asset')">➕ Add Asset</button>
+          <button class="bs-action-btn" style="background:#ffebee;border-color:#ef9a9a;color:#c62828;" onclick="openAddNetWorth('liability')">➕ Add Liability</button>
+        </div>
+        <button class="stmt-print-btn" style="background:linear-gradient(135deg,#4d96ff,#cc5de8);" onclick="shareNetWorthToWhatsApp()">💾 Save / Share as PDF</button>
+
+        <div class="panel" style="margin-top:14px;">
+          <h3>📈 Capital growth tips</h3>
+          <div id="nwTips" style="font-size:0.8rem;color:var(--muted);line-height:1.7;"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- TRADING TAB -->
@@ -1542,45 +1597,13 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div id="invTradingBody"></div>
     </div>
 
-    <!-- NET WORTH TAB -->
+    <!-- NET WORTH TAB (legacy — Capital Account now lives under Register) -->
     <div id="tab-networth" style="display:none;">
-      <button type="button" id="nwBackLink" onclick="showTab(nwBackTo)" style="background:none;border:none;color:var(--muted);font-weight:700;font-size:.8rem;cursor:pointer;padding:2px 0 8px;font-family:var(--font);">← Back to Home</button>
-
-      <!-- Balance Sheet -->
-      <div class="statement-header">
-        <h2>⚖️ Balance Sheet</h2>
-        <p style="font-size:0.88rem;margin-top:4px;opacity:0.9;" id="nwUserName"></p>
-        <p style="font-size:0.8rem;opacity:0.85;margin-top:3px;" id="nwAsOnDate"></p>
-      </div>
-      <div class="ie-statement">
-        <div class="ie-side ie-debit">
-          <div class="ie-head"><span>Liabilities</span><span>Amount</span></div>
-          <div class="ie-body" id="nwLiabilitiesList"></div>
-          <div class="ie-total"><span>Total</span><span id="nwLiabilitiesTotal">₹0</span></div>
-        </div>
-        <div class="ie-side ie-credit">
-          <div class="ie-head"><span>Assets</span><span>Amount</span></div>
-          <div class="ie-body" id="nwAssetsList"></div>
-          <div class="ie-total"><span>Total</span><span id="nwAssetsTotal">₹0</span></div>
-        </div>
-      </div>
-      <div class="stmt-summary-box">
-        <div class="stmt-summary-row"><span class="stmt-summary-label">✅ Total Assets</span><span class="stmt-summary-val" style="color:#00897b;" id="nwAssetsSummary">₹0</span></div>
-        <div class="stmt-summary-row"><span class="stmt-summary-label">❌ Total Liabilities</span><span class="stmt-summary-val" style="color:#e53935;" id="nwLiabSummary">₹0</span></div>
-        <div class="stmt-summary-row"><span class="stmt-summary-label" style="font-size:0.95rem;">💎 Net Worth</span><span class="stmt-summary-val" style="font-size:1.05rem;" id="nwTotal">₹0</span></div>
-      </div>
-
-      <!-- Add Asset / Add Liability — placed below the balance sheet -->
-      <div style="display:flex;gap:8px;margin-top:14px;">
-        <button class="bs-action-btn" style="background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32;" onclick="openAddNetWorth('asset')">➕ Add Asset</button>
-        <button class="bs-action-btn" style="background:#ffebee;border-color:#ef9a9a;color:#c62828;" onclick="openAddNetWorth('liability')">➕ Add Liability</button>
-      </div>
-      <button class="stmt-print-btn" style="background:linear-gradient(135deg,#4d96ff,#cc5de8);" onclick="shareNetWorthToWhatsApp()">💾 Save / Share as PDF</button>
-
-      <!-- Net Worth Tips -->
-      <div class="panel" style="margin-top:14px;">
-        <h3>📈 Net Worth Growth Tips</h3>
-        <div id="nwTips" style="font-size:0.8rem;color:var(--muted);line-height:1.7;"></div>
+      <div class="panel" style="text-align:center;padding:24px;">
+        <div style="font-size:2rem;margin-bottom:8px;">🏛️</div>
+        <div style="font-weight:800;margin-bottom:6px;">Capital Account moved</div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">Open it from Daily Register → Capital Account</div>
+        <button type="button" onclick="openCapitalAccount()" style="padding:12px 18px;border:none;border-radius:12px;background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;font-weight:800;cursor:pointer;font-family:var(--font);">Open Capital Account</button>
       </div>
     </div>
 
@@ -5569,12 +5592,14 @@ function setReportTab(tab,el){
   el.classList.add('active');renderReport();
 }
 let nwBackTo='home';
-// Opens the Balance Sheet screen; its back link returns to where it was opened from (Reports or Home).
+// Capital Account lives under Register (was Balance Sheet).
+function openCapitalAccount(){
+  openSecondaryTab('register','home');
+  setTimeout(()=>setRegFeature('capital'), 50);
+}
 function openBalanceSheetFrom(from){
-  nwBackTo=from==='report'?'report':'home';
-  const l=document.getElementById('nwBackLink');
-  if(l)l.textContent=nwBackTo==='report'?'← Back to Reports':'← Back to Home';
-  showTab('networth');
+  // Kept for compatibility — opens Capital Account in Register
+  openCapitalAccount();
 }
 function setReportMain(mode){
   reportMain=mode;
@@ -9140,12 +9165,15 @@ function renderNetWorth(){
   const dateEl=document.getElementById('nwAsOnDate'); if(dateEl) dateEl.textContent='📅 As on '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
 
   // Total / Summary
-  const nwEl = document.getElementById('nwTotal');
-  nwEl.textContent = fmt(netWorth);
-  document.getElementById('nwAssetsSummary').textContent = fmt(totalAssets);
-  document.getElementById('nwLiabSummary').textContent = fmt(totalLiab);
-  document.getElementById('nwAssetsTotal').textContent = fmt(assetSideTotal);
-  document.getElementById('nwLiabilitiesTotal').textContent = fmt(liabSideTotal);
+  const setTxt=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+  setTxt('nwTotal', fmt(netWorth));
+  setTxt('nwAssetsSummary', fmt(totalAssets));
+  setTxt('nwLiabSummary', fmt(totalLiab));
+  setTxt('nwAssetsTotal', fmt(assetSideTotal));
+  setTxt('nwLiabilitiesTotal', fmt(liabSideTotal));
+  setTxt('nwAssetsSummaryTop', fmt(totalAssets));
+  setTxt('nwLiabSummaryTop', fmt(totalLiab));
+  setTxt('nwTotalTop', fmt(netWorth));
 
   // Lists (styled as ie-entry rows to match the balance-sheet look)
   const itemRow=(i,color)=>`<div class="ie-entry">
@@ -9157,11 +9185,11 @@ function renderNetWorth(){
     </div>`;
   const assetHTML = assets.length ? assets.map(i=>itemRow(i,'#00897b')).join('') : '<div class="ie-empty">No assets added yet</div>';
   const liabHTML  = liabilities.length ? liabilities.map(i=>itemRow(i,'#e53935')).join('') : '<div class="ie-empty">No liabilities added yet</div>';
-  const capRow = netWorth>0 ? `<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-desc">Net Worth (Capital)</span></div><span class="ie-amt">${fmt(netWorth)}</span></div>` : '';
-  const deficitRow = netWorth<0 ? `<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-desc">Net Worth (Deficit)</span></div><span class="ie-amt">${fmt(Math.abs(netWorth))}</span></div>` : '';
+  const capRow = netWorth>0 ? `<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-desc">Capital</span></div><span class="ie-amt">${fmt(netWorth)}</span></div>` : '';
+  const deficitRow = netWorth<0 ? `<div class="ie-entry ie-balance"><div class="ie-entry-main"><span class="ie-desc">Capital Deficit</span></div><span class="ie-amt">${fmt(Math.abs(netWorth))}</span></div>` : '';
 
-  document.getElementById('nwAssetsList').innerHTML = assetHTML+deficitRow;
-  document.getElementById('nwLiabilitiesList').innerHTML = liabHTML+capRow;
+  const al=document.getElementById('nwAssetsList'); if(al) al.innerHTML = assetHTML+deficitRow;
+  const ll=document.getElementById('nwLiabilitiesList'); if(ll) ll.innerHTML = liabHTML+capRow;
 
   // Tips
   const tips = [];
@@ -9181,12 +9209,12 @@ function buildNetWorthPdf(){
   const totalLiab  = liabilities.reduce((s,i)=>s+i.amount,0);
   const netWorth   = totalAssets - totalLiab;
   const left = liabilities.map(i=>[i.emoji+' '+i.name,pdfMoney(i.amount)]);
-  if(netWorth>0) left.push(['Net Worth (Capital)',pdfMoney(netWorth)]);
+  if(netWorth>0) left.push(['Capital',pdfMoney(netWorth)]);
   const right = assets.map(i=>[i.emoji+' '+i.name,pdfMoney(i.amount)]);
-  if(netWorth<0) right.push(['Net Worth (Deficit)',pdfMoney(Math.abs(netWorth))]);
+  if(netWorth<0) right.push(['Capital Deficit',pdfMoney(Math.abs(netWorth))]);
   const grandTotal = totalLiab+Math.max(0,netWorth);
   const p=new PdfBuilder(false);
-  p.heading('Balance Sheet',16,true);
+  p.heading('Capital Account',16,true);
   p.heading((currentUser&&currentUser.name)||'',10,false);
   p.heading('As on '+new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}),9,false);
   p.gap(8);
@@ -9200,13 +9228,13 @@ function buildNetWorthPdf(){
   const sf=[.6,.4],sa=['l','r'];
   p.row(['Total Assets',pdfMoney(totalAssets)],sf,sa,{bold:true});
   p.row(['Total Liabilities',pdfMoney(totalLiab)],sf,sa,{bold:true});
-  p.row(['Net Worth',pdfMoney(netWorth)],sf,sa,{bold:true,fill:PDF_TOTAL_FILL});
-  return {pdf:p,name:'Balance-Sheet-'+new Date().toISOString().split('T')[0]+'.pdf'};
+  p.row(['Capital (Net Worth)',pdfMoney(netWorth)],sf,sa,{bold:true,fill:PDF_TOTAL_FILL});
+  return {pdf:p,name:'Capital-Account-'+new Date().toISOString().split('T')[0]+'.pdf'};
 }
 function shareNetWorthToWhatsApp(){
   try{
     const r=buildNetWorthPdf();
-    savePdfDoc(r.pdf,r.name,'Balance Sheet PDF');
+    savePdfDoc(r.pdf,r.name,'Capital Account PDF');
   }catch(e){console.error('Balance sheet PDF error',e);showToast('⚠️ Could not create PDF: '+(e&&e.message?e.message:'error'));}
 }
 
@@ -10350,8 +10378,8 @@ async function savePocketSplitRules(){
 
 function setRegFeature(mode){
   regFeatureMode = mode;
-  const modeMap={sheets:'regModeSheets',pockets:'regModePockets',safe:'regModeSafe',subs:'regModeSubs',ai:'regModeAI',boost:'regModeBoost'};
-  const tabMap={sheets:'rfTabSheets',pockets:'rfTabPockets',safe:'rfTabSafe',subs:'rfTabSubs',ai:'rfTabAI',boost:'rfTabBoost'};
+  const modeMap={sheets:'regModeSheets',pockets:'regModePockets',safe:'regModeSafe',subs:'regModeSubs',ai:'regModeAI',boost:'regModeBoost',capital:'regModeCapital'};
+  const tabMap={sheets:'rfTabSheets',pockets:'rfTabPockets',safe:'rfTabSafe',subs:'rfTabSubs',ai:'rfTabAI',boost:'rfTabBoost',capital:'rfTabCapital'};
   Object.keys(modeMap).forEach(m=>{
     const el=document.getElementById(modeMap[m]);
     if(el) el.style.display = m===mode ? 'block' : 'none';
@@ -10368,6 +10396,7 @@ function renderRegFeatureMode(){
   if(regFeatureMode==='subs') renderSubscriptions();
   if(regFeatureMode==='ai') renderAIInsights();
   if(regFeatureMode==='boost') renderGoalBoost();
+  if(regFeatureMode==='capital'){ try{ Promise.resolve(loadNetWorth()).then(()=>renderNetWorth()).catch(()=>renderNetWorth()); }catch(e){ console.warn(e); } }
 }
 
 // ── Smart Money Pockets ──
