@@ -472,6 +472,22 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .modal-back{background:none;border:none;color:var(--muted);font-weight:800;font-size:.8rem;cursor:pointer;padding:6px 10px 6px 0;font-family:var(--font);display:inline-flex;align-items:center;gap:5px;}
 .modal-back span{font-size:1.05rem;line-height:1;}
 
+/* Page-level back navigation */
+.page-back-bar{
+  display:flex;align-items:center;gap:6px;
+  margin:0 0 10px;padding:2px 0 6px;
+}
+.page-back{
+  background:none;border:none;color:var(--muted);
+  font-weight:800;font-size:0.82rem;cursor:pointer;
+  padding:6px 4px 6px 0;font-family:var(--font);
+  display:inline-flex;align-items:center;gap:5px;
+}
+.page-back:active{opacity:0.7;}
+.page-back span{font-size:1.15rem;line-height:1;}
+.page-back-title{font-size:0.78rem;font-weight:700;color:var(--text);margin-left:auto;opacity:0.85;}
+
+
 @keyframes slideUp{from{opacity:0;transform:translateY(40px);}to{opacity:1;transform:none;}}
 @keyframes popIn{from{opacity:0;transform:scale(0.9);}to{opacity:1;transform:none;}}
 
@@ -1208,6 +1224,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
     <!-- GOALS -->
     <div id="tab-goals" style="display:none;">
+      <div class="page-back-bar">
+        <button type="button" class="page-back" onclick="goPageBack('settings')" aria-label="Go back"><span>←</span> Back</button>
+        <span class="page-back-title">🎯 Savings Goals</span>
+      </div>
       <!-- SIP CALCULATOR -->
       <div class="panel">
         <h3>📈 SIP Calculator</h3>
@@ -1252,6 +1272,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
     <!-- BUDGET -->
     <div id="tab-budget" style="display:none;">
+      <div class="page-back-bar">
+        <button type="button" class="page-back" onclick="goPageBack('settings')" aria-label="Go back"><span>←</span> Back</button>
+        <span class="page-back-title">💹 Budget Planner</span>
+      </div>
       <div class="panel">
         <h3>🎯 Monthly Budget Limits</h3>
         <p style="font-size:0.78rem;color:var(--muted);margin-bottom:14px;">Set limits per category. Alert at 80%!</p>
@@ -1349,6 +1373,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
     <!-- DAILY REGISTER TAB — Enhanced with Smart Features -->
     <div id="tab-register" style="display:none;">
+      <div class="page-back-bar">
+        <button type="button" class="page-back" onclick="goPageBack('home')" aria-label="Go back"><span>←</span> Back</button>
+        <span class="page-back-title">📋 Daily Register</span>
+      </div>
 
       <!-- Feature mode switcher (new striking features live here) -->
       <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:4px 0 12px;margin-bottom:4px;">
@@ -1558,6 +1586,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
     <!-- BILL REMINDERS TAB -->
     <div id="tab-reminders" style="display:none;">
+      <div class="page-back-bar">
+        <button type="button" class="page-back" onclick="goPageBack('settings')" aria-label="Go back"><span>←</span> Back</button>
+        <span class="page-back-title">🔔 Bill Reminders</span>
+      </div>
       <div class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <h3 style="margin-bottom:0;">🔔 Bill Reminders</h3>
@@ -1678,10 +1710,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div class="panel">
         <h3>⚡ Quick Link - SIP Calculator</h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button onclick="showTab('reminders')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">🔔 Bill Reminders</button>
-          <button onclick="showTab('budget')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">💹 Budget Planner</button>
-          <button onclick="showTab('goals')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">🎯 Savings Goals</button>
-          <button onclick="showTab('register')" style="padding:12px;background:#e8f4ff;border:2px solid #4d96ff;border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:#1565c0;font-family:var(--font);">📋 Daily Register</button>
+          <button onclick="openSecondaryTab('reminders','settings')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">🔔 Bill Reminders</button>
+          <button onclick="openSecondaryTab('budget','settings')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">💹 Budget Planner</button>
+          <button onclick="openSecondaryTab('goals','settings')" style="padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">🎯 Savings Goals</button>
+          <button onclick="openSecondaryTab('register','settings')" style="padding:12px;background:#e8f4ff;border:2px solid #4d96ff;border-radius:12px;font-size:0.82rem;font-weight:700;cursor:pointer;color:#1565c0;font-family:var(--font);">📋 Daily Register</button>
         </div>
       </div>
 
@@ -1824,7 +1856,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
   <div class="bottom-nav" id="bottomNav">
     <button class="nav-item active" id="nav-home" onclick="showTab('home')"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
-    <button class="nav-item" id="nav-register" onclick="showTab('register')"><span class="nav-icon">📋</span><span class="nav-label">Register</span></button>
+    <button class="nav-item" id="nav-register" onclick="openSecondaryTab('register','home')"><span class="nav-icon">📋</span><span class="nav-label">Register</span></button>
     <button class="nav-item" id="nav-loans" onclick="showTab('loans')"><span class="nav-icon">🏦</span><span class="nav-label">Loans</span></button>
     <div class="nav-mic-wrap">
       <button type="button" class="nav-mic-btn" id="navMicBtn" onclick="startVoiceAssistant()" title="Ask about your budget" aria-label="Voice budget assistant" data-idle="🎤" data-live="🔴">🎤</button>
@@ -7778,8 +7810,23 @@ async function clearAllData(){
 // ═══════════════════════════════════════
 // NAV & MAIN RENDER
 // ═══════════════════════════════════════
+
+// ── Page back navigation for secondary screens ──
+let pageBackTarget = 'home';
+let currentAppTab = 'home';
+function openSecondaryTab(tab, backTo){
+  pageBackTarget = backTo || 'home';
+  showTab(tab);
+}
+function goPageBack(fallback){
+  const target = pageBackTarget || fallback || 'home';
+  pageBackTarget = 'home';
+  showTab(target);
+}
+
 function showTab(tab,pushHistory=true){
   if(pushHistory) history.pushState({tab:tab},'');
+  currentAppTab = tab;
   ['home','report','goals','budget','loans','reminders','networth','register','investments','trading','settings'].forEach(t=>{
     const tabEl=document.getElementById('tab-'+t);
     const navEl=document.getElementById('nav-'+t);
