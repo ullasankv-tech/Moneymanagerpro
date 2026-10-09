@@ -2875,18 +2875,19 @@ async function saveSettings(){
   // Ask for notification permission when the user explicitly enables Daily Reminder.
   // This is required for lock-screen/system notifications. The in-app popup itself
   // does not need permission.
+  // Arm timers FIRST so a stuck permission prompt can never stop the reminder.
+  setupDailyReminder();
+  updateReminderStatusLine();
   if(settings.reminder){
     try{
       if('Notification' in window && Notification.permission === 'default'){
-        await Notification.requestPermission();
+        Notification.requestPermission();   // not awaited on purpose
       }
     }catch(e){ console.warn('Notification permission request failed:',e); }
     showToast('🔔 Reminder ON · '+settings.reminderTime, 2800);
   } else {
     showToast('🔕 Daily reminder turned off');
   }
-  setupDailyReminder();
-  updateReminderStatusLine();
 }
 function toggleDark(){
   setTimeout(()=>{renderMiniChart();if(document.getElementById('catChart'))renderReport();},50);
@@ -2962,75 +2963,82 @@ function updateReminderStatusLine(){
   if(mins<60) when='in '+mins+' min';
   else if(mins<48*60) when='in '+Math.round(mins/60)+' hr';
   else when='on '+target.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
-  el.textContent='Next reminder: '+t+' ('+when+')';
+  el.textContent='Next reminder: '+t+' ('+when+')'+(window._mmNativeStatus?'\n'+window._mmNativeStatus:'');
+  el.style.whiteSpace='pre-line';
 }
 
-/* ── NATIVE (Capacitor) DAILY REMINDER ─────────────────────────────
-   Uses @capacitor/local-notifications: the notification is registered with
-   Android's AlarmManager, so it fires every day at the chosen time even when
-   the app is closed / swiped away / phone restarted. */
-const MM_REM_ID=9001, MM_REM_CHANNEL='mm-daily-reminder';
+/* ── NATIVE (Capacitor) DAILY ALARM — works with the app closed.
+   Status is shown under the Test button so any failure is visible. */
+window._mmNativeStatus='';
 function mmIsNative(){
   try{
     const C=window.Capacitor; if(!C) return false;
     return typeof C.isNativePlatform==='function'?C.isNativePlatform():(typeof C.getPlatform==='function'&&C.getPlatform()!=='web');
   }catch(e){return false;}
 }
-async function mmEnsureNotifPermission(C){
+function mmSetNativeStatus(t){ window._mmNativeStatus=t; try{updateReminderStatusLine();}catch(e){} }
+async function mmNativePrepare(C){
+  if(!(C.Plugins&&C.Plugins.LocalNotifications)){
+    mmSetNativeStatus('Background alarm: plugin missing in this APK (found: '+Object.keys(C.Plugins||{}).join(',')+')');
+    return false;
+  }
+  let p=await capCall(C,'LocalNotifications','checkPermissions',{});
+  if(!p||p.display!=='granted') p=await capCall(C,'LocalNotifications','requestPermissions',{});
+  if(!p||p.display!=='granted'){
+    mmSetNativeStatus('Background alarm: notification permission DENIED — enable it in phone Settings > Apps > Money Manager Pro > Notifications');
+    return false;
+  }
   try{
-    let p=await capCall(C,'LocalNotifications','checkPermissions',{});
-    if(p&&p.display==='granted') return true;
-    p=await capCall(C,'LocalNotifications','requestPermissions',{});
-    return !!(p&&p.display==='granted');
-  }catch(e){return false;}
+    await capCall(C,'LocalNotifications','createChannel',{
+      id:'mm-reminder-v2',name:'Daily Reminder',description:'Daily reminder to enter transactions',
+      importance:5,visibility:1,vibration:true,lights:true
+    });
+  }catch(e){}
+  return true;
 }
 async function syncNativeReminder(enabled, timeStr){
   if(!mmIsNative()) return false;
   const C=window.Capacitor;
   try{
-    await capCall(C,'LocalNotifications','cancel',{notifications:[{id:MM_REM_ID}]}).catch(()=>{});
-    if(!enabled) return true;
+    try{ await capCall(C,'LocalNotifications','cancel',{notifications:[{id:9001}]}); }catch(e){}
+    if(!enabled){ mmSetNativeStatus(''); return true; }
     const parts=String(timeStr||'20:00').split(':');
     const hour=parseInt(parts[0],10), minute=parseInt(parts[1],10);
     if(isNaN(hour)||isNaN(minute)) return false;
-    if(!(await mmEnsureNotifPermission(C))){
-      try{showToast('⚠️ Allow notifications for Money Manager Pro in phone Settings to get the daily reminder',4000);}catch(e){}
-      return false;
-    }
-    try{
-      await capCall(C,'LocalNotifications','createChannel',{
-        id:MM_REM_CHANNEL,name:'Daily Reminder',description:'Reminds you to enter today\'s transactions',
-        importance:5,visibility:1,vibration:true
-      });
-    }catch(e){}
+    if(!(await mmNativePrepare(C))) return false;
     await capCall(C,'LocalNotifications','schedule',{notifications:[{
-      id:MM_REM_ID,
+      id:9001,
       title:'💰 Daily Reminder',
       body:"Don't forget to enter today's transactions in Money Manager Pro!",
-      channelId:MM_REM_CHANNEL,
+      channelId:'mm-reminder-v2',
       schedule:{on:{hour:hour,minute:minute},allowWhileIdle:true}
     }]});
+    let n='?';
+    try{ const pend=await capCall(C,'LocalNotifications','getPending',{}); n=(pend&&pend.notifications)?pend.notifications.length:'?'; }catch(e){}
+    mmSetNativeStatus('Background alarm: ✅ set for '+timeStr+' daily (pending: '+n+')');
     return true;
   }catch(e){
-    console.log('Native reminder sync failed:',e&&e.message);
+    mmSetNativeStatus('Background alarm FAILED: '+String((e&&e.message)||e));
     return false;
   }
 }
-/** Test: native notification in ~5 seconds (close the app to see it work). */
+/** Test: native notification in ~5 s — close the app to see it. */
 async function mmNativeTestIn5s(){
   if(!mmIsNative()) return false;
   const C=window.Capacitor;
   try{
-    if(!(await mmEnsureNotifPermission(C))) return false;
-    try{await capCall(C,'LocalNotifications','createChannel',{id:MM_REM_CHANNEL,name:'Daily Reminder',importance:5,visibility:1,vibration:true});}catch(e){}
+    if(!(await mmNativePrepare(C))) return false;
     await capCall(C,'LocalNotifications','schedule',{notifications:[{
       id:9002,title:'💰 Daily Reminder (test)',
       body:"Don't forget to enter today's transactions in Money Manager Pro!",
-      channelId:MM_REM_CHANNEL,
+      channelId:'mm-reminder-v2',
       schedule:{at:new Date(Date.now()+5000),allowWhileIdle:true}
     }]});
     return true;
-  }catch(e){return false;}
+  }catch(e){
+    mmSetNativeStatus('Background test FAILED: '+String((e&&e.message)||e));
+    return false;
+  }
 }
 
 /** Tell the Service Worker to schedule / cancel background notification. */
@@ -3171,8 +3179,10 @@ async function testDailyReminderNow(){
   // force + try OS only if already allowed (will NOT open Block/Allow dialog)
   fireDailyReminder(true, true);
   updateReminderStatusLine();
-  const nativeOk=await mmNativeTestIn5s();
-  try{ showToast(nativeOk?'🔔 Close the app now — a notification will arrive in 5 seconds':'🔔 Reminder popup shown', nativeOk?4000:2200); }catch(e){}
+  try{ showToast('🔔 Reminder popup shown', 2200); }catch(e){}
+  try{
+    if(await mmNativeTestIn5s()) showToast('📲 Close the app now — a phone notification arrives in ~5 seconds', 5000);
+  }catch(e){}
 }
 
 function checkDailyReminderNow(){
@@ -3182,11 +3192,17 @@ function checkDailyReminderNow(){
   const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
   if(isNaN(h) || isNaN(m)) return;
   const now = new Date();
-  // Match the scheduled minute (also allow 1 minute late in case timer drifted)
-  if(now.getHours() === h && (now.getMinutes() === m || now.getMinutes() === (m + 1) % 60)){
+  const target = new Date(now); target.setHours(h, m, 0, 0);
+  const lateMs = now.getTime() - target.getTime();
+  // Fire once per day when the time has arrived (also catches timer drift and
+  // the app being resumed up to 3 hours after the set time).
+  if(lateMs >= 0 && lateMs <= 3*60*60*1000){
+    try{ _dailyReminderLastFire = localStorage.getItem('mm_daily_reminder_last') || _dailyReminderLastFire; }catch(e){}
     fireDailyReminder(false, true);
   }
 }
+document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ checkDailyReminderNow(); }catch(e){} } });
+document.addEventListener('resume', function(){ try{ checkDailyReminderNow(); }catch(e){} });
 
 function setupDailyReminder(){
   if(_dailyReminderTimer){ clearTimeout(_dailyReminderTimer); _dailyReminderTimer = null; }
@@ -3205,7 +3221,7 @@ function setupDailyReminder(){
   const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
   if(isNaN(h) || isNaN(m)) return;
 
-  // Background path: native alarm (Android app) + Service Worker (browser/PWA)
+  // Background path via Service Worker
   syncNativeReminder(true, settings.reminderTime);
   syncReminderToServiceWorker(true, settings.reminderTime);
 
