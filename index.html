@@ -356,6 +356,26 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .nav-label{font-size:0.58rem;font-weight:700;color:var(--muted);}
 .nav-item.active .nav-label{color:#00b894;}
 
+
+/* Floating movable calculator */
+.calc-float{
+  position:fixed;z-index:13000;width:min(320px,92vw);
+  background:var(--surface);border-radius:18px;
+  border:1.5px solid var(--border);
+  box-shadow:0 16px 48px rgba(0,0,0,0.28);
+  overflow:hidden;display:none;
+  left:50%;top:18%;transform:translateX(-50%);
+}
+.calc-float.open{display:block;}
+.calc-float-head{
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;
+  cursor:move;user-select:none;touch-action:none;
+}
+.calc-float-head h3{margin:0;font-size:0.9rem;font-weight:800;flex:1;}
+.calc-float-head button{background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:8px;width:30px;height:30px;font-weight:800;cursor:pointer;}
+.calc-float-body{padding:12px;}
+
 .nav-mic-wrap{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-top:-18px;padding:0 2px;flex-shrink:0;}
 .nav-mic-btn{
   width:56px;height:56px;border-radius:50%;
@@ -968,9 +988,12 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div style="font-size:0.78rem;font-weight:700;background:rgba(255,255,255,0.2);padding:5px 12px;border-radius:20px;">₹199 →</div>
       </div>
       <div class="balance-card">
-        <div class="balance-label">Total Balance</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div class="balance-label">Total Balance</div>
+          <div class="balance-date" id="balanceDate" style="text-align:right;opacity:0.9;flex-shrink:0;"></div>
+        </div>
         <div class="balance-amount" id="totalBalance">₹0.00</div>
-        <div class="balance-date" id="balanceDate"></div>
+        <div id="balanceFormula" style="font-size:0.68rem;opacity:0.88;margin:2px 0 4px;line-height:1.35;">Income − Expense = Balance</div>
         <div class="balance-row">
           <div class="bal-item"><div class="bal-item-label">↑ Income</div><div class="bal-item-amount" id="monthIncome">₹0</div></div>
           <div class="bal-item"><div class="bal-item-label">↓ Expense</div><div class="bal-item-amount" id="monthExpense">₹0</div></div>
@@ -995,6 +1018,11 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           <div class="health-bar-row"><span class="health-bar-label">💹 Budget Control</span><div class="health-bar-track"><div class="health-bar-fill" id="hb2" style="background:#4d96ff;width:0%"></div></div><span class="health-bar-val" id="hv2">0%</span></div>
           <div class="health-bar-row"><span class="health-bar-label">🎯 Goals Progress</span><div class="health-bar-track"><div class="health-bar-fill" id="hb3" style="background:#cc5de8;width:0%"></div></div><span class="health-bar-val" id="hv3">0%</span></div>
           <div class="health-bar-row"><span class="health-bar-label">📅 Consistency</span><div class="health-bar-track"><div class="health-bar-fill" id="hb4" style="background:#f9ca24;width:0%"></div></div><span class="health-bar-val" id="hv4">0%</span></div>
+        </div>
+        <div id="healthFormula" style="margin-top:10px;padding:9px 10px;background:rgba(255,255,255,0.12);border-radius:10px;font-size:0.65rem;line-height:1.55;opacity:0.95;">
+          <b>Score formula (max 100):</b><br>
+          Savings Rate ≤30 pts · Budget Control ≤25 pts · Goals Progress ≤25 pts · Consistency ≤20 pts<br>
+          <span style="opacity:0.9;">Savings = (Income−Expense)/Income · Budget = categories within limit · Goals = avg % of targets · Consistency = days with entries this month</span>
         </div>
         <div class="health-tip" id="healthTip">Add transactions to see your financial health score!</div>
       </div>
@@ -1381,7 +1409,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         </div>
         <div class="panel">
           <h3>⚡ Auto-Split Rules</h3>
-          <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;">When you record income, optionally split a % into pockets.</p>
+          <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;">When you record income, split a % into Emergency, Goals, and any Smart Money Pocket you choose.</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
             <div>
               <label style="font-size:0.68rem;font-weight:700;color:var(--muted);">% to Emergency</label>
@@ -1391,6 +1419,16 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
               <label style="font-size:0.68rem;font-weight:700;color:var(--muted);">% to Goals</label>
               <input type="number" id="pocketSplitGoals" min="0" max="50" value="20" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;"/>
             </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="font-size:0.68rem;font-weight:700;color:var(--muted);">% to Smart Money Pocket (optional)</label>
+            <div style="display:grid;grid-template-columns:1fr 90px;gap:8px;margin-top:4px;">
+              <select id="pocketSplitCustomId" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);">
+                <option value="">— None —</option>
+              </select>
+              <input type="number" id="pocketSplitCustomPct" min="0" max="50" value="0" placeholder="%" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);"/>
+            </div>
+            <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">Pick any pocket you created (Fun, Travel, Bills…) and a % of latest income goes there.</div>
           </div>
           <button onclick="savePocketSplitRules()" style="width:100%;padding:11px;background:linear-gradient(135deg,#00b894,#00cec9);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">💾 Save Split Rules</button>
           <button onclick="runPocketAutoSplit()" style="width:100%;padding:11px;margin-top:8px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">▶️ Run Auto-Split on Latest Income</button>
@@ -1406,6 +1444,13 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         </div>
         <div class="panel">
           <h3>📊 How it's calculated</h3>
+          <div style="font-size:0.72rem;color:var(--muted);line-height:1.55;margin-bottom:10px;padding:10px;background:var(--bg);border-radius:10px;border:1.5px solid var(--border);">
+            <b style="color:var(--text);">Logic:</b><br>
+            1. Cash left this month = Income − Expenses<br>
+            2. Subtract upcoming unpaid bills, a goal cushion (≈5% of remaining targets), and your emergency buffer<br>
+            3. Safe pool ÷ days left in the month = <b>Safe to spend today</b><br>
+            Adjust “Days left” or “Buffer” below if your plans differ.
+          </div>
           <div id="safeSpendBreakdown" style="font-size:0.8rem;line-height:1.7;"></div>
           <button onclick="renderSafeToSpend()" style="width:100%;margin-top:12px;padding:11px;background:linear-gradient(135deg,#00b894,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">🔄 Recalculate</button>
         </div>
@@ -1472,19 +1517,6 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <!-- NET WORTH TAB -->
     <div id="tab-networth" style="display:none;">
       <button type="button" id="nwBackLink" onclick="showTab(nwBackTo)" style="background:none;border:none;color:var(--muted);font-weight:700;font-size:.8rem;cursor:pointer;padding:2px 0 8px;font-family:var(--font);">← Back to Home</button>
-
-      <!-- SMS Auto-Read Panel -->
-      <div class="sms-panel" id="smsPanel">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div>
-            <div style="font-size:0.88rem;font-weight:800;color:#1a1a2e;">📲 SMS Auto-Read</div>
-            <div style="font-size:0.7rem;color:#555;margin-top:2px;"><span class="sms-status-dot" id="smsDot"></span><span id="smsStatusText">Tap to enable</span></div>
-          </div>
-          <button onclick="toggleSmsRead()" id="smsToggleBtn" style="padding:8px 16px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:20px;color:#fff;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:var(--font);">Enable</button>
-        </div>
-        <div id="smsPendingList"></div>
-        <div id="smsEmptyMsg" style="text-align:center;font-size:0.75rem;color:#888;padding:8px;">Bank SMS transactions will appear here for quick approval</div>
-      </div>
 
       <!-- Balance Sheet -->
       <div class="statement-header">
@@ -1580,6 +1612,36 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
   </div>
 </div>
 <div id="tab-settings" style="display:none;">
+
+      <!-- CURRENCY MASTER -->
+      <div class="panel">
+        <h3>💱 Currency</h3>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:10px;line-height:1.5;">Choose the currency used across balances, reports and forms. Your amounts stay the same — only the symbol changes.</p>
+        <div class="form-group" style="margin-bottom:8px;">
+          <label>Display currency</label>
+          <select id="currencySelect" class="form-select" onchange="onCurrencyChange(this.value)" style="width:100%;padding:12px;border-radius:12px;"></select>
+        </div>
+        <div id="currencyPreview" style="font-size:0.78rem;color:var(--muted);padding:8px 10px;background:var(--bg);border-radius:10px;border:1.5px solid var(--border);">Preview: —</div>
+      </div>
+
+
+      <!-- SMS AUTO-READ (moved from Net Worth) -->
+      <div class="panel">
+        <h3>📲 SMS Auto-Read</h3>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;line-height:1.5;">Detect bank SMS on this device and approve transactions quickly. Works best on Android / installed app.</p>
+        <div class="sms-panel" id="smsPanel" style="margin-bottom:0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div>
+              <div style="font-size:0.88rem;font-weight:800;color:var(--text);">Bank SMS detection</div>
+              <div style="font-size:0.7rem;color:var(--muted);margin-top:2px;"><span class="sms-status-dot" id="smsDot"></span><span id="smsStatusText">Tap to enable</span></div>
+            </div>
+            <button onclick="toggleSmsRead()" id="smsToggleBtn" style="padding:8px 16px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:20px;color:#fff;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:var(--font);">Enable</button>
+          </div>
+          <div id="smsPendingList"></div>
+          <div id="smsEmptyMsg" style="text-align:center;font-size:0.75rem;color:#888;padding:8px;">Bank SMS transactions will appear here for quick approval</div>
+        </div>
+      </div>
+
 
       <!-- CATEGORY MASTER -->
       <div class="panel">
@@ -2189,9 +2251,98 @@ let pinEntry='', pinMode='check';
 // ═══════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════
-const fmt=n=>'₹'+Math.abs(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
-// Used only inside the Reports screen (General + Investment reports) — same number formatting as fmt(), but without the ₹ symbol.
-const fmtR=n=>Math.abs(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+// ── Currency master ──
+const CURRENCY_MASTER=[
+  {code:'INR',symbol:'₹',name:'Indian Rupee',locale:'en-IN'},
+  {code:'USD',symbol:'$',name:'US Dollar',locale:'en-US'},
+  {code:'EUR',symbol:'€',name:'Euro',locale:'de-DE'},
+  {code:'GBP',symbol:'£',name:'British Pound',locale:'en-GB'},
+  {code:'AED',symbol:'د.إ',name:'UAE Dirham',locale:'ar-AE'},
+  {code:'SAR',symbol:'﷼',name:'Saudi Riyal',locale:'ar-SA'},
+  {code:'SGD',symbol:'S$',name:'Singapore Dollar',locale:'en-SG'},
+  {code:'AUD',symbol:'A$',name:'Australian Dollar',locale:'en-AU'},
+  {code:'CAD',symbol:'C$',name:'Canadian Dollar',locale:'en-CA'},
+  {code:'JPY',symbol:'¥',name:'Japanese Yen',locale:'ja-JP'},
+  {code:'CNY',symbol:'¥',name:'Chinese Yuan',locale:'zh-CN'},
+  {code:'CHF',symbol:'CHF',name:'Swiss Franc',locale:'de-CH'},
+  {code:'MYR',symbol:'RM',name:'Malaysian Ringgit',locale:'ms-MY'},
+  {code:'THB',symbol:'฿',name:'Thai Baht',locale:'th-TH'},
+  {code:'IDR',symbol:'Rp',name:'Indonesian Rupiah',locale:'id-ID'},
+  {code:'PHP',symbol:'₱',name:'Philippine Peso',locale:'en-PH'},
+  {code:'PKR',symbol:'Rs',name:'Pakistani Rupee',locale:'en-PK'},
+  {code:'BDT',symbol:'৳',name:'Bangladeshi Taka',locale:'bn-BD'},
+  {code:'LKR',symbol:'Rs',name:'Sri Lankan Rupee',locale:'si-LK'},
+  {code:'NPR',symbol:'Rs',name:'Nepalese Rupee',locale:'ne-NP'},
+  {code:'QAR',symbol:'ر.ق',name:'Qatari Riyal',locale:'ar-QA'},
+  {code:'KWD',symbol:'د.ك',name:'Kuwaiti Dinar',locale:'ar-KW'},
+  {code:'OMR',symbol:'ر.ع.',name:'Omani Rial',locale:'ar-OM'},
+  {code:'BHD',symbol:'BD',name:'Bahraini Dinar',locale:'ar-BH'},
+  {code:'NZD',symbol:'NZ$',name:'New Zealand Dollar',locale:'en-NZ'},
+  {code:'ZAR',symbol:'R',name:'South African Rand',locale:'en-ZA'},
+  {code:'HKD',symbol:'HK$',name:'Hong Kong Dollar',locale:'en-HK'},
+  {code:'KRW',symbol:'₩',name:'South Korean Won',locale:'ko-KR'},
+  {code:'TRY',symbol:'₺',name:'Turkish Lira',locale:'tr-TR'},
+  {code:'RUB',symbol:'₽',name:'Russian Ruble',locale:'ru-RU'}
+];
+let appCurrency={code:'INR',symbol:'₹',name:'Indian Rupee',locale:'en-IN'};
+
+function getCurrencyByCode(code){
+  return CURRENCY_MASTER.find(c=>c.code===code) || CURRENCY_MASTER[0];
+}
+function currencySymbol(){ return (appCurrency&&appCurrency.symbol)||'₹'; }
+function currencyLocale(){ return (appCurrency&&appCurrency.locale)||'en-IN'; }
+
+const fmt=n=>{
+  const abs=Math.abs(Number(n)||0);
+  const loc=currencyLocale();
+  try{ return currencySymbol()+abs.toLocaleString(loc,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  catch(e){ return currencySymbol()+abs.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+};
+// Same number formatting as fmt(), but without the currency symbol (reports / investments).
+const fmtR=n=>{
+  const abs=Math.abs(Number(n)||0);
+  try{ return abs.toLocaleString(currencyLocale(),{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  catch(e){ return abs.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+};
+
+async function loadCurrency(){
+  try{
+    const key=currentUser?('currency_'+currentUser.username):'currency_default';
+    const r=await dbGet('settings',key);
+    if(r&&r.value){ appCurrency=getCurrencyByCode(r.value); }
+    else appCurrency=getCurrencyByCode('INR');
+  }catch{ appCurrency=getCurrencyByCode('INR'); }
+  applyCurrencyUI();
+}
+async function saveCurrency(code){
+  appCurrency=getCurrencyByCode(code);
+  const key=currentUser?('currency_'+currentUser.username):'currency_default';
+  await dbPut('settings',{key:key,value:appCurrency.code});
+  applyCurrencyUI();
+  try{ renderAll(); }catch(e){}
+  try{ renderHealthScore(); }catch(e){}
+  try{ if(typeof renderBudget==='function') renderBudget(); }catch(e){}
+  showToast('✅ Currency set to '+appCurrency.code+' ('+appCurrency.symbol+')');
+}
+function onCurrencyChange(code){ saveCurrency(code); }
+function applyCurrencyUI(){
+  const sel=document.getElementById('currencySelect');
+  if(sel){
+    if(!sel.options.length){
+      sel.innerHTML=CURRENCY_MASTER.map(c=>`<option value="${c.code}">${c.symbol} ${c.code} — ${c.name}</option>`).join('');
+    }
+    sel.value=appCurrency.code;
+  }
+  const prev=document.getElementById('currencyPreview');
+  if(prev) prev.textContent='Preview: '+fmt(12345.67)+' · '+appCurrency.name;
+  // Update currency badges in forms
+  document.querySelectorAll('.currency-badge').forEach(el=>{ el.textContent=currencySymbol(); });
+  // Buffer label in safe-to-spend
+  document.querySelectorAll('label').forEach(lab=>{
+    if(/Buffer \/ emergency/.test(lab.textContent||'')) lab.textContent='Buffer / emergency ('+currencySymbol()+')';
+  });
+}
+
 // ═══════════════════════════════════════
 // INDEXEDDB — Proper database storage
 // Tables: transactions | loans | goals | emis | recurring | settings | users | categories
@@ -2883,6 +3034,7 @@ function showApp(){
   loadRegister();
   if(typeof loadRegSmartFeatures==='function') loadRegSmartFeatures();
   loadSmsSettings();
+  loadCurrency();
   loadHomeNote();
   renderHealthScore();
   // Show onboarding on first launch
@@ -6481,23 +6633,76 @@ function openInvestmentCalculator(){
   if(!modal){
     modal=document.createElement('div');
     modal.id='investmentCalculatorModal';
-    modal.className='modal-overlay open';
-    modal.innerHTML=`<div class="modal-sheet" style="max-width:380px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
-        <h3 style="margin:0;">🧮 Calculator</h3>
-        <button type="button" class="modal-close" onclick="closeInvestmentCalculator()" style="margin:0;width:auto;padding:7px 11px;">✕</button>
+    modal.className='calc-float';
+    modal.innerHTML=`
+      <div class="calc-float-head" id="calcDragHandle">
+        <span style="font-size:1.1rem;">🧮</span>
+        <h3>Calculator</h3>
+        <span style="font-size:0.65rem;opacity:0.85;margin-right:4px;">drag to move</span>
+        <button type="button" onclick="closeInvestmentCalculator()" aria-label="Close">✕</button>
       </div>
-      <input id="investmentCalcDisplay" class="form-input" type="text" inputmode="decimal" readonly style="font-size:1.35rem;text-align:right;font-weight:800;padding:14px;margin-bottom:10px;background:var(--bg);" value="">
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;">
-        ${['7','8','9','÷','4','5','6','×','1','2','3','−','0','.','⌫','+','C','(',')','='].map(k=>`<button type="button" onclick="investmentCalcKey('${k}')" style="padding:13px 6px;border:1.5px solid var(--border);border-radius:10px;background:${k==='='?'#1565c0':'var(--bg)'};color:${k==='='?'#fff':'var(--text)'};font-size:1rem;font-weight:800;cursor:pointer;">${k}</button>`).join('')}
-      </div>
-      <button type="button" class="modal-close" onclick="closeInvestmentCalculator()">Close</button>
-    </div>`;
+      <div class="calc-float-body">
+        <input id="investmentCalcDisplay" class="form-input" type="text" inputmode="decimal" readonly style="font-size:1.35rem;text-align:right;font-weight:800;padding:14px;margin-bottom:10px;background:var(--bg);width:100%;" value="">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;">
+          ${['7','8','9','÷','4','5','6','×','1','2','3','−','0','.','⌫','+','C','(',')','='].map(k=>`<button type="button" onclick="investmentCalcKey('${k}')" style="padding:13px 6px;border:1.5px solid var(--border);border-radius:10px;background:${k==='='?'#1565c0':'var(--bg)'};color:${k==='='?'#fff':'var(--text)'};font-size:1rem;font-weight:800;cursor:pointer;">${k}</button>`).join('')}
+        </div>
+      </div>`;
     document.body.appendChild(modal);
-  }else modal.classList.add('open');
+    initCalcDrag(modal);
+  }
+  modal.classList.add('open');
+  // Restore last position if any
+  try{
+    const pos=JSON.parse(sessionStorage.getItem('calcPos')||'null');
+    if(pos&&typeof pos.left==='number'){
+      modal.style.left=pos.left+'px';
+      modal.style.top=pos.top+'px';
+      modal.style.transform='none';
+    }
+  }catch(e){}
   const d=document.getElementById('investmentCalcDisplay');if(d)d.focus();
 }
 function closeInvestmentCalculator(){const m=document.getElementById('investmentCalculatorModal');if(m)m.classList.remove('open');}
+function initCalcDrag(panel){
+  const handle=panel.querySelector('#calcDragHandle');
+  if(!handle||handle.dataset.dragReady==='1')return;
+  handle.dataset.dragReady='1';
+  let dragging=false,ox=0,oy=0;
+  const onStart=(clientX,clientY)=>{
+    dragging=true;
+    const rect=panel.getBoundingClientRect();
+    ox=clientX-rect.left; oy=clientY-rect.top;
+    panel.style.transform='none';
+    panel.style.left=rect.left+'px';
+    panel.style.top=rect.top+'px';
+  };
+  const onMove=(clientX,clientY)=>{
+    if(!dragging)return;
+    let left=clientX-ox, top=clientY-oy;
+    const maxL=window.innerWidth-panel.offsetWidth-4;
+    const maxT=window.innerHeight-panel.offsetHeight-4;
+    left=Math.max(4,Math.min(maxL,left));
+    top=Math.max(4,Math.min(maxT,top));
+    panel.style.left=left+'px';
+    panel.style.top=top+'px';
+  };
+  const onEnd=()=>{
+    if(!dragging)return;
+    dragging=false;
+    try{
+      sessionStorage.setItem('calcPos',JSON.stringify({
+        left:parseFloat(panel.style.left)||0,
+        top:parseFloat(panel.style.top)||0
+      }));
+    }catch(e){}
+  };
+  handle.addEventListener('mousedown',e=>{e.preventDefault();onStart(e.clientX,e.clientY);});
+  window.addEventListener('mousemove',e=>onMove(e.clientX,e.clientY));
+  window.addEventListener('mouseup',onEnd);
+  handle.addEventListener('touchstart',e=>{const t=e.touches[0];onStart(t.clientX,t.clientY);},{passive:true});
+  window.addEventListener('touchmove',e=>{if(!dragging)return;const t=e.touches[0];onMove(t.clientX,t.clientY);},{passive:true});
+  window.addEventListener('touchend',onEnd);
+}
 function investmentCalcKey(key){
   const d=document.getElementById('investmentCalcDisplay');if(!d)return;
   if(key==='C'){d.value='';return;}
@@ -6792,6 +6997,10 @@ function renderHome(){
   const allExp=transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const balance=allInc-allExp;
   document.getElementById('totalBalance').textContent=fmt(balance);
+  const bf=document.getElementById('balanceFormula');
+  if(bf) bf.textContent='All-time Income '+fmt(allInc)+' − Expense '+fmt(allExp)+' = Balance';
+  const bd=document.getElementById('balanceDate');
+  if(bd) bd.textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   const mt=getMonthTxns();
   const mInc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const mExp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
@@ -7581,7 +7790,7 @@ function showTab(tab,pushHistory=true){
   if(tab==='report')renderReport();
   if(tab==='budget')renderBudget();
   if(tab==='goals'){renderGoals();renderRecurring();renderEmis();}
-  if(tab==='settings')renderCategoryMaster();
+  if(tab==='settings'){renderCategoryMaster();applyCurrencyUI();try{updateSmsUI();}catch(e){}};
   if(tab==='loans'){renderLoans();renderLoanReport();checkLoanOverdue();}
   if(tab==='reminders'){renderReminders();}
   if(tab==='register'){renderRegister(); if(typeof renderRegFeatureMode==='function') renderRegFeatureMode();}
@@ -10037,7 +10246,7 @@ function parseCSVLine(line){
 // ══════════════════════════════════════════════════════
 let regFeatureMode = 'sheets';
 let moneyPockets = [];
-let pocketSplitRules = { emergency: 10, goals: 20 };
+let pocketSplitRules = { emergency: 10, goals: 20, customId: '', customPct: 0 };
 let subscriptions = [];
 
 async function loadRegSmartFeatures(){
@@ -10065,7 +10274,14 @@ async function saveSubscriptions(){
 async function savePocketSplitRules(){
   const em=parseFloat(document.getElementById('pocketSplitEmergency').value)||0;
   const go=parseFloat(document.getElementById('pocketSplitGoals').value)||0;
-  pocketSplitRules={emergency:Math.min(50,Math.max(0,em)),goals:Math.min(50,Math.max(0,go))};
+  const customPct=parseFloat(document.getElementById('pocketSplitCustomPct')?.value)||0;
+  const customId=document.getElementById('pocketSplitCustomId')?.value||'';
+  pocketSplitRules={
+    emergency:Math.min(50,Math.max(0,em)),
+    goals:Math.min(50,Math.max(0,go)),
+    customId:customId,
+    customPct:Math.min(50,Math.max(0,customPct))
+  };
   await dbPut('settings',{key:'pocket_split_'+currentUser.username,value:JSON.stringify(pocketSplitRules)});
   showToast('✅ Split rules saved');
 }
@@ -10096,8 +10312,21 @@ function renderRegFeatureMode(){
 function renderPockets(){
   const list=document.getElementById('pocketsList');
   if(!list) return;
-  document.getElementById('pocketSplitEmergency').value = pocketSplitRules.emergency||10;
-  document.getElementById('pocketSplitGoals').value = pocketSplitRules.goals||20;
+  const emEl=document.getElementById('pocketSplitEmergency');
+  const goEl=document.getElementById('pocketSplitGoals');
+  if(emEl) emEl.value = pocketSplitRules.emergency||10;
+  if(goEl) goEl.value = pocketSplitRules.goals||20;
+  const customSel=document.getElementById('pocketSplitCustomId');
+  const customPctEl=document.getElementById('pocketSplitCustomPct');
+  if(customSel){
+    const skip=/emergenc|goal/i;
+    customSel.innerHTML='<option value="">— None —</option>'+
+      moneyPockets.filter(p=>!skip.test(p.name||'')).map(p=>
+        `<option value="${p.id}">${p.emoji||'👝'} ${p.name}</option>`
+      ).join('');
+    if(pocketSplitRules.customId) customSel.value=String(pocketSplitRules.customId);
+  }
+  if(customPctEl) customPctEl.value = pocketSplitRules.customPct||0;
   if(!moneyPockets.length){
     list.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.82rem;">No pockets yet.<br>Create envelopes for Emergency, Fun, Bills, Travel etc.</div>';
     return;
@@ -10152,23 +10381,36 @@ async function runPocketAutoSplit(){
   const latest=incomes.sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
   const emPct=(pocketSplitRules.emergency||0)/100;
   const goPct=(pocketSplitRules.goals||0)/100;
+  const customPct=(pocketSplitRules.customPct||0)/100;
   const emAmt=Math.round(latest.amount*emPct);
   const goAmt=Math.round(latest.amount*goPct);
+  const customAmt=Math.round(latest.amount*customPct);
+  let totalSplit=0;
   let emPocket=moneyPockets.find(p=>/emergenc/i.test(p.name));
   if(!emPocket && emAmt>0){
     emPocket={id:Date.now(),name:'Emergency',target:50000,saved:0,emoji:'🛡️',type:'Emergency',color:'#e53935'};
     moneyPockets.push(emPocket);
   }
-  if(emPocket && emAmt>0) emPocket.saved=(emPocket.saved||0)+emAmt;
+  if(emPocket && emAmt>0){ emPocket.saved=(emPocket.saved||0)+emAmt; totalSplit+=emAmt; }
   let goalPocket=moneyPockets.find(p=>/goal/i.test(p.name));
   if(!goalPocket && goAmt>0){
     goalPocket={id:Date.now()+1,name:'Goals',target:100000,saved:0,emoji:'🎯',type:'Goals',color:'#cc5de8'};
     moneyPockets.push(goalPocket);
   }
-  if(goalPocket && goAmt>0) goalPocket.saved=(goalPocket.saved||0)+goAmt;
+  if(goalPocket && goAmt>0){ goalPocket.saved=(goalPocket.saved||0)+goAmt; totalSplit+=goAmt; }
+  // Smart Money Pocket (any user-created pocket selected in rules)
+  if(pocketSplitRules.customId && customAmt>0){
+    let customPocket=moneyPockets.find(p=>String(p.id)===String(pocketSplitRules.customId));
+    if(customPocket){
+      customPocket.saved=(customPocket.saved||0)+customAmt;
+      totalSplit+=customAmt;
+    } else {
+      showToast('⚠️ Selected Smart Pocket not found — create it first');
+    }
+  }
   await savePockets();
   renderPockets();
-  showToast('✅ Split '+fmt(emAmt+goAmt)+' from latest income ('+fmt(latest.amount)+')');
+  showToast('✅ Split '+fmt(totalSplit)+' from latest income ('+fmt(latest.amount)+')');
 }
 
 // ── Safe-to-Spend ──
