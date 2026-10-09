@@ -2876,6 +2876,7 @@ async function saveSettings(){
   // This is required for lock-screen/system notifications. The in-app popup itself
   // does not need permission.
   // Arm timers FIRST so a stuck permission prompt can never stop the reminder.
+  window._mmUserAction=true;
   setupDailyReminder();
   updateReminderStatusLine();
   if(settings.reminder){
@@ -2996,6 +2997,18 @@ async function mmNativePrepare(C){
   }catch(e){}
   return true;
 }
+/** Android 12+ delays "inexact" alarms by minutes/hours. Exact alarms fire on the minute. */
+async function mmExactAlarmState(C, askUser){
+  try{
+    let r=await capCall(C,'LocalNotifications','checkExactNotificationSetting',{});
+    let st=r&&r.exact_alarm;
+    if(st && st!=='granted' && askUser){
+      try{ r=await capCall(C,'LocalNotifications','changeExactNotificationSetting',{}); st=r&&r.exact_alarm; }catch(e){}
+    }
+    return st||'unknown';
+  }catch(e){ return 'unknown'; }
+}
+window._mmUserAction=false;
 async function syncNativeReminder(enabled, timeStr){
   if(!mmIsNative()) return false;
   const C=window.Capacitor;
@@ -3013,9 +3026,10 @@ async function syncNativeReminder(enabled, timeStr){
       channelId:'mm-reminder-v2',
       schedule:{on:{hour:hour,minute:minute},allowWhileIdle:true}
     }]});
-    let n='?';
-    try{ const pend=await capCall(C,'LocalNotifications','getPending',{}); n=(pend&&pend.notifications)?pend.notifications.length:'?'; }catch(e){}
-    mmSetNativeStatus('Background alarm: ✅ set for '+timeStr+' daily (pending: '+n+')');
+    const ask=window._mmUserAction; window._mmUserAction=false;
+    const ex=await mmExactAlarmState(C, ask);
+    const exTxt=(ex==='granted')?'exact time ✅':'NOT exact — tap Test Reminder Now and allow "Alarms & reminders" for this app';
+    mmSetNativeStatus('Background alarm: ✅ set for '+timeStr+' daily ('+exTxt+')');
     return true;
   }catch(e){
     mmSetNativeStatus('Background alarm FAILED: '+String((e&&e.message)||e));
@@ -3175,6 +3189,7 @@ async function testDailyReminderNow(){
   try{ await dbPut('settings', { key: 'app_settings', value: JSON.stringify(settings) }); }catch(e){}
   try{ localStorage.setItem('mm_settings', JSON.stringify(settings)); }catch(e){}
 
+  window._mmUserAction=true;
   setupDailyReminder();
   // force + try OS only if already allowed (will NOT open Block/Allow dialog)
   fireDailyReminder(true, true);
@@ -3194,15 +3209,13 @@ function checkDailyReminderNow(){
   const now = new Date();
   const target = new Date(now); target.setHours(h, m, 0, 0);
   const lateMs = now.getTime() - target.getTime();
-  // Fire once per day when the time has arrived (also catches timer drift and
-  // the app being resumed up to 3 hours after the set time).
-  if(lateMs >= 0 && lateMs <= 3*60*60*1000){
+  // Fire once per day ONLY at the set time (2-minute window for timer drift).
+  // Opening the app later never pops the reminder up; the phone notification covers that.
+  if(lateMs >= 0 && lateMs <= 2*60*1000){
     try{ _dailyReminderLastFire = localStorage.getItem('mm_daily_reminder_last') || _dailyReminderLastFire; }catch(e){}
     fireDailyReminder(false, true);
   }
 }
-document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ checkDailyReminderNow(); }catch(e){} } });
-document.addEventListener('resume', function(){ try{ checkDailyReminderNow(); }catch(e){} });
 
 function setupDailyReminder(){
   if(_dailyReminderTimer){ clearTimeout(_dailyReminderTimer); _dailyReminderTimer = null; }
