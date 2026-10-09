@@ -1,14 +1,9 @@
-name: Build Android APK (Capacitor)
+# Save as: .github/workflows/release-aab.yml   (keep your existing main.yml as it is)
+# Run from: GitHub -> Actions -> "Build Signed Release AAB" -> Run workflow
+name: Build Signed Release AAB
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'index.html'
-      - 'manifest.json'
-      - 'resources/**'
-      - '.github/workflows/main.yml'
 
 jobs:
   build:
@@ -50,27 +45,21 @@ jobs:
       - name: Install Capacitor 6
         run: |
           npm init -y
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @capgo/capacitor-native-biometric@6.0.4 @capacitor-community/speech-recognition@^6.0.0 @capacitor/local-notifications@^6
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @capgo/capacitor-native-biometric@6.0.4 @capacitor/local-notifications@^6
           npm install @capacitor/assets@3 --save-dev
-      
+
       - name: Initialize Capacitor (non-interactive)
         run: |
           npx cap init "Money Manager Pro" com.ullasankv.moneymanagerpro --web-dir www
           npx cap add android
-      
-      - name: Add mic permission
-        run: |
-          sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>\n    <application#' android/app/src/main/AndroidManifest.xml
           npx cap sync android
-          
+
       - name: Add biometric permission
         run: |
-           MANIFEST="android/app/src/main/AndroidManifest.xml"
-           if ! grep -q "USE_BIOMETRIC" "$MANIFEST"; then
-            # Insert <uses-permission> as a direct child of <manifest>, right after <manifest ...>
-              sed -i '0,/<manifest /s//<manifest /' "$MANIFEST"
-              sed -i 's|<application|<uses-permission android:name="android.permission.USE_BIOMETRIC" />\n    <application|' "$MANIFEST"
-            fi
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "USE_BIOMETRIC" "$MANIFEST"; then
+            sed -i 's|<application|<uses-permission android:name="android.permission.USE_BIOMETRIC" />\n    <application|' "$MANIFEST"
+          fi
 
       - name: Add notification permission (daily reminder)
         run: |
@@ -83,63 +72,61 @@ jobs:
       - name: Generate app icons
         run: |
           if [ -f resources/icon.png ]; then
-            echo "✅ Found resources/icon.png — generating icons..."
             npx @capacitor/assets generate --android --iconBackgroundColor '#1565c0' --iconBackgroundColorDark '#0d47a1'
           else
-            echo "⚠️ WARNING: resources/icon.png not found — APK will use default Capacitor icon"
+            echo "WARNING: resources/icon.png not found - default Capacitor icon will be used"
           fi
 
       - name: Add FileProvider paths for file sharing
         run: |
           mkdir -p android/app/src/main/res/xml
-          cat > android/app/src/main/res/xml/file_paths.xml <<'EOF'
+          cat > android/app/src/main/res/xml/file_paths.xml <<'XML'
           <?xml version="1.0" encoding="utf-8"?>
           <paths xmlns:android="http://schemas.android.com/apk/res/android">
               <cache-path name="cache" path="." />
               <files-path name="files" path="." />
               <external-path name="external" path="." />
           </paths>
-          EOF
+          XML
 
-      # Android only installs an update when the new APK has the SAME signing key and a HIGHER versionCode.
-      # The debug key changes on every CI run, so we sign with our own keystore and bump the version each run.
+      # Play Store rejects a versionCode that was already uploaded.
+      # The run number goes up on every run, so each build is higher than the last.
       - name: Set version
         run: |
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
           sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
           grep -n "versionCode\|versionName" android/app/build.gradle
 
-      - name: Build release APK (unsigned)
+      - name: Build release bundle (unsigned)
         working-directory: android
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew bundleRelease --no-daemon
 
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/MoneyManagerPro.jks"
 
-      - name: Align and sign APK
+      - name: Sign AAB
         env:
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASS: ${{ secrets.KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          UNSIGNED=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
-          "$BT/zipalign" -p -f 4 "$UNSIGNED" aligned.apk
-          "$BT/apksigner" sign --ks "$RUNNER_TEMP/MoneyManagerPro.jks" \
-            --ks-key-alias "$KEY_ALIAS" \
-            --ks-pass env:KS_PASS --key-pass env:KEY_PASS \
-            --out MoneyManagerPro.apk aligned.apk
-          "$BT/apksigner" verify --print-certs MoneyManagerPro.apk
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore "$RUNNER_TEMP/MoneyManagerPro.jks" \
+            -storepass "$KS_PASS" -keypass "$KEY_PASS" \
+            "$AAB" "$KEY_ALIAS"
+          jarsigner -verify "$AAB"
+          cp "$AAB" MoneyManagerPro-release.aab
 
       - name: Remove keystore
         if: always()
-        run: rm -f "$RUNNER_TEMP/MoneyManagerPro.jks"
+        run: rm -f "$RUNNER_TEMP/upload-keystore.jks"
 
-      - name: Upload APK
+      - name: Upload signed AAB
         uses: actions/upload-artifact@v4
         with:
-          name: MoneyManagerPro-apk
-          path: MoneyManagerPro.apk
-          if-no-files-found: error
+          name: MoneyManagerPro-signed-aab
+          path: MoneyManagerPro-release.aab
+          retention-days: 14
