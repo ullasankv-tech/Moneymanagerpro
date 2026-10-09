@@ -1,0 +1,140 @@
+# Save as: .github/workflows/release-aab.yml   (keep your existing main.yml as it is)
+# Run from: GitHub -> Actions -> "Build Signed Release AAB" -> Run workflow
+name: Build Signed Release AAB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check signing secrets
+        env:
+          A: ${{ secrets.KEYSTORE_BASE64 }}
+          B: ${{ secrets.KEYSTORE_PASSWORD }}
+          C: ${{ secrets.KEY_ALIAS }}
+          D: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for v in A B C D; do
+            if [ -z "${!v}" ]; then echo "Missing secret. Add KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD under Settings > Secrets and variables > Actions."; exit 1; fi
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Prepare web assets
+        run: |
+          mkdir -p www
+          cp index.html www/index.html
+          if [ -f manifest.json ]; then cp manifest.json www/manifest.json; fi
+          if [ -f sw.js ]; then cp sw.js www/sw.js; fi
+          if [ -d icons ]; then cp -r icons www/icons; fi
+
+      - name: Install Capacitor 6
+        run: |
+          npm init -y
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @capgo/capacitor-native-biometric@6.0.4 @capacitor-community/speech-recognition@^6.0.0 @capacitor/local-notifications@^6
+          npm install @capacitor/assets@3 --save-dev
+
+      - name: Initialize Capacitor (non-interactive)
+        run: |
+          npx cap init "Money Manager Pro" com.ullasankv.moneymanagerpro --web-dir www
+          npx cap add android
+          npx cap sync android
+
+      - name: Add mic permission
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "RECORD_AUDIO" "$MANIFEST"; then
+            sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>\n    <application#' "$MANIFEST"
+          fi
+          npx cap sync android
+
+      - name: Add biometric permission
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "USE_BIOMETRIC" "$MANIFEST"; then
+            sed -i 's|<application|<uses-permission android:name="android.permission.USE_BIOMETRIC" />\n    <application|' "$MANIFEST"
+          fi
+
+      - name: Add notification permission (daily reminder)
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST"; then
+            sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application|' "$MANIFEST"
+          fi
+          grep -n "uses-permission" "$MANIFEST"
+
+      - name: Generate app icons
+        run: |
+          if [ -f resources/icon.png ]; then
+            npx @capacitor/assets generate --android --iconBackgroundColor '#1565c0' --iconBackgroundColorDark '#0d47a1'
+          else
+            echo "WARNING: resources/icon.png not found - default Capacitor icon will be used"
+          fi
+
+      - name: Add FileProvider paths for file sharing
+        run: |
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/file_paths.xml <<'XML'
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths xmlns:android="http://schemas.android.com/apk/res/android">
+              <cache-path name="cache" path="." />
+              <files-path name="files" path="." />
+              <external-path name="external" path="." />
+          </paths>
+          XML
+
+      # Play Store rejects a versionCode that was already uploaded.
+      # The run number goes up on every run, so each build is higher than the last.
+      - name: Set version
+        run: |
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+          grep -n "versionCode\|versionName" android/app/build.gradle
+
+      - name: Build release bundle (unsigned)
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew bundleRelease --no-daemon
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/MoneyManagerPro.jks"
+
+      - name: Sign AAB
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          jarsigner -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore "$RUNNER_TEMP/MoneyManagerPro.jks" \
+            -storepass "$KS_PASS" -keypass "$KEY_PASS" \
+            "$AAB" "$KEY_ALIAS"
+          jarsigner -verify "$AAB"
+          cp "$AAB" MoneyManagerPro-release.aab
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload-keystore.jks"
+
+      - name: Upload signed AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: MoneyManagerPro-signed-aab
+          path: MoneyManagerPro-release.aab
+          retention-days: 14
