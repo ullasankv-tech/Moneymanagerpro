@@ -356,6 +356,86 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .nav-label{font-size:0.58rem;font-weight:700;color:var(--muted);}
 .nav-item.active .nav-label{color:#00b894;}
 
+.nav-mic-wrap{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-top:-18px;padding:0 2px;flex-shrink:0;}
+.nav-mic-btn{
+  width:56px;height:56px;border-radius:50%;
+  border:3px solid #fff;
+  background:linear-gradient(135deg,#1565c0,#4d96ff 45%,#cc5de8);
+  color:#fff;font-size:1.45rem;cursor:pointer;
+  box-shadow:0 6px 18px rgba(21,101,192,0.45),0 0 0 4px rgba(77,150,255,0.15);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 0.15s,box-shadow 0.15s;
+  font-family:var(--font);line-height:1;
+}
+.nav-mic-btn:active{transform:scale(0.92);}
+.nav-mic-btn.listening{
+  background:linear-gradient(135deg,#e53935,#ff6b6b);
+  box-shadow:0 0 0 0 rgba(229,57,53,0.45);
+  animation:voicePulse 1s infinite;
+}
+.nav-mic-label{font-size:0.55rem;font-weight:800;color:#1565c0;margin-top:2px;letter-spacing:0.02em;}
+.nav-mic-btn.listening + .nav-mic-label{color:#e53935;}
+
+/* Voice Budget Assistant popup */
+.va-overlay{position:fixed;inset:0;background:rgba(10,20,40,0.55);z-index:12000;display:none;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(3px);}
+.va-overlay.open{display:flex;}
+.va-sheet{
+  background:var(--surface);border-radius:22px;width:100%;max-width:380px;
+  max-height:86vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  border:1.5px solid var(--border);animation:popIn 0.28s ease;
+}
+.va-head{padding:16px 16px 10px;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid var(--border);}
+.va-head-icon{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#e8f4ff,#f3e5f5);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.va-head-title{font-size:0.95rem;font-weight:800;color:var(--text);}
+.va-head-sub{font-size:0.7rem;color:var(--muted);margin-top:2px;line-height:1.4;}
+.va-close{margin-left:auto;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;width:34px;height:34px;font-size:1rem;cursor:pointer;color:var(--muted);flex-shrink:0;}
+.va-body{padding:14px 16px 18px;}
+.va-query{font-size:0.78rem;color:var(--muted);background:var(--bg);border-radius:10px;padding:8px 12px;margin-bottom:12px;border:1.5px solid var(--border);line-height:1.45;}
+.va-query b{color:var(--text);}
+.va-card{border-radius:14px;padding:14px;margin-bottom:10px;border:1.5px solid var(--border);background:var(--bg);}
+.va-card-label{font-size:0.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);margin-bottom:4px;}
+.va-card-amt{font-size:1.55rem;font-weight:900;line-height:1.15;}
+.va-card-meta{font-size:0.72rem;color:var(--muted);margin-top:6px;line-height:1.45;}
+.va-bar{height:8px;background:#e8eef5;border-radius:6px;overflow:hidden;margin-top:10px;}
+.va-bar-fill{height:100%;border-radius:6px;transition:width 0.5s ease;}
+.va-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:0.8rem;}
+.va-row:last-child{border-bottom:none;}
+.va-tips{margin-top:8px;font-size:0.72rem;color:var(--muted);line-height:1.5;padding:10px;background:#fff8e1;border-radius:10px;border:1px solid #ffe082;}
+.va-actions{display:flex;gap:8px;margin-top:12px;}
+.va-actions button{flex:1;padding:11px;border:none;border-radius:12px;font-weight:800;font-size:0.82rem;cursor:pointer;font-family:var(--font);}
+.va-listening-state{text-align:center;padding:28px 12px;}
+.va-listening-state .mic-big{font-size:2.8rem;margin-bottom:10px;animation:voicePulse 1s infinite;}
+.va-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.va-chip{padding:6px 10px;border-radius:16px;border:1.5px solid var(--border);background:var(--surface);font-size:0.7rem;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);}
+
+/* Notes mini calendar */
+.notes-cal{margin-bottom:10px;background:var(--bg);border:1.5px solid var(--border);border-radius:14px;padding:10px 10px 8px;overflow:hidden;}
+.notes-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px;}
+.notes-cal-title{font-size:0.82rem;font-weight:800;color:var(--text);}
+.notes-cal-nav{display:flex;gap:4px;}
+.notes-cal-nav button{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);font-weight:800;cursor:pointer;color:var(--text);font-family:var(--font);}
+.notes-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.notes-cal-dow{font-size:0.58rem;font-weight:800;color:var(--muted);text-align:center;padding:2px 0 4px;}
+.notes-cal-day{
+  aspect-ratio:1;border-radius:9px;border:1.5px solid transparent;
+  background:transparent;font-size:0.72rem;font-weight:700;cursor:pointer;
+  color:var(--text);font-family:var(--font);position:relative;
+  display:flex;align-items:center;justify-content:center;padding:0;
+}
+.notes-cal-day.empty{cursor:default;opacity:0;}
+.notes-cal-day.other-month{opacity:0.35;}
+.notes-cal-day.today{border-color:#1565c0;color:#1565c0;}
+.notes-cal-day.selected{background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;border-color:#1565c0;box-shadow:0 2px 8px rgba(21,101,192,0.3);}
+.notes-cal-day.has-note::after{
+  content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);
+  width:5px;height:5px;border-radius:50%;background:#00b894;
+}
+.notes-cal-day.selected.has-note::after{background:#fff;}
+.notes-cal-legend{display:flex;align-items:center;gap:12px;margin-top:8px;font-size:0.65rem;color:var(--muted);font-weight:600;}
+.notes-cal-legend span{display:inline-flex;align-items:center;gap:4px;}
+.notes-cal-dot{width:6px;height:6px;border-radius:50%;background:#00b894;display:inline-block;}
+
+
 /* TOAST */
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-80px);background:#1a1a2e;color:#fff;padding:11px 22px;border-radius:50px;font-size:0.82rem;font-weight:700;z-index:9999;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.35s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.25);opacity:0;}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
@@ -1010,7 +1090,22 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div class="panel" id="homeNotesPanel">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;">
           <h3 style="margin-bottom:0;">📝 Notes</h3>
-          <input type="date" class="form-input" style="width:145px;padding:5px 7px;font-size:0.74rem;" id="homeNotesDate" onchange="onHomeNoteDateChange()"/>
+          <input type="date" class="form-input" style="width:145px;padding:5px 7px;font-size:0.74rem;display:none;" id="homeNotesDate" onchange="onHomeNoteDateChange()"/>
+        </div>
+        <div class="notes-cal" id="notesCal">
+          <div class="notes-cal-head">
+            <div class="notes-cal-title" id="notesCalTitle">—</div>
+            <div class="notes-cal-nav">
+              <button type="button" onclick="notesCalShift(-1)" aria-label="Previous month">◀</button>
+              <button type="button" onclick="notesCalGoToday()" aria-label="Today" title="Today" style="width:auto;padding:0 8px;font-size:0.68rem;">Today</button>
+              <button type="button" onclick="notesCalShift(1)" aria-label="Next month">▶</button>
+            </div>
+          </div>
+          <div class="notes-cal-grid" id="notesCalGrid"></div>
+          <div class="notes-cal-legend">
+            <span><i class="notes-cal-dot"></i> Has note</span>
+            <span style="margin-left:auto;font-weight:700;color:var(--text);" id="notesCalSelectedLabel"></span>
+          </div>
         </div>
 
         <div class="notes-voice-row"><button type="button" id="homeNotesMic" class="voice-mic-btn notes-voice-btn" data-idle="🎤 Voice typing" data-live="🔴 Listening… tap to stop" aria-label="Voice typing for notes" onclick="homeNoteVoice(this)">🎤 Voice typing</button></div>
@@ -1669,8 +1764,14 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <button class="nav-item active" id="nav-home" onclick="showTab('home')"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
     <button class="nav-item" id="nav-register" onclick="showTab('register')"><span class="nav-icon">📋</span><span class="nav-label">Register</span></button>
     <button class="nav-item" id="nav-loans" onclick="showTab('loans')"><span class="nav-icon">🏦</span><span class="nav-label">Loans</span></button>
+    <div class="nav-mic-wrap">
+      <button type="button" class="nav-mic-btn" id="navMicBtn" onclick="startVoiceAssistant()" title="Ask about your budget" aria-label="Voice budget assistant" data-idle="🎤" data-live="🔴">🎤</button>
+      <span class="nav-mic-label">Ask</span>
+    </div>
     <button class="nav-item" id="nav-trading" onclick="showTab('trading')"><span class="nav-icon">💹</span><span class="nav-label">Trading</span></button>
-    <button class="nav-item" id="nav-investments" onclick="showTab('investments')"><span class="nav-icon">📈</span><span class="nav-label">Investments</span></button><button class="nav-item" id="nav-report" onclick="showTab('report')"><span class="nav-icon">📊</span><span class="nav-label">Reports</span></button><button class="nav-item" id="nav-settings" onclick="showTab('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></button>
+    <button class="nav-item" id="nav-investments" onclick="showTab('investments')"><span class="nav-icon">📈</span><span class="nav-label">Invest</span></button>
+    <button class="nav-item" id="nav-report" onclick="showTab('report')"><span class="nav-icon">📊</span><span class="nav-label">Reports</span></button>
+    <button class="nav-item" id="nav-settings" onclick="showTab('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">More</span></button>
   </div>
 </div>
 
@@ -3359,6 +3460,7 @@ async function loadHomeNote(){
   if(dateEl && !dateEl.value) dateEl.value=new Date().toISOString().split('T')[0];
   attachNotesEditorEvents();
   await loadHomeNoteForDate(homeNoteSelectedDate());
+  try{ await initNotesCalendar(); }catch(e){ console.warn('Notes calendar',e); }
 }
 async function loadHomeNoteForDate(date){
   try{
@@ -3383,9 +3485,11 @@ async function persistCurrentHomeNote(date){
   // Do not create a record for a completely empty note.
   if(!notePlainText() && !html.replace(/<br\s*\/?>(?:\s*)/gi,'').trim()){
     await dbDelete('settings','home_note_'+currentUser.username+'_'+date);
+    try{ notesDatesCache.delete(date); renderNotesCalendar(); }catch(e){}
     return;
   }
   await dbPut('settings',{key:'home_note_'+currentUser.username+'_'+date,value:html});
+  try{ notesDatesCache.add(date); renderNotesCalendar(); }catch(e){}
 }
 function scheduleHomeNoteAutoSave(){
   clearTimeout(homeNoteAutoSaveTimer);
@@ -3405,6 +3509,7 @@ async function onHomeNoteDateChange(){
     try{await persistCurrentHomeNote(oldDate);}catch(e){console.warn('Note date-change save failed',e);}
   }
   await loadHomeNoteForDate(newDate);
+  try{ renderNotesCalendar(); }catch(e){}
 }
 async function saveHomeNote(silent){
   const el=document.getElementById('homeNotesText');
@@ -9035,6 +9140,361 @@ async function loadSmsSettings(){
   }catch{}
 }
 
+
+// ══════════════════════════════════════════════════════
+// VOICE BUDGET ASSISTANT — center mic in bottom nav
+// Ask: "How much can I spend on Food today?" / "Entertainment budget left"
+// Uses monthly Budget Planner + this month's expenses.
+// ══════════════════════════════════════════════════════
+const VA_ALIASES = {
+  food:['food','foods','dining','restaurant','restaurants','lunch','dinner','breakfast','meals','meal','eating','eat','swiggy','zomato'],
+  entertainment:['entertainment','movie','movies','cinema','netflix','fun','leisure','hobby','hobbies'],
+  transport:['transport','travel','uber','ola','metro','bus','auto','cab','taxi','commute'],
+  fuel:['fuel','petrol','diesel','gas station','pump'],
+  shopping:['shopping','shop','amazon','flipkart','myntra','clothes shopping'],
+  groceries:['grocery','groceries','vegetables','veggies','supermarket','kirana'],
+  health:['health','healthcare','medicine','medicines','pharmacy','doctor'],
+  medical:['medical','hospital','clinic'],
+  bills:['bills','bill','electricity','utility','utilities','power bill'],
+  rent:['rent','house rent','room rent'],
+  education:['education','school','college','tuition','course','fees'],
+  clothing:['clothing','clothes','apparel','dress'],
+  mobile:['mobile','phone bill','recharge','prepaid'],
+  internet:['internet','wifi','broadband','fiber'],
+  insurance:['insurance','premium'],
+  household:['household','home maintenance','domestic'],
+  other:['other','misc','miscellaneous']
+};
+
+function vaNormalize(s){
+  return String(s||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+}
+function vaMatchCategories(spoken){
+  const q = vaNormalize(spoken);
+  if(!q) return [];
+  const hits = [];
+  // Prefer exact category names from the user's expense list
+  (EXPENSE_CATS||[]).forEach(cat=>{
+    const n = vaNormalize(cat.name);
+    if(!n) return;
+    if(q.includes(n) || n.split(' ').every(w=>w && q.includes(w))){
+      hits.push(cat.name);
+    }
+  });
+  // Alias map → real category names
+  Object.keys(VA_ALIASES).forEach(key=>{
+    const aliases = VA_ALIASES[key];
+    if(aliases.some(a=>q.includes(a))){
+      const real = (EXPENSE_CATS||[]).find(c=>vaNormalize(c.name)===key || vaNormalize(c.name).includes(key));
+      if(real && !hits.includes(real.name)) hits.push(real.name);
+      else {
+        // fuzzy: find category containing key
+        const fuzzy = (EXPENSE_CATS||[]).find(c=>vaNormalize(c.name).includes(key));
+        if(fuzzy && !hits.includes(fuzzy.name)) hits.push(fuzzy.name);
+      }
+    }
+  });
+  return hits;
+}
+function vaCategoryStats(catName){
+  const now = new Date();
+  const ym = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const today = now.toISOString().split('T')[0];
+  const limit = Number(budgets[catName]||0);
+  const monthTx = opTxns().filter(t=>t.type==='expense'&&t.category===catName&&String(t.date||'').slice(0,7)===ym);
+  const spent = monthTx.reduce((s,t)=>s+Number(t.amount||0),0);
+  const todaySpent = monthTx.filter(t=>t.date===today).reduce((s,t)=>s+Number(t.amount||0),0);
+  const remaining = limit>0 ? Math.max(0, limit-spent) : null;
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const day = now.getDate();
+  const daysLeft = Math.max(1, daysInMonth-day+1);
+  const dailySafe = remaining!=null ? Math.floor(remaining/daysLeft) : null;
+  const pct = limit>0 ? Math.min(100, Math.round(spent/limit*100)) : 0;
+  return {catName, limit, spent, remaining, todaySpent, dailySafe, daysLeft, pct, daysInMonth};
+}
+function vaMonthLabel(){
+  return new Date().toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+}
+function vaDetectIntent(spoken){
+  const q = vaNormalize(spoken);
+  if(/balance|net worth|how much (do )?i have|total money|wallet/.test(q)) return 'balance';
+  if(/safe to spend|daily limit|how much.*(today|day)|per day|daily budget/.test(q) && !vaMatchCategories(spoken).length)
+    return 'safe';
+  if(/budget|left|remain|remaining|can i spend|how much.*spend|available|allowance|limit/.test(q))
+    return 'budget';
+  if(/spent|spend so far|how much.*spend on/.test(q)) return 'spent';
+  return 'budget';
+}
+function vaBuildAnswer(spoken){
+  const intent = vaDetectIntent(spoken);
+  const cats = vaMatchCategories(spoken);
+  const mon = vaMonthLabel();
+
+  // Overall balance
+  if(intent==='balance' && !cats.length){
+    const inc = transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const exp = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const bal = inc-exp;
+    const mt = getMonthTxns(new Date().getMonth(), new Date().getFullYear());
+    const mInc = mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const mExp = mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    return {
+      title:'💰 Your Balance',
+      html:`<div class="va-card"><div class="va-card-label">Total balance</div>
+        <div class="va-card-amt" style="color:${bal>=0?'#00b894':'#e53935'};">${fmt(bal)}</div>
+        <div class="va-card-meta">${mon}: income ${fmt(mInc)} · expense ${fmt(mExp)} · saved ${fmt(mInc-mExp)}</div></div>
+        <div class="va-tips">💡 Tip: Set category budgets in Budget Planner so you can ask “How much can I spend on Food?” anytime.</div>`
+    };
+  }
+
+  // Safe-to-spend overall (no category)
+  if(intent==='safe' && !cats.length){
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const daysLeft = Math.max(1, daysInMonth-now.getDate()+1);
+    const mt = getMonthTxns(now.getMonth(), now.getFullYear());
+    const mInc = mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const mExp = mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const buffer = 500;
+    const available = Math.max(0, mInc-mExp-buffer);
+    const daily = Math.floor(available/daysLeft);
+    return {
+      title:'📅 Safe to spend today',
+      html:`<div class="va-card"><div class="va-card-label">Suggested daily spend</div>
+        <div class="va-card-amt" style="color:#1565c0;">${fmt(daily)}</div>
+        <div class="va-card-meta">${daysLeft} day(s) left in ${mon} · after ₹${buffer} buffer</div></div>
+        <div class="va-row"><span>Month income</span><strong style="color:#00b894;">${fmt(mInc)}</strong></div>
+        <div class="va-row"><span>Month expenses</span><strong style="color:#ff6b6b;">${fmt(mExp)}</strong></div>
+        <div class="va-row"><span>Cash left (with buffer)</span><strong>${fmt(available)}</strong></div>
+        <div class="va-tips">💡 For category control, ask: “How much can I spend on Entertainment?”</div>`
+    };
+  }
+
+  // No category understood
+  if(!cats.length){
+    const samples = (EXPENSE_CATS||[]).slice(0,6).map(c=>c.name);
+    return {
+      title:'🤔 Try a category',
+      html:`<div class="va-query">Heard: <b>${spoken.replace(/</g,'&lt;')}</b></div>
+        <div style="font-size:0.82rem;line-height:1.5;margin-bottom:8px;">Say a category from your Budget Planner, for example:</div>
+        <div class="va-chips">${samples.map(n=>`<button type="button" class="va-chip" onclick="vaRunText('How much can I spend on ${n}')">${n}</button>`).join('')}</div>
+        <div class="va-tips" style="margin-top:12px;">Examples:<br>• “How much money can I spend on Food today?”<br>• “Entertainment budget left”<br>• “What is my balance?”</div>`
+    };
+  }
+
+  // One or more categories
+  const cards = cats.map(name=>{
+    const s = vaCategoryStats(name);
+    const cat = (EXPENSE_CATS||[]).find(c=>c.name===name)||{emoji:'📦'};
+    if(!(s.limit>0)){
+      return `<div class="va-card">
+        <div class="va-card-label">${cat.emoji} ${name} · ${mon}</div>
+        <div class="va-card-amt" style="color:#e65100;font-size:1.1rem;">No budget set</div>
+        <div class="va-card-meta">Spent this month: <b>${fmt(s.spent)}</b>${s.todaySpent?` · today ${fmt(s.todaySpent)}`:''}</div>
+        <div class="va-tips" style="margin-top:8px;">Set a monthly limit in <b>Budget Planner</b> so the assistant can tell you how much is left.</div>
+        <div class="va-actions"><button style="background:linear-gradient(135deg,#00b894,#4d96ff);color:#fff;" onclick="closeVoiceAssistant();showTab('budget')">Open Budget Planner</button></div>
+      </div>`;
+    }
+    const color = s.pct>=100?'#e53935':s.pct>=80?'#e65100':'#00b894';
+    const leftLabel = s.remaining<=0 ? 'Budget exhausted' : 'You can still spend';
+    const dailyLine = s.remaining>0
+      ? `≈ <b>${fmt(s.dailySafe)}</b> per day for the next <b>${s.daysLeft}</b> day(s)`
+      : `Over budget by <b>${fmt(s.spent-s.limit)}</b>`;
+    return `<div class="va-card">
+      <div class="va-card-label">${cat.emoji} ${name} · ${mon}</div>
+      <div class="va-card-amt" style="color:${color};">${s.remaining>0?fmt(s.remaining):'₹0'}</div>
+      <div class="va-card-meta"><b>${leftLabel}</b><br>${dailyLine}</div>
+      <div class="va-bar"><div class="va-bar-fill" style="width:${s.pct}%;background:${color};"></div></div>
+      <div class="va-row" style="margin-top:8px;"><span>Monthly budget</span><strong>${fmt(s.limit)}</strong></div>
+      <div class="va-row"><span>Spent so far</span><strong style="color:#ff6b6b;">${fmt(s.spent)} (${s.pct}%)</strong></div>
+      <div class="va-row"><span>Spent today</span><strong>${fmt(s.todaySpent)}</strong></div>
+    </div>`;
+  }).join('');
+
+  const tip = cats.length===1
+    ? (vaCategoryStats(cats[0]).remaining>0
+        ? '💡 Stay within the daily figure above and you will finish the month on budget.'
+        : '⚠️ Consider pausing non-essential spend in this category until next month.')
+    : '💡 Ask one category at a time for a clearer daily plan.';
+
+  return {
+    title: cats.length===1 ? ((EXPENSE_CATS.find(c=>c.name===cats[0])||{}).emoji||'📊')+' '+cats[0] : '📊 Budget check',
+    html: `<div class="va-query">Heard: <b>${spoken.replace(/</g,'&lt;')}</b></div>${cards}<div class="va-tips">${tip}</div>
+      <div class="va-actions">
+        <button style="background:var(--bg);color:var(--text);border:1.5px solid var(--border);" onclick="startVoiceAssistant(true)">🎤 Ask again</button>
+        <button style="background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;" onclick="closeVoiceAssistant();showTab('budget')">Budgets</button>
+      </div>`
+  };
+}
+
+function openVoiceAssistUI(mode){
+  const ov = document.getElementById('voiceAssistOverlay');
+  const body = document.getElementById('vaBody');
+  const title = document.getElementById('vaTitle');
+  if(!ov||!body) return;
+  if(mode==='listen'){
+    if(title) title.textContent = 'Listening…';
+    body.innerHTML = `<div class="va-listening-state">
+      <div class="mic-big">🎤</div>
+      <div style="font-weight:800;font-size:0.95rem;">Speak now</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;line-height:1.5;">“How much can I spend on Food today?”<br>“Entertainment budget left”<br>“What is my balance?”</div>
+      <button type="button" onclick="closeVoiceAssistant()" style="margin-top:16px;padding:10px 18px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);font-weight:700;cursor:pointer;font-family:var(--font);">Cancel</button>
+    </div>`;
+  }
+  ov.classList.add('open');
+}
+function showVoiceAssistResult(spoken){
+  const body = document.getElementById('vaBody');
+  const title = document.getElementById('vaTitle');
+  const ans = vaBuildAnswer(spoken);
+  if(title) title.textContent = ans.title;
+  if(body) body.innerHTML = ans.html;
+  const ov = document.getElementById('voiceAssistOverlay');
+  if(ov) ov.classList.add('open');
+}
+function vaRunText(text){
+  showVoiceAssistResult(text);
+}
+function closeVoiceAssistant(){
+  const ov = document.getElementById('voiceAssistOverlay');
+  if(ov) ov.classList.remove('open');
+  const btn = document.getElementById('navMicBtn');
+  if(btn) btn.classList.remove('listening');
+  try{ if(_voiceRec){ _voiceRec.stop(); _voiceRec=null; } }catch(e){}
+}
+function startVoiceAssistant(reask){
+  if(!currentUser){ showToast('⚠️ Please sign in first'); return; }
+  const btn = document.getElementById('navMicBtn');
+  // If already listening, stop
+  if(btn && btn.classList.contains('listening')){
+    closeVoiceAssistant();
+    return;
+  }
+  if(!_voiceSupported()){
+    openVoiceAssistUI('listen');
+    const body = document.getElementById('vaBody');
+    if(body) body.innerHTML = `<div style="padding:8px 0 4px;font-size:0.85rem;line-height:1.5;">
+      Voice input is not available on this device. Type a question below or tap a sample.</div>
+      <input type="text" id="vaFallbackInput" placeholder="e.g. How much can I spend on Food?" style="width:100%;padding:12px;border:2px solid var(--border);border-radius:12px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin:10px 0;"/>
+      <button type="button" onclick="vaRunText(document.getElementById('vaFallbackInput').value||'')" style="width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;font-weight:800;cursor:pointer;font-family:var(--font);">Ask</button>
+      <div class="va-chips">${(EXPENSE_CATS||[]).slice(0,8).map(c=>`<button type="button" class="va-chip" onclick="vaRunText('How much can I spend on ${c.name}')">${c.emoji} ${c.name}</button>`).join('')}</div>`;
+    document.getElementById('vaTitle').textContent = 'Budget Assistant';
+    return;
+  }
+  openVoiceAssistUI('listen');
+  if(btn) btn.classList.add('listening');
+  voiceListen(btn, function(txt){
+    if(btn) btn.classList.remove('listening');
+    if(!txt || !String(txt).trim()){
+      showToast('⚠️ Could not hear that. Try again.');
+      closeVoiceAssistant();
+      return;
+    }
+    showVoiceAssistResult(String(txt).trim());
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// NOTES MINI CALENDAR — highlight days that have notes
+// ══════════════════════════════════════════════════════
+let notesCalView = null; // {y,m} month shown
+let notesDatesCache = new Set(); // 'YYYY-MM-DD' strings with notes
+
+async function refreshNotesDatesCache(){
+  notesDatesCache = new Set();
+  if(!currentUser) return;
+  try{
+    const all = await dbGetAll('settings');
+    const prefix = 'home_note_'+currentUser.username+'_';
+    (all||[]).forEach(r=>{
+      if(r && typeof r.key==='string' && r.key.startsWith(prefix)){
+        const d = r.key.slice(prefix.length);
+        if(/^\d{4}-\d{2}-\d{2}$/.test(d) && r.value){
+          // skip empty notes
+          const plain = String(r.value).replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').trim();
+          if(plain) notesDatesCache.add(d);
+        }
+      }
+    });
+  }catch(e){ console.warn('Notes dates cache', e); }
+}
+function notesCalEnsureView(){
+  if(!notesCalView){
+    const d = new Date();
+    notesCalView = {y:d.getFullYear(), m:d.getMonth()};
+  }
+}
+function notesCalShift(delta){
+  notesCalEnsureView();
+  let m = notesCalView.m + delta;
+  let y = notesCalView.y;
+  while(m<0){ m+=12; y--; }
+  while(m>11){ m-=12; y++; }
+  notesCalView = {y,m};
+  renderNotesCalendar();
+}
+function notesCalGoToday(){
+  const d = new Date();
+  notesCalView = {y:d.getFullYear(), m:d.getMonth()};
+  const iso = d.toISOString().split('T')[0];
+  const dateEl = document.getElementById('homeNotesDate');
+  if(dateEl) dateEl.value = iso;
+  onHomeNoteDateChange();
+  renderNotesCalendar();
+}
+function notesCalSelect(iso){
+  const dateEl = document.getElementById('homeNotesDate');
+  if(dateEl) dateEl.value = iso;
+  onHomeNoteDateChange();
+  renderNotesCalendar();
+}
+function renderNotesCalendar(){
+  const grid = document.getElementById('notesCalGrid');
+  const title = document.getElementById('notesCalTitle');
+  const lab = document.getElementById('notesCalSelectedLabel');
+  if(!grid) return;
+  notesCalEnsureView();
+  const {y,m} = notesCalView;
+  const monthName = new Date(y,m,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  if(title) title.textContent = monthName;
+
+  const selected = (document.getElementById('homeNotesDate')||{}).value || new Date().toISOString().split('T')[0];
+  if(lab){
+    try{
+      lab.textContent = new Date(selected+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+      if(notesDatesCache.has(selected)) lab.textContent += ' · has note';
+    }catch(e){ lab.textContent = selected; }
+  }
+
+  const first = new Date(y,m,1);
+  const startDow = first.getDay(); // 0 Sun
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const todayIso = new Date().toISOString().split('T')[0];
+
+  let html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="notes-cal-dow">${d}</div>`).join('');
+  for(let i=0;i<startDow;i++) html += `<div class="notes-cal-day empty"></div>`;
+  for(let day=1; day<=daysInMonth; day++){
+    const iso = y+'-'+String(m+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    const cls = ['notes-cal-day'];
+    if(iso===todayIso) cls.push('today');
+    if(iso===selected) cls.push('selected');
+    if(notesDatesCache.has(iso)) cls.push('has-note');
+    html += `<button type="button" class="${cls.join(' ')}" onclick="notesCalSelect('${iso}')" aria-label="${iso}${notesDatesCache.has(iso)?' has note':''}">${day}</button>`;
+  }
+  grid.innerHTML = html;
+}
+async function initNotesCalendar(){
+  await refreshNotesDatesCache();
+  const dateEl = document.getElementById('homeNotesDate');
+  if(dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+  if(dateEl && dateEl.value){
+    const p = dateEl.value.split('-');
+    if(p.length===3) notesCalView = {y:+p[0], m:+p[1]-1};
+  }
+  renderNotesCalendar();
+}
+
+
 // ══════════════════════════════════════════════════════
 // ONBOARDING — shown only on first launch
 // ══════════════════════════════════════════════════════
@@ -10454,6 +10914,28 @@ window.onload=async()=>{
   <button class="install-banner-close" onclick="dismissInstall()">✕</button>
 </div>
 
+
+
+<!-- VOICE BUDGET ASSISTANT -->
+<div class="va-overlay" id="voiceAssistOverlay" onclick="if(event.target===this)closeVoiceAssistant()">
+  <div class="va-sheet" role="dialog" aria-modal="true" aria-labelledby="vaTitle">
+    <div class="va-head">
+      <div class="va-head-icon">🎤</div>
+      <div style="min-width:0;flex:1;">
+        <div class="va-head-title" id="vaTitle">Budget Voice Assistant</div>
+        <div class="va-head-sub">Ask how much you can still spend on any category this month</div>
+      </div>
+      <button type="button" class="va-close" onclick="closeVoiceAssistant()" aria-label="Close">✕</button>
+    </div>
+    <div class="va-body" id="vaBody">
+      <div class="va-listening-state">
+        <div class="mic-big">🎤</div>
+        <div style="font-weight:800;font-size:0.95rem;">Listening…</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">e.g. “How much can I spend on Food today?”</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- PRIVACY POLICY MODAL -->
 <div id="privacyModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;align-items:flex-end;justify-content:center;flex-direction:column;">
