@@ -127,7 +127,7 @@ async function showDailyNotification() {
   await saveReminderConfig(cfg);
 
   const title = '💰 Daily Reminder';
-  const body = "Don't forget to record today's transactions in Money Manager Pro!";
+  const body = "Reminder From your Money Manager! Today's Money Transactions are yet to be posted!! Ignore if already done";
   const options = {
     body: body,
     icon: './resources/icon-192.png',

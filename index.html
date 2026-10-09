@@ -1558,13 +1558,12 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div id="reminderTimeRow" style="display:none;padding-top:10px;">
           <label style="font-size:0.78rem;font-weight:700;color:var(--muted);">Reminder Time:</label>
           <input type="time" id="reminderTime" value="20:00" style="margin-top:6px;width:100%;padding:9px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);" onchange="saveSettings()"/>
-          <button type="button" onclick="testDailyReminderNow()" style="width:100%;margin-top:10px;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#00b894,#4d96ff);color:#fff;font-weight:800;font-size:0.88rem;cursor:pointer;font-family:var(--font);">🔔 Test Reminder Now</button>
           <div id="reminderStatusLine" style="margin-top:8px;font-size:0.72rem;font-weight:700;color:var(--muted);text-align:center;"></div>
-          <div style="margin-top:10px;padding:10px 12px;background:#e8f4ff;border-radius:10px;border:1.5px solid #90caf9;font-size:0.72rem;color:#1565c0;line-height:1.55;">
-            <b>✅ How it works:</b><br>
-            • Tap <b>Test Reminder Now</b> — a popup with sound appears inside the app (no permission needed)<br>
-            • At the set time every day the same popup appears while the app is open<br>
-            • For lock-screen alerts, allow notifications when prompted. A browser/PWA needs a supported background notification mechanism; the Android app build may also require native alarm support
+          <div style="margin-top:10px;padding:10px 12px;background:#fff8e1;border-radius:10px;border:1.5px solid #ffd54f;font-size:0.72rem;color:#8a5a00;line-height:1.55;">
+            <b>⚠️ Important — to get the reminder when the app is closed:</b><br>
+            • Add <b>Money Manager Pro</b> to <b>Auto Start</b> in your phone (Settings → Apps → Money Manager Pro → Auto start / Autostart → ON)<br>
+            • Set Battery usage for the app to <b>Unrestricted</b> (No restrictions)<br>
+            • Allow <b>Notifications</b> and <b>Alarms &amp; reminders</b> for this app when asked
           </div>
         </div>
       </div>
@@ -3022,13 +3021,13 @@ async function syncNativeReminder(enabled, timeStr){
     await capCall(C,'LocalNotifications','schedule',{notifications:[{
       id:9001,
       title:'💰 Daily Reminder',
-      body:"Don't forget to enter today's transactions in Money Manager Pro!",
+      body:"Reminder From your Money Manager! Today's Money Transactions are yet to be posted!! Ignore if already done",
       channelId:'mm-reminder-v2',
       schedule:{on:{hour:hour,minute:minute},allowWhileIdle:true}
     }]});
     const ask=window._mmUserAction; window._mmUserAction=false;
     const ex=await mmExactAlarmState(C, ask);
-    const exTxt=(ex==='granted')?'exact time ✅':'NOT exact — tap Test Reminder Now and allow "Alarms & reminders" for this app';
+    const exTxt=(ex==='granted')?'exact time ✅':'NOT exact — turn the reminder off and on again, then allow "Alarms & reminders" for this app';
     mmSetNativeStatus('Background alarm: ✅ set for '+timeStr+' daily ('+exTxt+')');
     return true;
   }catch(e){
@@ -3044,7 +3043,7 @@ async function mmNativeTestIn5s(){
     if(!(await mmNativePrepare(C))) return false;
     await capCall(C,'LocalNotifications','schedule',{notifications:[{
       id:9002,title:'💰 Daily Reminder (test)',
-      body:"Don't forget to enter today's transactions in Money Manager Pro!",
+      body:"Reminder From your Money Manager! Today's Money Transactions are yet to be posted!! Ignore if already done",
       channelId:'mm-reminder-v2',
       schedule:{at:new Date(Date.now()+5000),allowWhileIdle:true}
     }]});
@@ -3143,7 +3142,7 @@ function fireDailyReminder(force, tryOsNotify){
     try{ localStorage.setItem('mm_daily_reminder_last', today); }catch(e){}
   }
 
-  var body = "Don't forget to record today's transactions in Money Manager Pro!";
+  var body = "Reminder From your Money Manager! Today's Money Transactions are yet to be posted!! Ignore if already done";
 
   // ALWAYS show in-app popup first (no permission needed)
   showInAppReminder('💰 Daily Reminder', body, '🔔');
@@ -4572,7 +4571,7 @@ function payEmi(id){
   if(!budgetConfirm('Bills',emi.amount,today,null,0))return;
   transactions.unshift({id:Date.now(),type:'expense',amount:emi.amount,category:'Bills',date:today,note:emi.name+' EMI',createdAt:Date.now()});
   emi.paid=Math.min(emi.months,(emi.paid||0)+1);
-  saveData();renderAll();showToast(`✅ EMI paid! (${emi.paid}/${emi.months})`);
+  saveData();renderAll();renderEmis();showToast(`✅ EMI paid! (${emi.paid}/${emi.months})`);
 }
 function renderEmis(){
   const container=document.getElementById('emiList');
