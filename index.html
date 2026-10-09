@@ -8744,19 +8744,31 @@ window.addEventListener('popstate',e=>{
 function calcHealthScore(){
   const today=new Date();
   const mo=today.getMonth(), yr=today.getFullYear();
-  const mt=opTxns().filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
+  const allTx=opTxns();
+  const mt=allTx.filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
   const mInc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const mExp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+
+  // Empty / cleared database: no free points, no danger blink
+  const hasData = allTx.length>0 || (goals&&goals.length>0) || Object.keys(budgets||{}).some(k=>Number(budgets[k])>0);
+  if(!hasData){
+    return{
+      total:0, savingsPct:0, budgetPct:0, goalsPct:0, consistPct:0,
+      grade:'— Not started', gradeColor:'#90a4ae',
+      tip:'Add income and expenses to build your financial health score.',
+      empty:true
+    };
+  }
 
   // 1. Savings Rate (0-30 pts) — ideally save 20%+ of income
   let savingsRate=mInc>0?Math.max(0,(mInc-mExp)/mInc):0;
   const savingsPts=Math.round(Math.min(30,savingsRate*150));
   const savingsPct=Math.round(savingsRate*100);
 
-  // 2. Budget Control (0-25 pts) — how well spending stays in budget
-  let budgetPts=25;
-  let budgetPct=100;
-  const budgetCats=Object.keys(budgets);
+  // 2. Budget Control (0-25 pts) — only score when budgets are actually set
+  let budgetPts=0;
+  let budgetPct=0;
+  const budgetCats=Object.keys(budgets||{}).filter(c=>Number(budgets[c])>0);
   if(budgetCats.length>0){
     let over=0;
     budgetCats.forEach(cat=>{
@@ -8767,13 +8779,13 @@ function calcHealthScore(){
     budgetPts=Math.round((budgetPct/100)*25);
   }
 
-  // 3. Goals Progress (0-25 pts)
+  // 3. Goals Progress (0-25 pts) — 0 when no goals (no free bonus)
   let goalsPts=0, goalsPct=0;
   if(goals.length>0){
     const totalProg=goals.reduce((s,g)=>s+(g.saved/Math.max(1,g.target)),0);
     goalsPct=Math.round((totalProg/goals.length)*100);
     goalsPts=Math.round(Math.min(25,(goalsPct/100)*25));
-  } else {goalsPct=0;goalsPts=10;}// bonus pts if no goals needed
+  }
 
   // 4. Consistency (0-20 pts) — transactions entered regularly
   const daysInMonth=new Date(yr,mo+1,0).getDate();
@@ -8784,15 +8796,18 @@ function calcHealthScore(){
 
   const total=Math.min(100,savingsPts+budgetPts+goalsPts+consistPts);
 
-  // Grade
+  // Grade — only "Needs Work" / blink when there is real activity this month
   let grade,gradeColor,tip;
-  if(total>=85){grade='🌟 Excellent';gradeColor='#00b894';tip='Outstanding financial discipline! You are on track for a secure future.';}
+  if(mt.length===0 && total===0){
+    grade='— Getting started';gradeColor='#90a4ae';
+    tip='Log this month’s income and expenses to unlock your score.';
+  } else if(total>=85){grade='🌟 Excellent';gradeColor='#00b894';tip='Outstanding financial discipline! You are on track for a secure future.';}
   else if(total>=70){grade='💚 Very Good';gradeColor='#4d96ff';tip='Great job! Small improvements in savings rate will push you to Excellent.';}
   else if(total>=55){grade='🟡 Good';gradeColor='#f9ca24';tip='Decent performance. Try to set budgets for your top expense categories.';}
   else if(total>=40){grade='🟠 Fair';gradeColor='#ff922b';tip='Room for improvement. Start by setting a savings goal this month.';}
   else{grade="🔴 Needs Work";gradeColor="#ff6b6b";tip="Don't worry — track daily expenses consistently and you'll improve fast!";}
 
-  return{total,savingsPct,budgetPct,goalsPct,consistPct,grade,gradeColor,tip};
+  return{total,savingsPct,budgetPct,goalsPct,consistPct,grade,gradeColor,tip,empty:!hasData||(mt.length===0&&total===0)};
 }
 
 function renderHealthScore(){
@@ -8800,13 +8815,13 @@ function renderHealthScore(){
   document.getElementById('healthScoreNum').textContent=h.total;
   const ring=document.getElementById('healthRing');
   ring.style.borderColor=h.gradeColor;
-  ring.style.boxShadow=`0 0 18px ${h.gradeColor}55`;
+  ring.style.boxShadow=h.empty?'none':`0 0 18px ${h.gradeColor}55`;
   const gradeEl=document.getElementById('healthGrade');
   gradeEl.textContent=h.grade;
   gradeEl.style.background=h.gradeColor+'22';
   gradeEl.style.color=h.gradeColor;
-  // Danger zone (score < 40, "Needs Work") — blink the score & grade to draw attention
-  const isDanger=h.total<40;
+  // Blink only when score is genuinely low AND user has activity (not empty DB)
+  const isDanger=!h.empty && h.total<40;
   document.getElementById('healthScoreNum').classList.toggle('health-danger-blink',isDanger);
   gradeEl.classList.toggle('health-danger-blink',isDanger);
   // bars
