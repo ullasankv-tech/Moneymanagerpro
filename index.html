@@ -1459,7 +1459,10 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
             <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">Pick any pocket you created (Fun, Travel, Bills…) and a % of latest income goes there.</div>
           </div>
           <button onclick="savePocketSplitRules()" style="width:100%;padding:11px;background:linear-gradient(135deg,#00b894,#00cec9);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">💾 Save Split Rules</button>
-          <button onclick="runPocketAutoSplit()" style="width:100%;padding:11px;margin-top:8px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">▶️ Run Auto-Split on Latest Income</button>
+          <div id="pocketSplitStatus" style="margin-top:10px;padding:10px 12px;border-radius:12px;font-size:0.72rem;line-height:1.5;display:none;border:1.5px solid var(--border);background:var(--bg);"></div>
+          <button id="pocketSplitRunBtn" onclick="runPocketAutoSplit()" style="width:100%;padding:11px;margin-top:8px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">▶️ Run Auto-Split on Latest Income</button>
+          <button id="pocketSplitUndoBtn" onclick="undoPocketAutoSplit()" style="width:100%;padding:11px;margin-top:8px;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:12px;color:#e65100;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);display:none;">↩️ Undo last auto-split</button>
+          <div style="font-size:0.65rem;color:var(--muted);margin-top:8px;line-height:1.45;">Each income can be auto-split <b>only once</b>. Use Undo if you allocated by mistake.</div>
         </div>
       </div>
 
@@ -7803,6 +7806,9 @@ async function clearAllData(){
   await dbPut('settings',{key:'reminders_'+currentUser.username,  value:'[]'});
   await dbPut('settings',{key:'networth_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'register_'+currentUser.username,    value:'[]'});
+  await dbPut('settings',{key:'pocket_split_history_'+currentUser.username, value:'[]'});
+  pocketSplitHistory=[];
+  try{ moneyPockets=[]; await savePockets(); }catch(e){}
   await dbPut('settings',{key:'daily_limit_'+currentUser.username, value:'0'});
 
   // Clear all date-wise Notes records for the current user as part of
@@ -10337,6 +10343,7 @@ function parseCSVLine(line){
 let regFeatureMode = 'sheets';
 let moneyPockets = [];
 let pocketSplitRules = { emergency: 10, goals: 20, customId: '', customPct: 0 };
+let pocketSplitHistory = []; // [{txnId, amount, date, at, allocations:[{pocketId, pocketName, amount}]}]
 let subscriptions = [];
 
 async function loadRegSmartFeatures(){
@@ -10349,6 +10356,14 @@ async function loadRegSmartFeatures(){
     if(r) pocketSplitRules = JSON.parse(r.value);
   }catch{}
   try{
+    const h = await dbGet('settings','pocket_split_history_'+currentUser.username);
+    if(h){
+      const raw = h.value;
+      pocketSplitHistory = typeof raw==='string' ? JSON.parse(raw) : (raw||[]);
+      if(!Array.isArray(pocketSplitHistory)) pocketSplitHistory=[];
+    } else pocketSplitHistory=[];
+  }catch{ pocketSplitHistory=[]; }
+  try{
     const s = await dbGet('settings','subscriptions_'+currentUser.username);
     if(s){ const d=await decryptData(s.value); subscriptions=JSON.parse(d); } else subscriptions=[];
   }catch{ subscriptions=[]; }
@@ -10357,6 +10372,65 @@ async function savePockets(){
   const enc=await encryptData(JSON.stringify(moneyPockets));
   await dbPut('settings',{key:'pockets_'+currentUser.username,value:enc});
 }
+async function savePocketSplitHistory(){
+  await dbPut('settings',{key:'pocket_split_history_'+currentUser.username,value:JSON.stringify(pocketSplitHistory||[])});
+}
+function getLatestMonthIncome(){
+  const today=new Date();
+  const mo=today.getMonth(), yr=today.getFullYear();
+  const incomes=opTxns().filter(t=>t.type==='income'&&new Date(t.date).getMonth()===mo&&new Date(t.date).getFullYear()===yr);
+  if(!incomes.length) return null;
+  return incomes.sort((a,b)=>{
+    const da=new Date(b.date)-new Date(a.date);
+    if(da!==0) return da;
+    return (b.id||0)-(a.id||0);
+  })[0];
+}
+function isIncomeAlreadySplit(txnId){
+  return (pocketSplitHistory||[]).some(h=>String(h.txnId)===String(txnId));
+}
+function updatePocketSplitUI(){
+  const status=document.getElementById('pocketSplitStatus');
+  const runBtn=document.getElementById('pocketSplitRunBtn');
+  const undoBtn=document.getElementById('pocketSplitUndoBtn');
+  const latest=getLatestMonthIncome();
+  const lastHist=(pocketSplitHistory&&pocketSplitHistory.length)?pocketSplitHistory[pocketSplitHistory.length-1]:null;
+
+  if(undoBtn){
+    undoBtn.style.display = lastHist ? 'block' : 'none';
+    if(lastHist){
+      const when=lastHist.date||'';
+      undoBtn.textContent='↩️ Undo last auto-split ('+fmt(lastHist.amount||0)+(when?' · '+when:'')+')';
+    }
+  }
+
+  if(!status) return;
+  if(!latest){
+    status.style.display='block';
+    status.style.background='#fff8e1';
+    status.style.borderColor='#ffe082';
+    status.style.color='#8a5a00';
+    status.innerHTML='⚠️ No income recorded this month. Add an income first.';
+    if(runBtn){ runBtn.disabled=true; runBtn.style.opacity='0.55'; }
+    return;
+  }
+  if(isIncomeAlreadySplit(latest.id)){
+    status.style.display='block';
+    status.style.background='#ffebee';
+    status.style.borderColor='#ef9a9a';
+    status.style.color='#c62828';
+    status.innerHTML='🚫 Latest income of <b>'+fmt(latest.amount)+'</b> ('+(latest.date||'')+(latest.category?' · '+latest.category:'')+') was <b>already auto-split</b>.<br>You cannot allocate the same income again. Use <b>Undo</b> if needed, or wait for the next income.';
+    if(runBtn){ runBtn.disabled=true; runBtn.style.opacity='0.55'; runBtn.textContent='🚫 Already split — blocked'; }
+  } else {
+    status.style.display='block';
+    status.style.background='#e8f5e9';
+    status.style.borderColor='#a5d6a7';
+    status.style.color='#1b5e20';
+    status.innerHTML='✅ Ready: latest income <b>'+fmt(latest.amount)+'</b> ('+(latest.date||'')+(latest.category?' · '+latest.category:'')+') has not been split yet.';
+    if(runBtn){ runBtn.disabled=false; runBtn.style.opacity='1'; runBtn.textContent='▶️ Run Auto-Split on Latest Income'; }
+  }
+}
+
 async function saveSubscriptions(){
   const enc=await encryptData(JSON.stringify(subscriptions));
   await dbPut('settings',{key:'subscriptions_'+currentUser.username,value:enc});
@@ -10391,7 +10465,7 @@ function setRegFeature(mode){
 
 function renderRegFeatureMode(){
   if(regFeatureMode==='sheets'){ renderRegister(); return; }
-  if(regFeatureMode==='pockets') renderPockets();
+  if(regFeatureMode==='pockets'){ renderPockets(); try{updatePocketSplitUI();}catch(e){} }
   if(regFeatureMode==='safe') renderSafeToSpend();
   if(regFeatureMode==='subs') renderSubscriptions();
   if(regFeatureMode==='ai') renderAIInsights();
@@ -10465,43 +10539,91 @@ async function deletePocket(id){
   showToast('🗑️ Pocket deleted');
 }
 async function runPocketAutoSplit(){
-  const today=new Date();
-  const mo=today.getMonth(), yr=today.getFullYear();
-  const incomes=opTxns().filter(t=>t.type==='income'&&new Date(t.date).getMonth()===mo&&new Date(t.date).getFullYear()===yr);
-  if(!incomes.length){ showToast('⚠️ No income this month to split'); return; }
-  const latest=incomes.sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+  const latest=getLatestMonthIncome();
+  if(!latest){ showToast('⚠️ No income this month to split'); updatePocketSplitUI(); return; }
+  if(isIncomeAlreadySplit(latest.id)){
+    showToast('🚫 This income was already auto-split. Cannot run again.');
+    updatePocketSplitUI();
+    return;
+  }
   const emPct=(pocketSplitRules.emergency||0)/100;
   const goPct=(pocketSplitRules.goals||0)/100;
   const customPct=(pocketSplitRules.customPct||0)/100;
   const emAmt=Math.round(latest.amount*emPct);
   const goAmt=Math.round(latest.amount*goPct);
   const customAmt=Math.round(latest.amount*customPct);
+  if(emAmt+goAmt+customAmt<=0){
+    showToast('⚠️ Set at least one split % above 0, then save rules');
+    return;
+  }
+  const allocations=[];
   let totalSplit=0;
   let emPocket=moneyPockets.find(p=>/emergenc/i.test(p.name));
   if(!emPocket && emAmt>0){
     emPocket={id:Date.now(),name:'Emergency',target:50000,saved:0,emoji:'🛡️',type:'Emergency',color:'#e53935'};
     moneyPockets.push(emPocket);
   }
-  if(emPocket && emAmt>0){ emPocket.saved=(emPocket.saved||0)+emAmt; totalSplit+=emAmt; }
+  if(emPocket && emAmt>0){
+    emPocket.saved=(emPocket.saved||0)+emAmt;
+    totalSplit+=emAmt;
+    allocations.push({pocketId:emPocket.id,pocketName:emPocket.name,amount:emAmt});
+  }
   let goalPocket=moneyPockets.find(p=>/goal/i.test(p.name));
   if(!goalPocket && goAmt>0){
     goalPocket={id:Date.now()+1,name:'Goals',target:100000,saved:0,emoji:'🎯',type:'Goals',color:'#cc5de8'};
     moneyPockets.push(goalPocket);
   }
-  if(goalPocket && goAmt>0){ goalPocket.saved=(goalPocket.saved||0)+goAmt; totalSplit+=goAmt; }
-  // Smart Money Pocket (any user-created pocket selected in rules)
+  if(goalPocket && goAmt>0){
+    goalPocket.saved=(goalPocket.saved||0)+goAmt;
+    totalSplit+=goAmt;
+    allocations.push({pocketId:goalPocket.id,pocketName:goalPocket.name,amount:goAmt});
+  }
   if(pocketSplitRules.customId && customAmt>0){
     let customPocket=moneyPockets.find(p=>String(p.id)===String(pocketSplitRules.customId));
     if(customPocket){
       customPocket.saved=(customPocket.saved||0)+customAmt;
       totalSplit+=customAmt;
+      allocations.push({pocketId:customPocket.id,pocketName:customPocket.name,amount:customAmt});
     } else {
       showToast('⚠️ Selected Smart Pocket not found — create it first');
+      return;
     }
   }
+  pocketSplitHistory.push({
+    txnId: latest.id,
+    amount: latest.amount,
+    date: latest.date,
+    category: latest.category||'',
+    at: Date.now(),
+    allocations
+  });
   await savePockets();
+  await savePocketSplitHistory();
   renderPockets();
-  showToast('✅ Split '+fmt(totalSplit)+' from latest income ('+fmt(latest.amount)+')');
+  updatePocketSplitUI();
+  showToast('✅ Split '+fmt(totalSplit)+' from income '+fmt(latest.amount)+' (one-time only)');
+}
+
+async function undoPocketAutoSplit(){
+  if(!pocketSplitHistory || !pocketSplitHistory.length){
+    showToast('⚠️ Nothing to undo');
+    updatePocketSplitUI();
+    return;
+  }
+  const last=pocketSplitHistory[pocketSplitHistory.length-1];
+  if(!confirm('Undo auto-split of '+fmt(last.amount||0)+' from '+(last.date||'income')+'?\n\nThis removes the amounts that were added to your pockets.')) return;
+  (last.allocations||[]).forEach(a=>{
+    const p=moneyPockets.find(x=>String(x.id)===String(a.pocketId));
+    if(p){
+      p.saved=Math.max(0,(p.saved||0)-Number(a.amount||0));
+    }
+  });
+  pocketSplitHistory.pop();
+  await savePockets();
+  await savePocketSplitHistory();
+  renderPockets();
+  updatePocketSplitUI();
+  showToast('↩️ Auto-split undone');
 }
 
 // ── Safe-to-Spend ──
