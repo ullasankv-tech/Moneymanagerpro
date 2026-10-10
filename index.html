@@ -1587,7 +1587,15 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <button class="stmt-print-btn" style="background:linear-gradient(135deg,#4d96ff,#cc5de8);" onclick="shareNetWorthToWhatsApp()">💾 Save / Share as PDF</button>
 
         <div class="panel" style="margin-top:14px;">
-          <h3>📈 Capital growth tips</h3>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <h3 style="margin:0;">📈 Capital timeline</h3>
+            <button type="button" onclick="saveNwSnapshotManual()" style="padding:6px 12px;border:none;border-radius:10px;background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;font-size:0.72rem;font-weight:800;cursor:pointer;font-family:var(--font);">📸 Snapshot now</button>
+          </div>
+          <p style="font-size:0.7rem;color:var(--muted);margin:0 0 10px;line-height:1.45;">One snapshot is saved automatically each month. Track how your capital grows over time.</p>
+          <div id="nwTimeline" style="min-height:40px;"></div>
+        </div>
+        <div class="panel" style="margin-top:14px;">
+          <h3>💡 Capital growth tips</h3>
           <div id="nwTips" style="font-size:0.8rem;color:var(--muted);line-height:1.7;"></div>
         </div>
       </div>
@@ -7823,6 +7831,7 @@ async function clearAllData(){
   await dbPut('settings',{key:'networth_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'register_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'pocket_split_history_'+currentUser.username, value:'[]'});
+  try{ nwSnapshots=[]; await dbPut('settings',{key:'networth_snap_'+currentUser.username,value:'[]'}); }catch(e){}
   pocketSplitHistory=[];
   try{ _regSmartLoadedFor=null; }catch(e){}
   try{ moneyPockets=[]; await savePockets(); }catch(e){}
@@ -9072,6 +9081,17 @@ async function saveReminder(){
   ['remName','remAmount','remDueDay'].forEach(id=>document.getElementById(id).value='');
 }
 function mmCurMonthKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function findBillPocket(r){
+  // Prefer: exact category name → "Bills" → "Emergency"
+  if(!moneyPockets || !moneyPockets.length) return null;
+  const cat = String(r.category||'').toLowerCase();
+  let p = moneyPockets.find(x=>String(x.name||'').toLowerCase()===cat);
+  if(p) return p;
+  p = moneyPockets.find(x=>/bill/i.test(String(x.name||'')));
+  if(p) return p;
+  p = moneyPockets.find(x=>/emergenc/i.test(String(x.name||'')));
+  return p||null;
+}
 async function markReminderPaid(id){
   const r=reminders.find(x=>x.id===id);
   if(!r||r.paid)return;
@@ -9081,11 +9101,29 @@ async function markReminderPaid(id){
   const txId=Date.now();
   transactions.push({id:txId,type:'expense',amount:r.amount,category:r.category,date:today,note:r.name+' bill',emoji:r.emoji,billId:r.id,createdAt:txId});
   r.paid=true; r.paidMonth=mmCurMonthKey(); r.paidTxId=txId;
+
+  // Deduct from linked Smart Money Pocket when available
+  let pocketMsg='';
+  try{
+    await ensureRegSmartLoaded();
+    const pocket = findBillPocket(r);
+    if(pocket){
+      const amt = Number(r.amount)||0;
+      pocket.saved = Math.max(0, Number(pocket.saved||0) - amt);
+      r.pocketId = pocket.id;
+      r.pocketDeduct = amt;
+      r.pocketName = pocket.name;
+      await savePockets();
+      pocketMsg = ' · −'+fmt(amt)+' from '+pocket.name+' pocket';
+    }
+  }catch(e){ console.warn('Bill pocket deduct failed', e); }
+
   await saveData();
   await saveReminders();
   renderAll();
   renderReminders();
-  showToast('✅ '+r.name+' paid — expense recorded');
+  try{ if(typeof renderPockets==='function') renderPockets(); }catch(e){}
+  showToast('✅ '+r.name+' paid — expense recorded'+pocketMsg, 2800);
 }
 async function markReminderUnpaid(id){
   const r=reminders.find(x=>x.id===id);
@@ -9094,12 +9132,28 @@ async function markReminderUnpaid(id){
   const before=transactions.length;
   transactions=transactions.filter(t=>!(t.billId===r.id && (!r.paidTxId || t.id===r.paidTxId)));
   const removed=before-transactions.length;
-  r.paid=false; delete r.paidMonth; delete r.paidTxId;
+
+  // Reverse pocket deduction if one was made
+  let pocketMsg='';
+  try{
+    if(r.pocketId && r.pocketDeduct){
+      await ensureRegSmartLoaded();
+      let p = moneyPockets.find(x=>String(x.id)===String(r.pocketId));
+      if(!p && r.pocketName) p = moneyPockets.find(x=>String(x.name||'').toLowerCase()===String(r.pocketName).toLowerCase());
+      if(p){
+        p.saved = Number(p.saved||0) + Number(r.pocketDeduct||0);
+        await savePockets();
+        pocketMsg = ' · restored '+fmt(r.pocketDeduct)+' to '+(r.pocketName||p.name);
+      }
+    }
+  }catch(e){ console.warn('Bill pocket restore failed', e); }
+  r.paid=false; delete r.paidMonth; delete r.paidTxId; delete r.pocketId; delete r.pocketDeduct; delete r.pocketName;
   await saveData();
   await saveReminders();
   renderAll();
   renderReminders();
-  showToast(removed?'↩ Marked unpaid — expense entry removed':'↩ Marked as unpaid');
+  try{ if(typeof renderPockets==='function') renderPockets(); }catch(e){}
+  showToast((removed?'↩ Marked unpaid — expense entry removed':'↩ Marked as unpaid')+pocketMsg, 2800);
 }
 async function deleteReminder(id){
   if(!confirm('Delete this reminder?'))return;
@@ -9159,6 +9213,100 @@ function checkRemindersDueToday(){
 // FEATURE: NET WORTH TRACKER
 // ══════════════════════════════════════════════════════
 let netWorthItems = []; // [{id,type:'asset'|'liability',name,amount,category,emoji}]
+let nwSnapshots = []; // [{ym:'YYYY-MM', assets, liabilities, netWorth, at}]
+
+async function loadNwSnapshots(){
+  try{
+    const r = await dbGet('settings','networth_snap_'+currentUser.username);
+    if(r && r.value!=null){
+      let raw = r.value;
+      if(typeof raw!=='string') raw = JSON.stringify(raw);
+      const dec = await decryptData(raw);
+      const parsed = JSON.parse(dec);
+      nwSnapshots = Array.isArray(parsed) ? parsed : [];
+    } else nwSnapshots=[];
+  }catch{ nwSnapshots=[]; }
+}
+async function saveNwSnapshots(){
+  try{
+    const enc = await encryptData(JSON.stringify(nwSnapshots||[]));
+    await dbPut('settings',{key:'networth_snap_'+currentUser.username,value:enc});
+  }catch(e){ console.warn('nw snapshot save', e); }
+}
+function currentNwFigures(){
+  const assets = (netWorthItems||[]).filter(i=>i.type==='asset').reduce((s,i)=>s+Number(i.amount||0),0);
+  const liabilities = (netWorthItems||[]).filter(i=>i.type==='liability').reduce((s,i)=>s+Number(i.amount||0),0);
+  return {assets, liabilities, netWorth: assets-liabilities};
+}
+function nwYmKey(d){
+  const x = d||new Date();
+  return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0');
+}
+async function recordNwSnapshotIfNeeded(force){
+  const ym = nwYmKey();
+  const fig = currentNwFigures();
+  const existing = (nwSnapshots||[]).find(s=>s.ym===ym);
+  if(existing && !force){
+    // Quietly refresh this month's figures so timeline stays current
+    existing.assets = fig.assets;
+    existing.liabilities = fig.liabilities;
+    existing.netWorth = fig.netWorth;
+    existing.at = Date.now();
+    await saveNwSnapshots();
+    return existing;
+  }
+  if(existing && force){
+    existing.assets = fig.assets;
+    existing.liabilities = fig.liabilities;
+    existing.netWorth = fig.netWorth;
+    existing.at = Date.now();
+  } else {
+    nwSnapshots.push({ym, assets:fig.assets, liabilities:fig.liabilities, netWorth:fig.netWorth, at:Date.now()});
+  }
+  // Keep last 36 months
+  nwSnapshots.sort((a,b)=>String(a.ym).localeCompare(String(b.ym)));
+  if(nwSnapshots.length>36) nwSnapshots = nwSnapshots.slice(-36);
+  await saveNwSnapshots();
+  return nwSnapshots[nwSnapshots.length-1];
+}
+async function saveNwSnapshotManual(){
+  await recordNwSnapshotIfNeeded(true);
+  renderNwTimeline();
+  showToast('📸 Capital snapshot saved for '+nwYmKey());
+}
+function renderNwTimeline(){
+  const el = document.getElementById('nwTimeline');
+  if(!el) return;
+  const snaps = (nwSnapshots||[]).slice().sort((a,b)=>String(a.ym).localeCompare(String(b.ym)));
+  if(!snaps.length){
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:12px;">No snapshots yet. They appear automatically each month, or tap <b>Snapshot now</b>.</div>';
+    return;
+  }
+  const maxAbs = Math.max(1, ...snaps.map(s=>Math.abs(Number(s.netWorth)||0)));
+  const last = snaps[snaps.length-1];
+  const prev = snaps.length>1 ? snaps[snaps.length-2] : null;
+  const delta = prev!=null ? Number(last.netWorth)-Number(prev.netWorth) : null;
+  let deltaHtml = '';
+  if(delta!=null){
+    const up = delta>=0;
+    deltaHtml = `<div style="font-size:0.72rem;font-weight:700;color:${up?'#2e7d32':'#c62828'};margin-bottom:8px;">${up?'▲':'▼'} ${fmt(Math.abs(delta))} vs previous month</div>`;
+  }
+  const bars = snaps.slice(-12).map(s=>{
+    const nw = Number(s.netWorth)||0;
+    const h = Math.max(4, Math.round(Math.abs(nw)/maxAbs*56));
+    const color = nw>=0 ? '#1565c0' : '#e53935';
+    const label = s.ym.slice(5)+'/'+s.ym.slice(2,4);
+    return `<div style="flex:1;min-width:22px;display:flex;flex-direction:column;align-items:center;gap:4px;" title="${s.ym}: ${fmt(nw)}">
+      <div style="font-size:0.55rem;font-weight:700;color:var(--muted);">${fmt(nw).replace(/\.00$/,'')}</div>
+      <div style="width:70%;height:60px;display:flex;align-items:flex-end;justify-content:center;">
+        <div style="width:100%;height:${h}px;background:${color};border-radius:6px 6px 2px 2px;opacity:0.9;"></div>
+      </div>
+      <div style="font-size:0.58rem;font-weight:800;color:var(--muted);">${label}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = deltaHtml + `<div style="display:flex;gap:4px;align-items:flex-end;overflow-x:auto;padding:4px 0 2px;">${bars}</div>
+    <div style="margin-top:10px;font-size:0.72rem;color:var(--muted);">Latest capital: <b style="color:var(--text);">${fmt(last.netWorth)}</b> · Assets ${fmt(last.assets)} · Liabilities ${fmt(last.liabilities)}</div>`;
+}
 
 async function loadNetWorth(){
   try{
@@ -9222,7 +9370,12 @@ function renderNetWorth(){
   if(totalAssets > 0 && (totalLiab/totalAssets) > 0.5) tips.push('📉 Debt-to-asset ratio is high. Reduce liabilities before adding new assets.');
   if(netWorth > 100000) tips.push('🌟 Great net worth! Consider diversifying into mutual funds or gold.');
   if(!tips.length) tips.push('📊 Track all your assets and liabilities here to see your complete financial picture.');
-  document.getElementById('nwTips').innerHTML = tips.map(t=>`<div style="margin-bottom:10px;padding:8px 10px;background:var(--bg);border-radius:8px;border-left:3px solid #4d96ff;">${t}</div>`).join('');
+  const tipsEl=document.getElementById('nwTips');
+  if(tipsEl) tipsEl.innerHTML = tips.map(t=>`<div style="margin-bottom:10px;padding:8px 10px;background:var(--bg);border-radius:8px;border-left:3px solid #4d96ff;">${t}</div>`).join('');
+  // Monthly capital snapshot + timeline
+  try{
+    Promise.resolve(loadNwSnapshots()).then(()=>recordNwSnapshotIfNeeded(false)).then(()=>renderNwTimeline()).catch(()=>renderNwTimeline());
+  }catch(e){ try{ renderNwTimeline(); }catch(e2){} }
 }
 
 function buildNetWorthPdf(){
@@ -9539,7 +9692,17 @@ function vaMonthLabel(){
 }
 function vaDetectIntent(spoken){
   const q = vaNormalize(spoken);
-  if(/balance|net worth|how much (do )?i have|total money|wallet/.test(q)) return 'balance';
+  // Action: add expense / spent X on Y
+  if(/\b(add|record|log)\b.*\b(expense|spend|spent|payment)\b/.test(q) ||
+     /\b(spent|paid|pay|expense)\b\s*\d/.test(q) ||
+     /\b\d+\s*(rupees?|rs|inr)?\s*(on|for)\b/.test(q) ||
+     /\b(add|record)\s+\d+/.test(q))
+    return 'add_expense';
+  // Pocket balance query
+  if(/\bpocket\b/.test(q) || /how much.*(emergency|goals?|fun|travel|bills?)\b/.test(q) ||
+     /\b(emergency|goals?) (pocket|fund|balance|left)\b/.test(q))
+    return 'pocket';
+  if(/balance|net worth|how much (do )?i have|total money|wallet|capital account/.test(q)) return 'balance';
   if(/safe to spend|daily limit|how much.*(today|day)|per day|daily budget/.test(q) && !vaMatchCategories(spoken).length)
     return 'safe';
   if(/budget|left|remain|remaining|can i spend|how much.*spend|available|allowance|limit/.test(q))
@@ -9547,10 +9710,106 @@ function vaDetectIntent(spoken){
   if(/spent|spend so far|how much.*spend on/.test(q)) return 'spent';
   return 'budget';
 }
+function vaParseAmount(spoken){
+  const q = String(spoken||'');
+  // Prefer number near spend words, else first number
+  let m = q.match(/(?:spent|paid|pay|expense|add|record|log)\s*(?:rs\.?|inr|rupees?)?\s*(\d+(?:[.,]\d+)?)/i);
+  if(!m) m = q.match(/(\d+(?:[.,]\d+)?)\s*(?:rs\.?|inr|rupees?)/i);
+  if(!m) m = q.match(/(\d+(?:[.,]\d+)?)/);
+  if(!m) return 0;
+  return Math.abs(parseFloat(String(m[1]).replace(',',''))||0);
+}
+function vaGuessNote(spoken, catName){
+  const q = vaNormalize(spoken);
+  // Strip common command words and amount/category
+  let note = q
+    .replace(/\b(add|record|log|expense|spent|paid|pay|rupees?|rs|inr|on|for|to|the|a|an)\b/g,' ')
+    .replace(/\d+(?:[.,]\d+)?/g,' ')
+    .replace(new RegExp('\b'+vaNormalize(catName||'')+'\b','g'),' ')
+    .replace(/\s+/g,' ').trim();
+  if(!note || note.length<2) note = (catName||'Expense')+' (voice)';
+  return note.slice(0,80);
+}
 function vaBuildAnswer(spoken){
   const intent = vaDetectIntent(spoken);
   const cats = vaMatchCategories(spoken);
   const mon = vaMonthLabel();
+
+  // ── Voice ACTION: add expense (confirm first) ──
+  if(intent==='add_expense'){
+    const amount = vaParseAmount(spoken);
+    const cat = cats[0] || ((EXPENSE_CATS||[])[0]&&EXPENSE_CATS[0].name) || 'Other';
+    const note = vaGuessNote(spoken, cat);
+    if(!(amount>0)){
+      return {
+        title:'🎤 Add expense',
+        html:`<div class="va-query">Heard: <b>${String(spoken).replace(/</g,'&lt;')}</b></div>
+          <div class="va-tips">Could not find an amount. Try: <b>“Add expense 250 Food”</b> or <b>“Spent 100 on chai”</b>.</div>
+          <div class="va-actions"><button style="background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;" onclick="startVoiceAssistant(true)">🎤 Try again</button></div>`
+      };
+    }
+    const safeSpoken = String(spoken).replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    const safeCat = String(cat).replace(/"/g,'&quot;');
+    const safeNote = String(note).replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    return {
+      title:'➕ Confirm expense',
+      html:`<div class="va-query">Heard: <b>${safeSpoken}</b></div>
+        <div class="va-card">
+          <div class="va-card-label">About to add</div>
+          <div class="va-card-amt" style="color:#e53935;">${fmt(amount)}</div>
+          <div class="va-card-meta">${safeCat} · ${safeNote}</div>
+        </div>
+        <div class="va-row"><span>Category</span><strong>${safeCat}</strong></div>
+        <div class="va-row"><span>Note</span><strong>${safeNote}</strong></div>
+        <div class="va-tips">💡 Tip: say category clearly — “Food”, “Travel”, “Bills”.</div>
+        <div class="va-actions">
+          <button style="background:#ffebee;color:#c62828;border:1.5px solid #ef9a9a;" onclick="closeVoiceAssistant()">Cancel</button>
+          <button style="background:linear-gradient(135deg,#00b894,#00cec9);color:#fff;" onclick="vaConfirmAddExpense(${amount},'${safeCat}','${safeNote}')">✅ Confirm &amp; save</button>
+        </div>`
+    };
+  }
+
+  // ── Voice QUERY: pocket balances ──
+  if(intent==='pocket'){
+    const q = vaNormalize(spoken);
+    const list = (typeof moneyPockets!=='undefined' && moneyPockets) ? moneyPockets : [];
+    // Ensure load kicked off
+    try{ if(typeof ensureRegSmartLoaded==='function') ensureRegSmartLoaded(); }catch(e){}
+    let focus = list.filter(p=>{
+      const n = vaNormalize(p.name);
+      return n && q.includes(n);
+    });
+    if(!focus.length && /emergenc/.test(q)) focus = list.filter(p=>/emergenc/i.test(p.name||''));
+    if(!focus.length && /goal/.test(q)) focus = list.filter(p=>/goal/i.test(p.name||''));
+    if(!focus.length && /bill/.test(q)) focus = list.filter(p=>/bill/i.test(p.name||''));
+    if(!focus.length) focus = list.slice();
+    if(!focus.length){
+      return {
+        title:'👝 Pockets',
+        html:`<div class="va-query">Heard: <b>${String(spoken).replace(/</g,'&lt;')}</b></div>
+          <div class="va-tips">No pockets yet. Create them under <b>Register → Pockets</b>.</div>
+          <div class="va-actions"><button style="background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;" onclick="closeVoiceAssistant();openSecondaryTab('register','home');setTimeout(()=>setRegFeature('pockets'),80)">Open Pockets</button></div>`
+      };
+    }
+    const cards = focus.map(p=>{
+      const saved = Number(p.saved)||0;
+      const target = Number(p.target)||0;
+      const pct = target>0 ? Math.min(100, Math.round(saved/target*100)) : 0;
+      return `<div class="va-card" style="margin-bottom:8px;">
+        <div class="va-card-label">${p.emoji||'👝'} ${p.name}</div>
+        <div class="va-card-amt" style="color:#1565c0;">${fmt(saved)}</div>
+        <div class="va-card-meta">${target?('Target '+fmt(target)+' · '+pct+'% filled'):'No target set'}</div>
+      </div>`;
+    }).join('');
+    return {
+      title:'👝 Pocket balances',
+      html:`<div class="va-query">Heard: <b>${String(spoken).replace(/</g,'&lt;')}</b></div>${cards}
+        <div class="va-actions">
+          <button style="background:var(--bg);color:var(--text);border:1.5px solid var(--border);" onclick="startVoiceAssistant(true)">🎤 Ask again</button>
+          <button style="background:linear-gradient(135deg,#cc5de8,#4d96ff);color:#fff;" onclick="closeVoiceAssistant();openSecondaryTab('register','home');setTimeout(()=>setRegFeature('pockets'),80)">Open Pockets</button>
+        </div>`
+    };
+  }
 
   // Overall balance
   if(intent==='balance' && !cats.length){
@@ -9649,6 +9908,24 @@ function vaBuildAnswer(spoken){
   };
 }
 
+async function vaConfirmAddExpense(amount, category, note){
+  amount = Number(amount)||0;
+  if(!(amount>0)){ showToast('⚠️ Invalid amount'); return; }
+  const today = (typeof localDateKey==='function') ? localDateKey() : new Date().toISOString().split('T')[0];
+  category = category || 'Other';
+  note = note || 'Voice entry';
+  if(typeof budgetConfirm==='function'){
+    if(!budgetConfirm(category, amount, today, null, 0)){ showToast('Expense not saved'); return; }
+  }
+  const emoji = ((EXPENSE_CATS||[]).find(c=>c.name===category)||{}).emoji || '💸';
+  const txId = Date.now();
+  transactions.push({id:txId, type:'expense', amount, category, date:today, note, emoji, createdAt:txId, source:'voice'});
+  try{ await saveData(); }catch(e){ showToast('⚠️ Could not save'); return; }
+  try{ renderAll(); }catch(e){}
+  closeVoiceAssistant();
+  showToast('✅ Expense '+fmt(amount)+' · '+category+' saved', 2500);
+}
+
 function openVoiceAssistUI(mode){
   const ov = document.getElementById('voiceAssistOverlay');
   const body = document.getElementById('vaBody');
@@ -9659,13 +9936,19 @@ function openVoiceAssistUI(mode){
     body.innerHTML = `<div class="va-listening-state">
       <div class="mic-big">🎤</div>
       <div style="font-weight:800;font-size:0.95rem;">Speak now</div>
-      <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;line-height:1.5;">“How much can I spend on Food today?”<br>“Entertainment budget left”<br>“What is my balance?”</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;line-height:1.5;">“How much can I spend on Food?”<br>“Add expense 250 Food”<br>“How much in Emergency pocket?”</div>
       <button type="button" onclick="closeVoiceAssistant()" style="margin-top:16px;padding:10px 18px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);font-weight:700;cursor:pointer;font-family:var(--font);">Cancel</button>
     </div>`;
   }
   ov.classList.add('open');
 }
-function showVoiceAssistResult(spoken){
+async function showVoiceAssistResult(spoken){
+  // Ensure pockets are loaded before answering pocket queries
+  try{
+    if(vaDetectIntent(spoken)==='pocket' && typeof ensureRegSmartLoaded==='function'){
+      await ensureRegSmartLoaded();
+    }
+  }catch(e){}
   const body = document.getElementById('vaBody');
   const title = document.getElementById('vaTitle');
   const ans = vaBuildAnswer(spoken);
