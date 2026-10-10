@@ -3062,6 +3062,7 @@ function doLogout(){
   currentUser=null;
   transactions=[];budgets={};goals=[];emis=[];recurringTxns=[];loans=[];investments=[];
   reminders=[];netWorthItems=[];regSheets=[];
+  try{ moneyPockets=[]; pocketSplitHistory=[]; subscriptions=[]; _regSmartLoadedFor=null; }catch(e){}
   clearSession();
   try{
     document.getElementById('appScreen').classList.remove('active');
@@ -7808,6 +7809,7 @@ async function clearAllData(){
   await dbPut('settings',{key:'register_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'pocket_split_history_'+currentUser.username, value:'[]'});
   pocketSplitHistory=[];
+  try{ _regSmartLoadedFor=null; }catch(e){}
   try{ moneyPockets=[]; await savePockets(); }catch(e){}
   await dbPut('settings',{key:'daily_limit_'+currentUser.username, value:'0'});
 
@@ -10494,10 +10496,13 @@ function renderPockets(){
   if(customPctEl) customPctEl.value = pocketSplitRules.customPct||0;
   if(!moneyPockets.length){
     list.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:0.82rem;">No pockets yet.<br>Create envelopes for Emergency, Fun, Bills, Travel etc.</div>';
+    try{ updatePocketSplitUI(); }catch(e){}
     return;
   }
   list.innerHTML=moneyPockets.map(p=>{
-    const pct=p.target>0?Math.min(100,Math.round((p.saved/p.target)*100)):0;
+    const saved=Number(p.saved)||0;
+    const target=Number(p.target)||0;
+    const pct=target>0?Math.min(100,Math.round((saved/target)*100)):0;
     const color=p.color||'#4d96ff';
     return `<div class="pocket-card">
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -10507,11 +10512,12 @@ function renderPockets(){
           <button onclick="deletePocket(${p.id})" style="padding:4px 8px;background:#ffebee;border:none;border-radius:8px;color:#e53935;font-size:0.7rem;font-weight:700;cursor:pointer;">🗑</button>
         </div>
       </div>
-      <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">${fmt(p.saved||0)} / ${fmt(p.target||0)}</div>
+      <div style="font-size:0.82rem;font-weight:800;color:var(--text);margin-top:6px;">${fmt(saved)} <span style="font-weight:600;color:var(--muted);font-size:0.72rem;">/ ${fmt(target)}</span></div>
       <div class="pocket-bar"><div class="pocket-fill" style="width:${pct}%;background:${color};"></div></div>
       <div style="font-size:0.7rem;font-weight:700;color:var(--muted);">${pct}% filled · ${p.type||'General'}</div>
     </div>`;
   }).join('');
+  try{ updatePocketSplitUI(); }catch(e){}
 }
 function openAddPocket(){
   const name=prompt('Pocket name (e.g. Emergency, Fun, Travel, Bills)');
@@ -10539,6 +10545,10 @@ async function deletePocket(id){
   showToast('🗑️ Pocket deleted');
 }
 async function runPocketAutoSplit(){
+  try{
+    await ensureRegSmartLoaded();
+  }catch(e){ console.warn('Pockets load', e); }
+
   const latest=getLatestMonthIncome();
   if(!latest){ showToast('⚠️ No income this month to split'); updatePocketSplitUI(); return; }
   if(isIncomeAlreadySplit(latest.id)){
@@ -10546,62 +10556,100 @@ async function runPocketAutoSplit(){
     updatePocketSplitUI();
     return;
   }
-  const emPct=(pocketSplitRules.emergency||0)/100;
-  const goPct=(pocketSplitRules.goals||0)/100;
-  const customPct=(pocketSplitRules.customPct||0)/100;
-  const emAmt=Math.round(latest.amount*emPct);
-  const goAmt=Math.round(latest.amount*goPct);
-  const customAmt=Math.round(latest.amount*customPct);
+
+  // Always read current % from the form (even if user forgot to tap Save Rules)
+  const emEl=document.getElementById('pocketSplitEmergency');
+  const goEl=document.getElementById('pocketSplitGoals');
+  const customPctEl=document.getElementById('pocketSplitCustomPct');
+  const customIdEl=document.getElementById('pocketSplitCustomId');
+  if(emEl) pocketSplitRules.emergency = Math.min(50, Math.max(0, parseFloat(emEl.value)||0));
+  if(goEl) pocketSplitRules.goals = Math.min(50, Math.max(0, parseFloat(goEl.value)||0));
+  if(customPctEl) pocketSplitRules.customPct = Math.min(50, Math.max(0, parseFloat(customPctEl.value)||0));
+  if(customIdEl) pocketSplitRules.customId = customIdEl.value||'';
+  try{ await dbPut('settings',{key:'pocket_split_'+currentUser.username,value:JSON.stringify(pocketSplitRules)}); }catch(e){}
+
+  const incomeAmt = Number(latest.amount)||0;
+  if(!(incomeAmt>0)){ showToast('⚠️ Latest income amount is zero'); return; }
+
+  const emPct=(Number(pocketSplitRules.emergency)||0)/100;
+  const goPct=(Number(pocketSplitRules.goals)||0)/100;
+  const customPct=(Number(pocketSplitRules.customPct)||0)/100;
+  const emAmt=Math.round(incomeAmt*emPct);
+  const goAmt=Math.round(incomeAmt*goPct);
+  const customAmt=Math.round(incomeAmt*customPct);
   if(emAmt+goAmt+customAmt<=0){
-    showToast('⚠️ Set at least one split % above 0, then save rules');
+    showToast('⚠️ Set at least one split % above 0');
     return;
   }
+
   const allocations=[];
   let totalSplit=0;
-  let emPocket=moneyPockets.find(p=>/emergenc/i.test(p.name));
+
+  // Emergency
+  let emPocket=moneyPockets.find(p=>/emergenc/i.test(String(p.name||'')));
   if(!emPocket && emAmt>0){
     emPocket={id:Date.now(),name:'Emergency',target:50000,saved:0,emoji:'🛡️',type:'Emergency',color:'#e53935'};
     moneyPockets.push(emPocket);
   }
   if(emPocket && emAmt>0){
-    emPocket.saved=(emPocket.saved||0)+emAmt;
-    totalSplit+=emAmt;
-    allocations.push({pocketId:emPocket.id,pocketName:emPocket.name,amount:emAmt});
+    emPocket.saved = Number(emPocket.saved||0) + emAmt;
+    totalSplit += emAmt;
+    allocations.push({pocketId:emPocket.id, pocketName:emPocket.name, amount:emAmt});
   }
-  let goalPocket=moneyPockets.find(p=>/goal/i.test(p.name));
+
+  // Goals
+  let goalPocket=moneyPockets.find(p=>/^goals?$/i.test(String(p.name||'').trim()) || /goal/i.test(String(p.name||'')));
   if(!goalPocket && goAmt>0){
     goalPocket={id:Date.now()+1,name:'Goals',target:100000,saved:0,emoji:'🎯',type:'Goals',color:'#cc5de8'};
     moneyPockets.push(goalPocket);
   }
   if(goalPocket && goAmt>0){
-    goalPocket.saved=(goalPocket.saved||0)+goAmt;
-    totalSplit+=goAmt;
-    allocations.push({pocketId:goalPocket.id,pocketName:goalPocket.name,amount:goAmt});
+    goalPocket.saved = Number(goalPocket.saved||0) + goAmt;
+    totalSplit += goAmt;
+    allocations.push({pocketId:goalPocket.id, pocketName:goalPocket.name, amount:goAmt});
   }
+
+  // Custom smart pocket
   if(pocketSplitRules.customId && customAmt>0){
     let customPocket=moneyPockets.find(p=>String(p.id)===String(pocketSplitRules.customId));
-    if(customPocket){
-      customPocket.saved=(customPocket.saved||0)+customAmt;
-      totalSplit+=customAmt;
-      allocations.push({pocketId:customPocket.id,pocketName:customPocket.name,amount:customAmt});
-    } else {
+    if(!customPocket){
       showToast('⚠️ Selected Smart Pocket not found — create it first');
       return;
     }
+    customPocket.saved = Number(customPocket.saved||0) + customAmt;
+    totalSplit += customAmt;
+    allocations.push({pocketId:customPocket.id, pocketName:customPocket.name, amount:customAmt});
   }
+
+  if(!allocations.length){
+    showToast('⚠️ Nothing was allocated — check your split rules');
+    return;
+  }
+
   pocketSplitHistory.push({
     txnId: latest.id,
-    amount: latest.amount,
+    amount: incomeAmt,
     date: latest.date,
     category: latest.category||'',
     at: Date.now(),
-    allocations
+    allocations: allocations.map(a=>({...a}))
   });
-  await savePockets();
-  await savePocketSplitHistory();
-  renderPockets();
-  updatePocketSplitUI();
-  showToast('✅ Split '+fmt(totalSplit)+' from income '+fmt(latest.amount)+' (one-time only)');
+
+  try{
+    await savePockets();
+    await savePocketSplitHistory();
+  }catch(e){
+    console.error('Pocket save failed', e);
+    showToast('⚠️ Could not save pocket amounts');
+    return;
+  }
+
+  // Force UI refresh
+  try{ renderPockets(); }catch(e){ console.warn(e); }
+  try{ updatePocketSplitUI(); }catch(e){}
+
+  const detail = allocations.map(a=>a.pocketName+': '+fmt(a.amount)).join(' · ');
+  showToast('✅ Split '+fmt(totalSplit)+' → '+detail, 3500);
 }
 
 async function undoPocketAutoSplit(){
@@ -10854,15 +10902,23 @@ async function boostGoal(id){
   showToast('🚀 Boosted '+g.name+' by '+fmt(amt));
 }
 
-// Load smart features when user data loads
-const _origLoadData = typeof loadData==='function' ? loadData : null;
-// Hook into existing load path via showApp / loadData callers — call from renderRegister
-const _origRenderRegister = typeof renderRegister==='function' ? renderRegister : null;
+// Load smart features when user data loads — once per session, no race with auto-split
+let _regSmartLoadedFor = null; // username that was loaded
+let _regSmartLoading = null;   // in-flight promise
 async function ensureRegSmartLoaded(){
   if(!currentUser) return;
-  if(moneyPockets.length===0 && subscriptions.length===0){
-    await loadRegSmartFeatures();
-  }
+  const u = currentUser.username;
+  if(_regSmartLoadedFor === u) return;
+  if(_regSmartLoading){ await _regSmartLoading; return; }
+  _regSmartLoading = (async()=>{
+    try{
+      await loadRegSmartFeatures();
+      _regSmartLoadedFor = u;
+    }finally{
+      _regSmartLoading = null;
+    }
+  })();
+  await _regSmartLoading;
 }
 // Patch renderRegister to also ensure data
 (function(){
