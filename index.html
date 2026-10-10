@@ -4172,9 +4172,24 @@ function invVoiceScrip(btn){
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 
-function deleteTxn(id){
+async function deleteTxn(id){
   if(!confirm('Delete this transaction?'))return;
-  transactions=transactions.filter(t=>t.id!==id);saveData();renderAll();showToast('🗑️ Deleted');
+  const txn = transactions.find(t=>t.id===id);
+  transactions=transactions.filter(t=>t.id!==id);
+  let pocketMsg='';
+  try{
+    if(txn && txn.type==='income'){
+      const reversed = await reversePocketSplitForTxn(txn.id);
+      if(reversed && reversed.total>0){
+        pocketMsg = ' · reversed '+fmt(reversed.total)+' from pockets';
+      }
+    }
+  }catch(e){ console.warn('Pocket reverse on delete failed', e); }
+  await saveData();
+  renderAll();
+  try{ if(typeof renderPockets==='function') renderPockets(); }catch(e){}
+  try{ if(typeof updatePocketSplitUI==='function') updatePocketSplitUI(); }catch(e){}
+  showToast('🗑️ Deleted'+pocketMsg);
 }
 
 // ═══════════════════════════════════════
@@ -10652,6 +10667,40 @@ async function runPocketAutoSplit(){
   showToast('✅ Split '+fmt(totalSplit)+' → '+detail, 3500);
 }
 
+/** Reverse all auto-split allocations tied to a given income transaction id. */
+async function reversePocketSplitForTxn(txnId){
+  if(txnId==null || txnId==='') return {total:0, count:0};
+  try{ await ensureRegSmartLoaded(); }catch(e){}
+  const hist = pocketSplitHistory || [];
+  const matches = hist.filter(h=>String(h.txnId)===String(txnId));
+  if(!matches.length) return {total:0, count:0};
+
+  let total=0;
+  matches.forEach(entry=>{
+    (entry.allocations||[]).forEach(a=>{
+      const amt=Number(a.amount)||0;
+      total+=amt;
+      let p=moneyPockets.find(x=>String(x.id)===String(a.pocketId));
+      // Fallback: match by name if pocket was recreated with a new id
+      if(!p && a.pocketName){
+        p=moneyPockets.find(x=>String(x.name||'').toLowerCase()===String(a.pocketName).toLowerCase());
+      }
+      if(p){
+        p.saved=Math.max(0, Number(p.saved||0) - amt);
+      }
+    });
+  });
+
+  pocketSplitHistory = hist.filter(h=>String(h.txnId)!==String(txnId));
+  try{
+    await savePockets();
+    await savePocketSplitHistory();
+  }catch(e){
+    console.error('Failed to save after reversePocketSplitForTxn', e);
+  }
+  return {total, count:matches.length};
+}
+
 async function undoPocketAutoSplit(){
   if(!pocketSplitHistory || !pocketSplitHistory.length){
     showToast('⚠️ Nothing to undo');
@@ -10660,18 +10709,10 @@ async function undoPocketAutoSplit(){
   }
   const last=pocketSplitHistory[pocketSplitHistory.length-1];
   if(!confirm('Undo auto-split of '+fmt(last.amount||0)+' from '+(last.date||'income')+'?\n\nThis removes the amounts that were added to your pockets.')) return;
-  (last.allocations||[]).forEach(a=>{
-    const p=moneyPockets.find(x=>String(x.id)===String(a.pocketId));
-    if(p){
-      p.saved=Math.max(0,(p.saved||0)-Number(a.amount||0));
-    }
-  });
-  pocketSplitHistory.pop();
-  await savePockets();
-  await savePocketSplitHistory();
-  renderPockets();
-  updatePocketSplitUI();
-  showToast('↩️ Auto-split undone');
+  const result = await reversePocketSplitForTxn(last.txnId);
+  try{ renderPockets(); }catch(e){}
+  try{ updatePocketSplitUI(); }catch(e){}
+  showToast(result.total>0 ? '↩️ Auto-split undone · '+fmt(result.total)+' removed from pockets' : '↩️ Auto-split record cleared');
 }
 
 // ── Safe-to-Spend ──
