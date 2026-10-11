@@ -891,10 +891,11 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .inv-radio input{position:absolute;opacity:0;width:0;height:0;margin:0;padding:0;}
 .inv-radio span{display:block;text-align:center;padding:7px 2px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text);}
 .inv-radio input:checked+span{background:#1565c0;border-color:#1565c0;color:#fff;}
-.inv-chk-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;}
-.inv-chk-label{font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;min-width:52px;}
-.inv-chk{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;font-weight:700;color:var(--text);cursor:pointer;user-select:none;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);}
-.inv-chk input{width:15px;height:15px;accent-color:#1565c0;margin:0;cursor:pointer;flex-shrink:0;}
+.inv-chk-block{display:flex;flex-direction:column;gap:6px;}
+.inv-chk-row{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.inv-chk-label{font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+.inv-chk{display:inline-flex;align-items:center;gap:5px;font-size:.74rem;font-weight:700;color:var(--text);cursor:pointer;user-select:none;padding:5px 9px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);white-space:nowrap;flex-shrink:0;}
+.inv-chk input{width:14px;height:14px;accent-color:#1565c0;margin:0;cursor:pointer;flex-shrink:0;}
 .inv-chk:has(input:checked){border-color:#1565c0;background:#e3f2fd;color:#0d47a1;}
 .inv-link{background:none;border:none;color:#1565c0;font-weight:700;font-size:inherit;cursor:pointer;padding:0 2px;font-family:var(--font);text-decoration:underline;}
 .inv-cmp{cursor:pointer;border-bottom:1px dotted var(--muted);}
@@ -1657,17 +1658,21 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <div id="investmentSummary"></div>
     <div style="display:flex;gap:8px;margin:10px 0 14px;"><button type="button" onclick="openInvestmentEntriesModal()" style="flex:1;padding:11px 6px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📋 Edit Entries</button><button type="button" onclick="openInvPerformance()" style="flex:1;padding:11px 6px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📊 Trading Performance</button></div>
     <div id="invStmtFilters" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px;">
-      <div class="inv-chk-row">
-        <span class="inv-chk-label">Category</span>
-        <label class="inv-chk"><input type="checkbox" id="invSegEq" checked onchange="onInvFilterChange()"><span>Shares / EQ</span></label>
-        <label class="inv-chk"><input type="checkbox" id="invSegFno" checked onchange="onInvFilterChange()"><span>F&amp;O</span></label>
-        <label class="inv-chk"><input type="checkbox" id="invSegCmd" checked onchange="onInvFilterChange()"><span>Commodity</span></label>
-        <label class="inv-chk"><input type="checkbox" id="invSegOth" checked onchange="onInvFilterChange()"><span>Other</span></label>
+      <div class="inv-chk-block">
+        <div class="inv-chk-label">Category</div>
+        <div class="inv-chk-row">
+          <label class="inv-chk"><input type="checkbox" id="invSegEq" checked onchange="onInvFilterChange()"><span>Equity</span></label>
+          <label class="inv-chk"><input type="checkbox" id="invSegFno" onchange="onInvFilterChange()"><span>F&amp;O</span></label>
+          <label class="inv-chk"><input type="checkbox" id="invSegCmd" onchange="onInvFilterChange()"><span>Cmdty</span></label>
+          <label class="inv-chk"><input type="checkbox" id="invSegOth" onchange="onInvFilterChange()"><span>Other</span></label>
+        </div>
       </div>
-      <div class="inv-chk-row" style="margin-top:8px;">
-        <span class="inv-chk-label">Status</span>
-        <label class="inv-chk"><input type="checkbox" id="invStatOpen" checked onchange="onInvFilterChange()"><span>Open</span></label>
-        <label class="inv-chk"><input type="checkbox" id="invStatClosed" checked onchange="onInvFilterChange()"><span>Closed</span></label>
+      <div class="inv-chk-block" style="margin-top:10px;">
+        <div class="inv-chk-label">Status</div>
+        <div class="inv-chk-row">
+          <label class="inv-chk"><input type="checkbox" id="invStatOpen" checked onchange="onInvFilterChange()"><span>Open</span></label>
+          <label class="inv-chk"><input type="checkbox" id="invStatClosed" onchange="onInvFilterChange()"><span>Closed</span></label>
+        </div>
       </div>
     </div>
     <div id="investmentReportInline"></div>
@@ -7126,9 +7131,9 @@ function invActiveStatusFilters(){
 }
 function invFilterLabel(){
   const segs=invActiveSegFilters(), sts=invActiveStatusFilters();
-  const sgMap={eq:'Shares/EQ',fno:'F&O',commodity:'Commodity',other:'Other'};
-  const sg=segs.length===4||!segs.length?'All cat.':segs.map(s=>sgMap[s]||s).join(', ');
-  const st=sts.length===2||!sts.length?'All status':sts.map(s=>s==='open'?'Open':'Closed').join(', ');
+  const sgMap={eq:'Equity',fno:'F&O',commodity:'Cmdty',other:'Other'};
+  const sg=!segs.length?'No cat.':(segs.length===4?'All cat.':segs.map(s=>sgMap[s]||s).join(', '));
+  const st=!sts.length?'No status':(sts.length===2?'All status':sts.map(s=>s==='open'?'Open':'Closed').join(', '));
   return sg+' · '+st;
 }
 function onInvFilterChange(){
