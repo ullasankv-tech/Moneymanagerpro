@@ -2048,10 +2048,11 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>🔓</span><span>All future premium features</span></div>
       </div>
     </div>
-    <button style="width:100%;padding:14px;background:linear-gradient(135deg,#f9ca24,#f0932b);border:none;border-radius:14px;color:#fff;font-size:0.95rem;font-weight:800;cursor:pointer;margin-bottom:10px;font-family:var(--font);" onclick="initiatePayment()">⭐ Pay ₹199 — Go Premium</button>
-    <div style="text-align:center;font-size:0.7rem;color:var(--muted);margin-bottom:8px;">Payment via UPI / Card / Net Banking</div>
+    <button id="premiumPayBtn" style="width:100%;padding:14px;background:linear-gradient(135deg,#f9ca24,#f0932b);border:none;border-radius:14px;color:#fff;font-size:0.95rem;font-weight:800;cursor:pointer;margin-bottom:8px;font-family:var(--font);" onclick="initiatePayment()">⭐ Pay ₹199 — Remove Ads</button>
+    <button type="button" onclick="restorePremiumPurchases()" style="width:100%;padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;color:var(--text);font-size:0.82rem;font-weight:700;cursor:pointer;margin-bottom:10px;font-family:var(--font);">🔄 Restore purchases</button>
+    <div id="premiumPayHint" style="text-align:center;font-size:0.7rem;color:var(--muted);margin-bottom:8px;line-height:1.45;">On Google Play, payment is handled by Play Billing (UPI / card / Google account). One-time unlock.</div>
     <div style="text-align:center;font-size:0.68rem;color:var(--muted);padding:8px;background:var(--bg);border-radius:10px;">
-      Have a license key? <a href="#" onclick="showLicenseEntry()" style="color:#1565c0;font-weight:700;">Enter here</a>
+      Have a license key? <a href="#" onclick="showLicenseEntry();return false;" style="color:#1565c0;font-weight:700;">Enter here</a>
     </div>
     <div id="licenseEntryBox" style="display:none;margin-top:10px;">
       <input type="text" id="licenseKey" placeholder="Enter your license key" style="width:100%;padding:11px;border:2px solid var(--border);border-radius:12px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-bottom:8px;"/>
@@ -3295,6 +3296,16 @@ function showApp(){
     Promise.resolve(loadSalaryDaySettings()).then(()=>{
       try{ renderSalaryDayBanner(); }catch(e){}
       try{ maybePromptPayday(); }catch(e){}
+    }).catch(()=>{});
+  }catch(e){}
+  try{
+    Promise.resolve(loadPremiumFlag()).then(()=>{
+      try{ renderPremiumBadge(); }catch(e){}
+      try{
+        const strip=document.getElementById('premiumStrip');
+        if(strip) strip.style.display=isPremium()?'none':'flex';
+      }catch(e){}
+      try{ if(isPremium()) hideBannerAd(); }catch(e){}
     }).catch(()=>{});
   }catch(e){}
   try{
@@ -12498,11 +12509,7 @@ const AD_INTERVAL = 5;    // show interstitial every 5 transactions
 let bannerAdTimer = null;
 let skipTimer = null;
 
-// ── Check if current user is Premium ──
-function isPremium(){
-  if(!currentUser) return false;
-  return currentUser.premium === true;
-}
+// isPremium() defined in Premium / Play Billing section below
 
 // ── Called every time a transaction is added ──
 function tickAdCounter(){
@@ -12582,57 +12589,247 @@ function closeInterstitialAd(){
   if(skipTimer){ clearInterval(skipTimer); skipTimer=null; }
 }
 
-// ── PREMIUM UPGRADE ──
+// ── PREMIUM / REMOVE ADS (Play Billing + license + local flag) ──
+// Play Console product ID — create the same ID under Monetize → In-app products
+const PREMIUM_PRODUCT_ID = 'remove_ads';
+const PREMIUM_PRICE_LABEL = '₹199';
+
+function isNativePlayApp(){
+  try{
+    const C=window.Capacitor;
+    if(!C) return false;
+    return typeof C.isNativePlatform==='function' ? C.isNativePlatform() : (typeof C.getPlatform==='function' && C.getPlatform()==='android');
+  }catch(e){ return false; }
+}
+
+function isPremium(){
+  if(!currentUser) return false;
+  if(currentUser.premium === true) return true;
+  try{
+    if(window._mmPremiumCached === true) return true;
+  }catch(e){}
+  return false;
+}
+
+async function loadPremiumFlag(){
+  try{
+    if(!currentUser) return;
+    const r = await dbGet('settings','premium_'+currentUser.username);
+    if(r && (r.value===true || r.value==='true' || r.value===1 || r.value==='1')){
+      currentUser.premium = true;
+      window._mmPremiumCached = true;
+    }
+  }catch(e){}
+}
+
+async function persistPremium(source, extra){
+  if(!currentUser) return;
+  currentUser.premium = true;
+  window._mmPremiumCached = true;
+  if(extra && extra.licenseKey) currentUser.licenseKey = extra.licenseKey;
+  if(extra && extra.orderId) currentUser.premiumOrderId = extra.orderId;
+  currentUser.premiumSource = source || 'play';
+  currentUser.premiumAt = Date.now();
+  try{
+    const users = await getUsers();
+    users[currentUser.username] = currentUser;
+    await saveUsers(users);
+  }catch(e){}
+  try{
+    await dbPut('settings',{key:'premium_'+currentUser.username, value:'true'});
+  }catch(e){}
+  if(typeof firebaseDB!=='undefined' && firebaseDB){
+    try{ firebaseDB.ref('users/'+currentUser.username+'/premium').set(true); }catch(e){}
+  }
+  try{ audit('Premium unlocked', source||'play'); }catch(e){}
+}
+
+async function activatePremium(source, extra){
+  await persistPremium(source, extra);
+  try{ hideBannerAd(); }catch(e){}
+  try{
+    const strip=document.getElementById('premiumStrip');
+    if(strip) strip.style.display='none';
+  }catch(e){}
+  try{ closeModal('upgradeModal'); }catch(e){}
+  renderPremiumBadge();
+  showToast('🎉 Premium on — ads removed!', 2800);
+}
+
 function showUpgradeModal(){
-  closeInterstitialAd();
+  try{ closeInterstitialAd(); }catch(e){}
+  if(isPremium()){
+    showToast('⭐ You already have Premium');
+    return;
+  }
+  const hint=document.getElementById('premiumPayHint');
+  if(hint){
+    hint.textContent = isNativePlayApp()
+      ? 'Payment is processed by Google Play (UPI, card, Play balance). One-time purchase — Restore if you reinstall.'
+      : 'Install the Play Store app to buy with Google Play. License keys still work here.';
+  }
   openModal('upgradeModal');
 }
 
-function initiatePayment(){
-  // Razorpay / UPI will be wired here after Play Store approval
-  // For now show instructions
-  closeModal('upgradeModal');
-  showToast('💳 Payment gateway coming soon! Contact developer.');
-  // TODO: Replace with Razorpay integration
-  // window.open('https://razorpay.com/payment-link/YOUR_LINK','_blank');
+async function initiatePayment(){
+  if(isPremium()){ showToast('⭐ Already Premium'); return; }
+  const btn=document.getElementById('premiumPayBtn');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Connecting…'; }
+
+  try{
+    // 1) Native Play Billing via Capacitor plugin (if present)
+    if(isNativePlayApp()){
+      const ok = await purchasePremiumViaPlay();
+      if(ok) return;
+      // Fall through only if plugin missing — show clear message
+    }
+
+    // 2) Web / no billing plugin: cannot charge digital goods outside Play for the store build
+    showToast('💳 Open the Google Play version to purchase, or use a license key.', 3500);
+    try{ showLicenseEntry(); }catch(e){}
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='⭐ Pay '+PREMIUM_PRICE_LABEL+' — Remove Ads'; }
+  }
+}
+
+/** Play Billing purchase — works when a Capacitor billing plugin is installed */
+async function purchasePremiumViaPlay(){
+  const C=window.Capacitor;
+  if(!C) return false;
+
+  // Try common plugin shapes
+  const tryPlugins = [
+    async ()=>{
+      // @capgo/native-purchases style
+      const P = C.Plugins && (C.Plugins.NativePurchases || C.Plugins.NativePurchasesPlugin);
+      if(!P) return null;
+      if(typeof P.purchaseProduct==='function'){
+        const r = await P.purchaseProduct({ productIdentifier: PREMIUM_PRODUCT_ID, productType: 'inapp' });
+        return r;
+      }
+      if(typeof P.purchase==='function'){
+        return await P.purchase({ productId: PREMIUM_PRODUCT_ID });
+      }
+      return null;
+    },
+    async ()=>{
+      // cordova-plugin-purchase bridge sometimes exposed on window.store
+      if(window.store && typeof window.store.order==='function'){
+        return await new Promise((resolve,reject)=>{
+          try{
+            window.store.order(PREMIUM_PRODUCT_ID);
+            const t=setTimeout(()=>resolve({pending:true}), 8000);
+            window.store.once(window.store.APPROVED, (p)=>{ clearTimeout(t); resolve(p); });
+            window.store.once(window.store.FINISHED, (p)=>{ clearTimeout(t); resolve(p); });
+          }catch(e){ reject(e); }
+        });
+      }
+      return null;
+    },
+    async ()=>{
+      // Generic Capacitor registerPlugin style
+      if(typeof C.registerPlugin==='function'){
+        try{
+          const Billing = C.registerPlugin('BillingPlugin');
+          if(Billing && typeof Billing.purchase==='function'){
+            return await Billing.purchase({ productId: PREMIUM_PRODUCT_ID });
+          }
+        }catch(e){}
+      }
+      return null;
+    }
+  ];
+
+  let lastErr=null;
+  for(const fn of tryPlugins){
+    try{
+      const r = await fn();
+      if(r===null) continue;
+      // Treat presence of result without explicit cancel as success for unlock
+      const cancelled = !!(r && (r.cancelled || r.canceled || r.userCancelled));
+      if(cancelled){ showToast('Purchase cancelled'); return true; }
+      await activatePremium('play_billing', { orderId: (r && (r.orderId||r.transactionId||r.purchaseToken)) || '' });
+      return true;
+    }catch(e){
+      lastErr=e;
+      const msg=String((e&&e.message)||e||'');
+      if(/cancel/i.test(msg)){ showToast('Purchase cancelled'); return true; }
+      console.warn('Play billing attempt failed', e);
+    }
+  }
+
+  if(lastErr){
+    showToast('⚠️ Play Billing not ready in this build. Use license key or update the app.', 4000);
+  } else {
+    showToast('⚠️ Billing plugin not installed in this APK yet. Developer: add Play Billing plugin.', 4000);
+  }
+  return false;
+}
+
+async function restorePremiumPurchases(){
+  if(isPremium()){ showToast('⭐ Premium already active'); return; }
+  showToast('🔄 Checking purchases…');
+
+  // Local / license restore
+  await loadPremiumFlag();
+  if(isPremium()){ await activatePremium('restore_local'); return; }
+
+  if(!isNativePlayApp()){
+    showToast('Restore works in the Play Store app after you buy once.', 3000);
+    return;
+  }
+
+  const C=window.Capacitor;
+  try{
+    const P = C.Plugins && (C.Plugins.NativePurchases || C.Plugins.NativePurchasesPlugin);
+    if(P && typeof P.restorePurchases==='function'){
+      const r = await P.restorePurchases();
+      const owned = r && (r.purchases || r.products || r.items || []);
+      const hit = Array.isArray(owned) && owned.some(p=>{
+        const id = p.productId || p.productIdentifier || p.id || '';
+        return id===PREMIUM_PRODUCT_ID || p.owned===true;
+      });
+      if(hit || (r && r.restored)){
+        await activatePremium('play_restore');
+        return;
+      }
+    }
+    if(window.store && typeof window.store.refresh==='function'){
+      window.store.refresh();
+      showToast('If you bought before, Premium will unlock shortly.', 3000);
+      return;
+    }
+  }catch(e){
+    console.warn(e);
+  }
+  showToast('No previous purchase found for this Google account.', 3000);
 }
 
 function showLicenseEntry(){
-  document.getElementById('licenseEntryBox').style.display='block';
+  const box=document.getElementById('licenseEntryBox');
+  if(box) box.style.display='block';
 }
 
 async function activateLicense(){
-  const key = document.getElementById('licenseKey').value.trim().toUpperCase();
-  // License format: UKV-XXXX-XXXX (generated by developer)
-  // Simple validation — replace with server check after Play Store
+  const key = (document.getElementById('licenseKey')?.value||'').trim().toUpperCase();
+  // License format: UKV-XXXX-XXXX (issued by developer)
   if(!key || !key.startsWith('UKV-') || key.length < 12){
     showToast('❌ Invalid license key!'); return;
   }
-  // Mark user as premium
-  currentUser.premium = true;
-  currentUser.licenseKey = key;
-  const users = await getUsers();
-  users[currentUser.username] = currentUser;
-  await saveUsers(users);
-  // Save premium flag to Firebase too
-  if(firebaseDB){
-    try{ firebaseDB.ref('users/'+currentUser.username+'/premium').set(true); }catch(e){}
-  }
-  closeModal('upgradeModal');
-  hideBannerAd();
-  showToast('🎉 Premium activated! Enjoy ad-free experience!');
-  // Update UI
-  renderPremiumBadge();
+  await activatePremium('license', { licenseKey: key });
 }
 
 function renderPremiumBadge(){
   const chip = document.getElementById('userChipName');
-  if(chip && isPremium()){
-    if(!chip.querySelector('.premium-badge')){
-      chip.innerHTML += '<span class="premium-badge">⭐ PRO</span>';
-    }
+  if(!chip) return;
+  const existing = chip.querySelector('.premium-badge');
+  if(isPremium()){
+    if(!existing) chip.innerHTML += '<span class="premium-badge">⭐ PRO</span>';
+  } else if(existing){
+    existing.remove();
   }
 }
+
 
 // ══════════════════════════════════════════════════════
 // SERVICE WORKER REGISTRATION
