@@ -1482,6 +1482,19 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           <button id="pocketSplitUndoBtn" onclick="undoPocketAutoSplit()" style="width:100%;padding:11px;margin-top:8px;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:12px;color:#e65100;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);display:none;">↩️ Undo last auto-split</button>
           <div style="font-size:0.65rem;color:var(--muted);margin-top:8px;line-height:1.45;">Each income can be auto-split <b>only once</b>. Use Undo if you allocated by mistake.</div>
         </div>
+        <div class="panel">
+          <h3>📅 Envelope carry-forward</h3>
+          <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;line-height:1.45;">At month-end, choose what happens to unused money left in pockets (saved vs target, or remaining balance).</p>
+          <label style="font-size:0.68rem;font-weight:700;color:var(--muted);">Month-end rule</label>
+          <select id="pocketCarryRule" onchange="savePocketCarryRule()" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.85rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;margin-bottom:10px;">
+            <option value="keep">Keep balances (no change)</option>
+            <option value="rollover">Rollover unused toward next month target</option>
+            <option value="reset">Reset pocket balances to zero</option>
+            <option value="capital">Return unused saved amount to Capital note</option>
+          </select>
+          <div id="pocketCarryStatus" style="font-size:0.7rem;color:var(--muted);margin-bottom:8px;line-height:1.4;"></div>
+          <button type="button" onclick="runPocketCarryForward(true)" style="width:100%;padding:11px;background:linear-gradient(135deg,#6c5ce7,#a29bfe);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">▶️ Run carry-forward now</button>
+        </div>
       </div>
 
       <!-- ═══ MODE: SAFE-TO-SPEND ═══ -->
@@ -1735,6 +1748,25 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           <select id="currencySelect" class="form-select" onchange="onCurrencyChange(this.value)" style="width:100%;padding:12px;border-radius:12px;"></select>
         </div>
         <div id="currencyPreview" style="font-size:0.78rem;color:var(--muted);padding:8px 10px;background:var(--bg);border-radius:10px;border:1.5px solid var(--border);">Preview: —</div>
+        <div style="margin-top:14px;padding-top:12px;border-top:2px solid var(--border);">
+          <div style="font-size:0.88rem;font-weight:800;margin-bottom:6px;">✈️ Trip mode (FX)</div>
+          <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;line-height:1.45;">Temporary foreign currency for a trip. Amounts you enter in trip currency convert to home currency in reports.</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="font-size:0.82rem;font-weight:700;">Enable trip mode</div>
+            <label class="toggle"><input type="checkbox" id="tripModeEnabled" onchange="saveTripModeSettings()"><span class="slider"></span></label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div>
+              <label style="font-size:0.65rem;font-weight:700;color:var(--muted);">Trip currency</label>
+              <select id="tripCurrencySelect" onchange="saveTripModeSettings()" style="width:100%;padding:9px;border:2px solid var(--border);border-radius:10px;font-size:0.8rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:3px;"></select>
+            </div>
+            <div>
+              <label style="font-size:0.65rem;font-weight:700;color:var(--muted);">1 trip unit = home</label>
+              <input type="number" id="tripFxRate" min="0" step="0.0001" placeholder="e.g. 83.5" onchange="saveTripModeSettings()" style="width:100%;padding:9px;border:2px solid var(--border);border-radius:10px;font-size:0.8rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:3px;"/>
+            </div>
+          </div>
+          <div id="tripModePreview" style="font-size:0.72rem;color:var(--muted);padding:8px 10px;background:var(--bg);border-radius:10px;border:1.5px solid var(--border);">Trip mode off</div>
+        </div>
       </div>
 
 
@@ -1841,6 +1873,15 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <!-- EXPORT -->
       <div class="panel">
         <h3>📤 Export & Backup</h3>
+        <div id="backupHealthCard" style="margin-bottom:12px;padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg);">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div>
+              <div style="font-size:0.78rem;font-weight:800;" id="backupHealthTitle">💾 Backup health</div>
+              <div style="font-size:0.72rem;color:var(--muted);margin-top:3px;line-height:1.4;" id="backupHealthSub">No backup recorded yet</div>
+            </div>
+            <button type="button" onclick="exportJSON()" style="padding:8px 12px;border:none;border-radius:10px;background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;font-weight:700;font-size:0.72rem;cursor:pointer;font-family:var(--font);white-space:nowrap;">Backup now</button>
+          </div>
+        </div>
         <div style="display:flex;gap:8px;margin-bottom:10px;">
           <button class="export-btn" style="margin-bottom:0;flex:1;width:auto;" onclick="exportJSON()">💾 Local Backup - JSON</button>
           <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importJSON()"/>
@@ -1860,6 +1901,14 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border);">
           <button class="export-btn" onclick="clearAllData()" style="border-color:#ffcdd2;color:#ff6b6b;margin-bottom:0;">🗑️ Clear All Data</button>
         </div>
+      </div>
+
+      <!-- AUDIT LOG -->
+      <div class="panel">
+        <h3>🧾 Activity log</h3>
+        <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;line-height:1.45;">Last 50 important actions (deletes, auto-split, undo, backups, payday). Stored only on this device.</p>
+        <div id="auditLogList" style="max-height:220px;overflow-y:auto;font-size:0.75rem;"></div>
+        <button type="button" onclick="clearAuditLog()" style="width:100%;margin-top:10px;padding:10px;background:none;border:2px solid var(--border);border-radius:10px;color:var(--muted);font-weight:700;font-size:0.8rem;cursor:pointer;font-family:var(--font);">Clear log</button>
       </div>
 
       <!-- ENCRYPTION STATUS -->
@@ -2858,6 +2907,7 @@ async function runAutoBackupIfEnabled(){
     const fname='MoneyManager-'+new Date().toISOString().split('T')[0]+'.json';
     showToast('💾 Auto-backup: '+fname,2500);
     await downloadJSONBackup(fname,jsonStr);
+    try{ await markBackupDone('Auto-backup on login · '+fname); }catch(e2){}
   }catch(e){console.warn('Auto-backup failed',e);}
 }
 
@@ -3214,6 +3264,17 @@ function showApp(){
     Promise.resolve(loadSalaryDaySettings()).then(()=>{
       try{ renderSalaryDayBanner(); }catch(e){}
       try{ maybePromptPayday(); }catch(e){}
+    }).catch(()=>{});
+  }catch(e){}
+  try{
+    Promise.all([
+      loadAuditLog(),
+      loadBackupHealth(),
+      loadTripMode(),
+      loadPocketCarry()
+    ]).then(()=>{
+      try{ maybeRemindBackup(); }catch(e){}
+      try{ maybeAutoPocketCarry(); }catch(e){}
     }).catch(()=>{});
   }catch(e){}
 }
@@ -3944,7 +4005,8 @@ function shareHomeNotePdf(){
   showToast('PDF sharing has been replaced by WhatsApp note sharing');
 }
 function addTransaction(){
-  const amount=parseFloat(document.getElementById('txnAmount').value);
+  let amount=parseFloat(document.getElementById('txnAmount').value);
+  if(typeof tripToHome==='function' && tripMode && tripMode.enabled){ const homeAmt=tripToHome(amount); if(homeAmt!==amount){ const noteEl=document.getElementById('txnNote'); if(noteEl && !(noteEl.value||'').includes('[trip')) noteEl.value=((noteEl.value||'')+tripNoteSuffix()).trim(); amount=homeAmt; } }
   const category=document.getElementById('txnCategory').value;
   const date=document.getElementById('txnDate').value;
   const note=document.getElementById('txnNote').value.trim();
@@ -4301,6 +4363,7 @@ async function deleteTxn(id){
   renderAll();
   try{ if(typeof renderPockets==='function') renderPockets(); }catch(e){}
   try{ if(typeof updatePocketSplitUI==='function') updatePocketSplitUI(); }catch(e){}
+  try{ audit('Deleted transaction', (txn&&txn.type?txn.type:'')+' '+(txn?fmt(txn.amount):'')+(txn&&txn.category?' · '+txn.category:'')+pocketMsg); }catch(e){}
   showToast('🗑️ Deleted'+pocketMsg);
 }
 
@@ -7469,6 +7532,7 @@ async function exportJSON(){
     const fname   = 'MoneyManager-'+new Date().toISOString().split('T')[0]+'.json';
     // Show in-app export modal — reliable on all platforms
     downloadJSONBackup(fname, jsonStr);
+    try{ await markBackupDone('Local JSON · '+fname); }catch(e){}
   }catch(e){
     console.error('Export error',e);
     showToast('⚠️ Export failed: '+e.message);
@@ -8060,6 +8124,7 @@ async function clearAllData(){
   await dbPut('settings',{key:'register_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'pocket_split_history_'+currentUser.username, value:'[]'});
   try{ salaryDaySettings={enabled:false,day:1,amount:0,lastDoneYm:'',checklist:{}}; await dbPut('settings',{key:'salary_day_'+currentUser.username,value:JSON.stringify(salaryDaySettings)}); }catch(e){}
+  try{ auditLog=[]; lastBackupAt=0; tripMode={enabled:false,code:'USD',rate:1}; pocketCarry={rule:'keep',lastYm:''}; await dbPut('settings',{key:'audit_log_'+currentUser.username,value:'[]'}); await dbPut('settings',{key:'last_backup_'+currentUser.username,value:'0'}); await dbPut('settings',{key:'trip_mode_'+currentUser.username,value:JSON.stringify(tripMode)}); await dbPut('settings',{key:'pocket_carry_'+currentUser.username,value:JSON.stringify(pocketCarry)}); }catch(e){}
   try{ nwSnapshots=[]; await dbPut('settings',{key:'networth_snap_'+currentUser.username,value:'[]'}); }catch(e){}
   pocketSplitHistory=[];
   try{ _regSmartLoadedFor=null; }catch(e){}
@@ -8123,7 +8188,7 @@ function showTab(tab,pushHistory=true){
   if(tab==='report')renderReport();
   if(tab==='budget')renderBudget();
   if(tab==='goals'){renderGoals();renderRecurring();renderEmis();}
-  if(tab==='settings'){renderCategoryMaster();applyCurrencyUI();try{updateSmsUI();}catch(e){};try{applySalaryDaySettingsUI();}catch(e){}};
+  if(tab==='settings'){renderCategoryMaster();applyCurrencyUI();try{updateSmsUI();}catch(e){};try{applySalaryDaySettingsUI();}catch(e){};try{applyTripModeUI();renderBackupHealthUI();renderAuditLogUI();}catch(e){}};
   if(tab==='loans'){renderLoans();renderLoanReport();checkLoanOverdue();}
   if(tab==='reminders'){renderReminders();}
   if(tab==='register'){renderRegister(); if(typeof renderRegFeatureMode==='function') renderRegFeatureMode();}
@@ -10866,6 +10931,285 @@ function parseCSVLine(line){
 }
 
 
+
+// ══════════════════════════════════════════════════════
+// AUDIT LOG (last 50 actions)
+// ══════════════════════════════════════════════════════
+let auditLog = [];
+async function loadAuditLog(){
+  try{
+    if(!currentUser) return;
+    const r=await dbGet('settings','audit_log_'+currentUser.username);
+    if(r&&r.value){
+      const v=typeof r.value==='string'?JSON.parse(r.value):r.value;
+      auditLog=Array.isArray(v)?v:[];
+    } else auditLog=[];
+  }catch{ auditLog=[]; }
+}
+async function saveAuditLog(){
+  try{
+    if(!currentUser) return;
+    await dbPut('settings',{key:'audit_log_'+currentUser.username,value:JSON.stringify((auditLog||[]).slice(0,50))});
+  }catch(e){}
+}
+function audit(action, detail){
+  try{
+    auditLog = auditLog || [];
+    auditLog.unshift({
+      at: Date.now(),
+      action: String(action||'action'),
+      detail: String(detail||'').slice(0,160)
+    });
+    if(auditLog.length>50) auditLog=auditLog.slice(0,50);
+    saveAuditLog();
+    try{ renderAuditLogUI(); }catch(e){}
+  }catch(e){}
+}
+function renderAuditLogUI(){
+  const el=document.getElementById('auditLogList');
+  if(!el) return;
+  if(!auditLog||!auditLog.length){
+    el.innerHTML='<div style="text-align:center;color:var(--muted);padding:12px;">No activity yet</div>';
+    return;
+  }
+  el.innerHTML=auditLog.map(a=>{
+    const d=new Date(a.at||Date.now());
+    const when=d.toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    return `<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:800;color:var(--text);">${(a.action||'').replace(/</g,'&lt;')}</div>
+        <div style="color:var(--muted);margin-top:2px;">${(a.detail||'').replace(/</g,'&lt;')}</div>
+      </div>
+      <div style="font-size:0.65rem;color:var(--muted);white-space:nowrap;">${when}</div>
+    </div>`;
+  }).join('');
+}
+async function clearAuditLog(){
+  if(!confirm('Clear activity log?')) return;
+  auditLog=[];
+  await saveAuditLog();
+  renderAuditLogUI();
+  showToast('🧾 Log cleared');
+}
+
+// ══════════════════════════════════════════════════════
+// BACKUP HEALTH
+// ══════════════════════════════════════════════════════
+let lastBackupAt = 0;
+async function loadBackupHealth(){
+  try{
+    if(!currentUser) return;
+    const r=await dbGet('settings','last_backup_'+currentUser.username);
+    lastBackupAt = r && r.value ? Number(r.value)||0 : 0;
+  }catch{ lastBackupAt=0; }
+  renderBackupHealthUI();
+}
+async function markBackupDone(source){
+  lastBackupAt = Date.now();
+  try{
+    if(currentUser) await dbPut('settings',{key:'last_backup_'+currentUser.username,value:String(lastBackupAt)});
+  }catch(e){}
+  renderBackupHealthUI();
+  audit('Backup', source||'Local JSON backup');
+}
+function renderBackupHealthUI(){
+  const title=document.getElementById('backupHealthTitle');
+  const sub=document.getElementById('backupHealthSub');
+  const card=document.getElementById('backupHealthCard');
+  if(!sub) return;
+  if(!lastBackupAt){
+    if(title) title.textContent='💾 Backup health — never backed up';
+    sub.textContent='Create a local or cloud backup to protect your data.';
+    if(card){ card.style.borderColor='#ef9a9a'; card.style.background='#fff5f5'; }
+    return;
+  }
+  const days=Math.floor((Date.now()-lastBackupAt)/(24*3600*1000));
+  const when=new Date(lastBackupAt).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  if(days<=3){
+    if(title) title.textContent='💾 Backup health — good';
+    sub.textContent='Last backup '+days+' day'+(days===1?'':'s')+' ago · '+when;
+    if(card){ card.style.borderColor='#a5d6a7'; card.style.background='#e8f5e9'; }
+  } else if(days<=12){
+    if(title) title.textContent='💾 Backup health — OK';
+    sub.textContent='Last backup '+days+' days ago · '+when;
+    if(card){ card.style.borderColor='#ffe082'; card.style.background='#fffde7'; }
+  } else {
+    if(title) title.textContent='💾 Backup overdue';
+    sub.textContent='Last backup '+days+' days ago · '+when+'. Please backup now.';
+    if(card){ card.style.borderColor='#ef9a9a'; card.style.background='#fff5f5'; }
+  }
+}
+function maybeRemindBackup(){
+  try{
+    if(!lastBackupAt) return;
+    const days=Math.floor((Date.now()-lastBackupAt)/(24*3600*1000));
+    if(days<12) return;
+    const k='backup_remind_'+new Date().toISOString().slice(0,10);
+    if(sessionStorage.getItem(k)) return;
+    sessionStorage.setItem(k,'1');
+    setTimeout(()=>{
+      if(confirm('💾 Your last backup was '+days+' days ago.\\n\\nCreate a local JSON backup now?')){
+        exportJSON();
+      }
+    }, 1400);
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════════════
+// TRIP MODE (multi-currency FX)
+// ══════════════════════════════════════════════════════
+let tripMode = { enabled:false, code:'USD', rate:1 }; // rate = home currency per 1 trip unit
+async function loadTripMode(){
+  try{
+    if(!currentUser) return;
+    const r=await dbGet('settings','trip_mode_'+currentUser.username);
+    if(r&&r.value){
+      const v=typeof r.value==='string'?JSON.parse(r.value):r.value;
+      tripMode=Object.assign({enabled:false,code:'USD',rate:1}, v||{});
+    }
+  }catch{ tripMode={enabled:false,code:'USD',rate:1}; }
+  applyTripModeUI();
+}
+function applyTripModeUI(){
+  const en=document.getElementById('tripModeEnabled');
+  const sel=document.getElementById('tripCurrencySelect');
+  const rate=document.getElementById('tripFxRate');
+  const prev=document.getElementById('tripModePreview');
+  if(sel && !sel.options.length){
+    sel.innerHTML=(CURRENCY_MASTER||[]).map(c=>`<option value="${c.code}">${c.code} (${c.symbol})</option>`).join('');
+  }
+  if(en) en.checked=!!tripMode.enabled;
+  if(sel) sel.value=tripMode.code||'USD';
+  if(rate) rate.value=tripMode.rate>0?tripMode.rate:'';
+  if(prev){
+    if(!tripMode.enabled){
+      prev.textContent='Trip mode off — all amounts in '+((appCurrency&&appCurrency.code)||'INR');
+    } else {
+      const tc=getCurrencyByCode(tripMode.code);
+      prev.textContent='Trip on: 1 '+(tc.code||tripMode.code)+' = '+(tripMode.rate||0)+' '+((appCurrency&&appCurrency.code)||'home')+' · Example: 10 '+(tc.symbol||'')+' → '+fmt((tripMode.rate||0)*10);
+    }
+  }
+}
+async function saveTripModeSettings(){
+  const en=document.getElementById('tripModeEnabled');
+  const sel=document.getElementById('tripCurrencySelect');
+  const rate=document.getElementById('tripFxRate');
+  tripMode.enabled=!!(en&&en.checked);
+  tripMode.code=sel?sel.value:'USD';
+  tripMode.rate=Math.max(0, parseFloat(rate&&rate.value)||0);
+  try{
+    await dbPut('settings',{key:'trip_mode_'+currentUser.username,value:JSON.stringify(tripMode)});
+  }catch(e){}
+  applyTripModeUI();
+  audit('Trip mode', tripMode.enabled?('ON · '+tripMode.code+' @ '+tripMode.rate):'OFF');
+  showToast(tripMode.enabled?'✈️ Trip mode on':'Trip mode off');
+}
+/** Convert amount entered while trip mode is on → home currency for storage */
+function tripToHome(amount){
+  amount=Number(amount)||0;
+  if(!tripMode||!tripMode.enabled||!(tripMode.rate>0)) return amount;
+  return Math.round(amount*tripMode.rate*100)/100;
+}
+function tripNoteSuffix(){
+  if(!tripMode||!tripMode.enabled) return '';
+  const tc=getCurrencyByCode(tripMode.code);
+  return ' [trip '+(tc.code||tripMode.code)+' @'+tripMode.rate+']';
+}
+
+// ══════════════════════════════════════════════════════
+// ENVELOPE CARRY-FORWARD
+// ══════════════════════════════════════════════════════
+let pocketCarry = { rule:'keep', lastYm:'' };
+async function loadPocketCarry(){
+  try{
+    if(!currentUser) return;
+    const r=await dbGet('settings','pocket_carry_'+currentUser.username);
+    if(r&&r.value){
+      const v=typeof r.value==='string'?JSON.parse(r.value):r.value;
+      pocketCarry=Object.assign({rule:'keep',lastYm:''}, v||{});
+    }
+  }catch{ pocketCarry={rule:'keep',lastYm:''}; }
+  const sel=document.getElementById('pocketCarryRule');
+  if(sel) sel.value=pocketCarry.rule||'keep';
+  updatePocketCarryStatus();
+}
+async function savePocketCarryRule(){
+  const sel=document.getElementById('pocketCarryRule');
+  if(sel) pocketCarry.rule=sel.value||'keep';
+  try{
+    await dbPut('settings',{key:'pocket_carry_'+currentUser.username,value:JSON.stringify(pocketCarry)});
+  }catch(e){}
+  updatePocketCarryStatus();
+  showToast('✅ Carry-forward rule saved');
+}
+function updatePocketCarryStatus(){
+  const el=document.getElementById('pocketCarryStatus');
+  if(!el) return;
+  const labels={keep:'Balances stay as-is each month.',rollover:'Unused room can roll (informational; balances kept).',reset:'Balances will be zeroed at month-end / when you run.',capital:'Saved amounts returned to a Capital note, then zeroed.'};
+  el.textContent=(labels[pocketCarry.rule]||'')+(pocketCarry.lastYm?(' Last run: '+pocketCarry.lastYm+'.'):'');
+}
+async function runPocketCarryForward(manual){
+  try{ await ensureRegSmartLoaded(); }catch(e){}
+  const rule=pocketCarry.rule||'keep';
+  const ym=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
+  if(!manual && pocketCarry.lastYm===ym) return;
+  if(rule==='keep'){
+    if(manual) showToast('Rule is “Keep balances” — nothing to change');
+    return;
+  }
+  if(!moneyPockets||!moneyPockets.length){
+    if(manual) showToast('⚠️ No pockets to process');
+    return;
+  }
+  if(manual && !confirm('Run envelope carry-forward with rule “'+rule+'”?')) return;
+  let totalReturned=0;
+  const notes=[];
+  moneyPockets.forEach(p=>{
+    const saved=Number(p.saved)||0;
+    if(rule==='reset'||rule==='capital'){
+      if(rule==='capital' && saved>0){
+        totalReturned+=saved;
+        notes.push((p.name||'Pocket')+': '+saved);
+      }
+      p.saved=0;
+    } else if(rule==='rollover'){
+      // Keep saved; optionally bump target if under-filled — keep simple: leave saved, mark note
+      notes.push((p.name||'Pocket')+' kept '+saved);
+    }
+  });
+  if(rule==='capital' && totalReturned>0){
+    // Add a note on capital tips area via audit; optional net-worth cash asset bump is risky — log only
+    audit('Carry-forward → Capital', 'Returned '+totalReturned+' from pockets: '+notes.join(', '));
+  } else {
+    audit('Carry-forward', rule+' · '+(notes.slice(0,4).join('; ')||'done'));
+  }
+  pocketCarry.lastYm=ym;
+  try{
+    await savePockets();
+    await dbPut('settings',{key:'pocket_carry_'+currentUser.username,value:JSON.stringify(pocketCarry)});
+  }catch(e){}
+  try{ renderPockets(); }catch(e){}
+  updatePocketCarryStatus();
+  if(manual){
+    if(rule==='capital') showToast('✅ Returned '+fmt(totalReturned)+' toward capital (logged); pockets reset', 3000);
+    else if(rule==='reset') showToast('✅ Pocket balances reset to zero');
+    else showToast('✅ Carry-forward recorded');
+  }
+}
+function maybeAutoPocketCarry(){
+  try{
+    const now=new Date();
+    // Auto-run on first 3 days of month if not yet done for previous cycle
+    if(now.getDate()>3) return;
+    const prev=new Date(now.getFullYear(), now.getMonth()-1, 1);
+    const prevYm=prev.getFullYear()+'-'+String(prev.getMonth()+1).padStart(2,'0');
+    if(pocketCarry.lastYm===prevYm || pocketCarry.lastYm=== (now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'))) return;
+    if((pocketCarry.rule||'keep')==='keep') return;
+    runPocketCarryForward(false);
+  }catch(e){}
+}
+
+
 // ══════════════════════════════════════════════════════
 // SALARY DAY AUTOMATION
 // ══════════════════════════════════════════════════════
@@ -11270,7 +11614,7 @@ function setRegFeature(mode){
 
 function renderRegFeatureMode(){
   if(regFeatureMode==='sheets'){ renderRegister(); return; }
-  if(regFeatureMode==='pockets'){ renderPockets(); try{updatePocketSplitUI();}catch(e){} }
+  if(regFeatureMode==='pockets'){ renderPockets(); try{updatePocketSplitUI();}catch(e){} try{ const s=document.getElementById('pocketCarryRule'); if(s) s.value=pocketCarry.rule||'keep'; updatePocketCarryStatus(); }catch(e){} }
   if(regFeatureMode==='safe') renderSafeToSpend();
   if(regFeatureMode==='subs') renderSubscriptions();
   if(regFeatureMode==='ai') renderAIInsights();
@@ -11452,6 +11796,7 @@ async function runPocketAutoSplit(){
   try{ updatePocketSplitUI(); }catch(e){}
 
   const detail = allocations.map(a=>a.pocketName+': '+fmt(a.amount)).join(' · ');
+  try{ audit('Auto-split', fmt(totalSplit)+' → '+detail); }catch(e){}
   showToast('✅ Split '+fmt(totalSplit)+' → '+detail, 3500);
 }
 
@@ -11500,6 +11845,7 @@ async function undoPocketAutoSplit(){
   const result = await reversePocketSplitForTxn(last.txnId);
   try{ renderPockets(); }catch(e){}
   try{ updatePocketSplitUI(); }catch(e){}
+  try{ audit('Undo auto-split', result.total>0?('Removed '+fmt(result.total)+' from pockets'):'Record cleared'); }catch(e){}
   showToast(result.total>0 ? '↩️ Auto-split undone · '+fmt(result.total)+' removed from pockets' : '↩️ Auto-split record cleared');
 }
 
