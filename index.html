@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1565c0">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Money Manager Pro">
 <meta name="description" content="Best personal finance app for India. Track income, expenses, loans, savings goals, net worth and bank SMS. Works offline. By Ullasan KV, Poyanad, Kannur.">
 <meta name="application-name" content="Money Manager Pro">
-<title>Money Manager Pro v18 — Personal Finance Tracker</title>
+<title>Money Manager Pro 1.3.0 — Personal Finance Tracker</title>
 <link rel="manifest" href="manifest.json">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -24,7 +24,7 @@
   --bg:#f0fff8;--surface:#fff;--border:#d8f0e8;--text:#1a2e1a;--muted:#6b8f6b;
   --bevel-light:rgba(255,255,255,0.85);--bevel-dark:rgba(20,50,30,0.28);
   --shadow:0 4px 24px rgba(0,0,0,0.08);--shadow-lg:0 8px 40px rgba(0,0,0,0.14);
-  --safe-top:env(safe-area-inset-top);--safe-bottom:env(safe-area-inset-bottom);
+  --safe-top:var(--safe-area-inset-top, env(safe-area-inset-top, 0px));--safe-bottom:var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   --font:system-ui,-apple-system,sans-serif;
 }
 [data-theme="dark"]{
@@ -49,6 +49,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 /* SCREENS */
 .screen{display:none;flex-direction:column;height:100%;}
 .screen.active{display:flex;}
+#loginScreen,#pinScreen{padding-top:var(--safe-top);padding-bottom:var(--safe-bottom);box-sizing:border-box;}
 
 /* PIN LOCK */
 #pinScreen{align-items:center;justify-content:center;padding:30px 20px;background:linear-gradient(135deg,#00b894,#4d96ff);}
@@ -457,7 +458,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 
 
 /* TOAST */
-.toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-80px);background:#1a1a2e;color:#fff;padding:11px 22px;border-radius:50px;font-size:0.82rem;font-weight:700;z-index:9999;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.35s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.25);opacity:0;}
+.toast{position:fixed;top:calc(24px + var(--safe-top));left:50%;transform:translateX(-50%) translateY(-200px);background:#1a1a2e;color:#fff;padding:11px 22px;border-radius:50px;font-size:0.82rem;font-weight:700;z-index:9999;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.35s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.25);opacity:0;}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
 
 /* MODAL */
@@ -1005,9 +1006,9 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div class="premium-upgrade-strip" id="premiumStrip" onclick="showUpgradeModal()" style="display:none;">
         <div style="flex:1;">
           <div style="font-size:0.82rem;font-weight:800;">⭐ Upgrade to Premium</div>
-          <div style="font-size:0.68rem;opacity:0.8;margin-top:2px;">Remove all ads forever · Only ₹199 one-time</div>
+          <div style="font-size:0.68rem;opacity:0.8;margin-top:2px;">Support the app · PRO badge · One-time payment</div>
         </div>
-        <div style="font-size:0.78rem;font-weight:700;background:rgba(255,255,255,0.2);padding:5px 12px;border-radius:20px;">₹199 →</div>
+        <div id="premiumStripPrice" style="font-size:0.78rem;font-weight:700;background:rgba(255,255,255,0.2);padding:5px 12px;border-radius:20px;">Upgrade →</div>
       </div>
       <div class="balance-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
@@ -1900,6 +1901,8 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         </div>
         <div style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border);">
           <button class="export-btn" onclick="clearAllData()" style="border-color:#ffcdd2;color:#ff6b6b;margin-bottom:0;">🗑️ Clear All Data</button>
+          <button class="export-btn" onclick="deleteMyAccount()" style="border-color:#ef9a9a;color:#c62828;margin-top:10px;margin-bottom:0;">🧨 Delete My Account &amp; Data</button>
+          <div style="font-size:0.68rem;color:var(--muted);margin-top:6px;line-height:1.5;">Permanently removes your profile and cloud backup from our server and erases everything stored on this device.</div>
         </div>
       </div>
 
@@ -1952,7 +1955,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div style="background:linear-gradient(135deg,#1565c0,#4d96ff);border-radius:16px;padding:20px;color:#fff;text-align:center;margin-bottom:12px;">
           <div style="font-size:2.5rem;margin-bottom:8px;">💰</div>
           <div style="font-size:1rem;font-weight:800;letter-spacing:0.02em;">Money Manager Pro</div>
-          <div style="font-size:0.72rem;opacity:0.85;margin-top:4px;">Version 1.3.0 · v19</div>
+          <div style="font-size:0.72rem;opacity:0.85;margin-top:4px;">Version 1.3.0</div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.25);">
             <div style="font-size:0.72rem;opacity:0.7;">Developed by</div>
             <div style="font-size:0.92rem;font-weight:800;margin-top:2px;">Ullasan KV</div>
@@ -1963,7 +1966,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           Personal finance manager to track income, expenses, loans and savings goals. Works fully offline. Supports multiple users with PIN protection.
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
-          <button onclick="showUpgradeModal()" style="padding:11px;background:linear-gradient(135deg,#f9ca24,#f0932b);border:none;border-radius:12px;font-size:0.78rem;font-weight:700;color:#fff;cursor:pointer;font-family:var(--font);">⭐ Go Premium ₹199</button>
+          <button onclick="showUpgradeModal()" style="padding:11px;background:linear-gradient(135deg,#f9ca24,#f0932b);border:none;border-radius:12px;font-size:0.78rem;font-weight:700;color:#fff;cursor:pointer;font-family:var(--font);">⭐ Go Premium</button>
           <button onclick="showPrivacyPolicy()" style="padding:11px;background:var(--bg);border:2px solid var(--border);border-radius:12px;font-size:0.78rem;font-weight:700;color:var(--muted);cursor:pointer;font-family:var(--font);">🔒 Privacy Policy</button>
         </div>
       </div>
@@ -2015,7 +2018,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <div class="ad-interstitial-footer">Ad · Money Manager Pro by Ullasan KV</div>
   </div>
   <div style="margin-top:16px;">
-    <button onclick="showUpgradeModal()" style="background:linear-gradient(135deg,#f9ca24,#f0932b);border:none;border-radius:20px;padding:10px 24px;color:#fff;font-size:0.82rem;font-weight:800;cursor:pointer;font-family:var(--font);">⭐ Go Premium — No Ads Ever ₹199</button>
+    <button onclick="showUpgradeModal()" style="background:linear-gradient(135deg,#f9ca24,#f0932b);border:none;border-radius:20px;padding:10px 24px;color:#fff;font-size:0.82rem;font-weight:800;cursor:pointer;font-family:var(--font);">⭐ Go Premium</button>
   </div>
 </div>
 
@@ -2038,26 +2041,18 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div style="font-size:0.78rem;color:var(--muted);">One-time payment · No subscription</div>
     </div>
     <div style="background:linear-gradient(135deg,#1a1a2e,#1565c0);border-radius:16px;padding:18px;color:#fff;margin-bottom:16px;">
-      <div style="font-size:2rem;font-weight:800;text-align:center;margin-bottom:4px;">₹199</div>
+      <div id="premiumPriceText" style="font-size:2rem;font-weight:800;text-align:center;margin-bottom:4px;">⭐ Premium</div>
       <div style="font-size:0.72rem;opacity:0.8;text-align:center;">Lifetime access · Pay once · Use forever</div>
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>✅</span><span>Zero ads — forever</span></div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>🧾</span><span>Full Tax Report & Capital Gains</span></div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>📈</span><span>SIP Calculator & Goal Projections</span></div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>⭐</span><span>Premium badge on your profile</span></div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>🔓</span><span>All future premium features</span></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>⭐</span><span>PRO badge on your profile</span></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>🙏</span><span>Supports ongoing development of the app</span></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>🔓</span><span>Premium-only features as they are added</span></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;"><span>✅</span><span>Ad-free — Premium users never see ads</span></div>
       </div>
     </div>
-    <button id="premiumPayBtn" style="width:100%;padding:14px;background:linear-gradient(135deg,#f9ca24,#f0932b);border:none;border-radius:14px;color:#fff;font-size:0.95rem;font-weight:800;cursor:pointer;margin-bottom:8px;font-family:var(--font);" onclick="initiatePayment()">⭐ Pay ₹199 — Remove Ads</button>
+    <button id="premiumPayBtn" style="width:100%;padding:14px;background:linear-gradient(135deg,#f9ca24,#f0932b);border:none;border-radius:14px;color:#fff;font-size:0.95rem;font-weight:800;cursor:pointer;margin-bottom:8px;font-family:var(--font);" onclick="initiatePayment()">⭐ Upgrade to Premium</button>
     <button type="button" onclick="restorePremiumPurchases()" style="width:100%;padding:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;color:var(--text);font-size:0.82rem;font-weight:700;cursor:pointer;margin-bottom:10px;font-family:var(--font);">🔄 Restore purchases</button>
     <div id="premiumPayHint" style="text-align:center;font-size:0.7rem;color:var(--muted);margin-bottom:8px;line-height:1.45;">On Google Play, payment is handled by Play Billing (UPI / card / Google account). One-time unlock.</div>
-    <div style="text-align:center;font-size:0.68rem;color:var(--muted);padding:8px;background:var(--bg);border-radius:10px;">
-      Have a license key? <a href="#" onclick="showLicenseEntry();return false;" style="color:#1565c0;font-weight:700;">Enter here</a>
-    </div>
-    <div id="licenseEntryBox" style="display:none;margin-top:10px;">
-      <input type="text" id="licenseKey" placeholder="Enter your license key" style="width:100%;padding:11px;border:2px solid var(--border);border-radius:12px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-bottom:8px;"/>
-      <button onclick="activateLicense()" style="width:100%;padding:11px;background:#1565c0;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer;font-family:var(--font);">Activate License</button>
-    </div>
     <button class="modal-close" onclick="closeModal('upgradeModal')" style="margin-top:8px;">Maybe Later</button>
   </div>
 </div>
@@ -3300,6 +3295,7 @@ function showApp(){
   }catch(e){}
   try{
     Promise.resolve(loadPremiumFlag()).then(()=>{
+      try{ mmSyncPremiumFromPlay(); mmLoadPremiumPrice(); }catch(e){}
       try{ renderPremiumBadge(); }catch(e){}
       try{
         const strip=document.getElementById('premiumStrip');
@@ -12489,7 +12485,9 @@ function closePrivacyPolicy(){
 }
 
 // ══════════════════════════════════════════════════════
-// AD ENGINE — Placeholder ads (swap with AdMob after Play Store)
+// AD ENGINE — Placeholder ads. DISABLED for the Play Store build (fake ads are not allowed).
+// Set MM_ADS_ENABLED=true only after real AdMob ads are integrated and declared in Play Console.
+const MM_ADS_ENABLED=false;
 // ══════════════════════════════════════════════════════
 
 // Sample ad pool — replace with real AdMob units after approval
@@ -12523,7 +12521,7 @@ function tickAdCounter(){
 
 // ── BANNER AD ──
 function showBannerAd(){
-  if(isPremium()) return;
+  if(!MM_ADS_ENABLED||isPremium()) return;
   const ad = AD_POOL[Math.floor(Math.random()*AD_POOL.length)];
   document.getElementById('adBannerContent').innerHTML = `
     <div class="ad-banner-img">${ad.icon}</div>
@@ -12554,12 +12552,12 @@ function hideBannerAd(){
 function closeBannerAd(){
   hideBannerAd();
   // Show upgrade nudge
-  showToast('⭐ Go Premium for ₹199 — No Ads Ever!');
+  showToast('⭐ Go Premium to support the app');
 }
 
 // ── INTERSTITIAL AD ──
 function showInterstitialAd(){
-  if(isPremium()) return;
+  if(!MM_ADS_ENABLED||isPremium()) return;
   const ad = AD_POOL[Math.floor(Math.random()*AD_POOL.length)];
   document.getElementById('adInterstitialBody').innerHTML = `
     <div class="ad-interstitial-icon">${ad.icon}</div>
@@ -12589,10 +12587,9 @@ function closeInterstitialAd(){
   if(skipTimer){ clearInterval(skipTimer); skipTimer=null; }
 }
 
-// ── PREMIUM / REMOVE ADS (Play Billing + license + local flag) ──
-// Play Console product ID — create the same ID under Monetize → In-app products
+// ── PREMIUM (Google Play Billing via @capgo/native-purchases) ──
+// Create this exact product in Play Console → Monetize → Products → In-app products (one-time, "managed").
 const PREMIUM_PRODUCT_ID = 'remove_ads';
-const PREMIUM_PRICE_LABEL = '₹199';
 
 function isNativePlayApp(){
   try{
@@ -12605,9 +12602,7 @@ function isNativePlayApp(){
 function isPremium(){
   if(!currentUser) return false;
   if(currentUser.premium === true) return true;
-  try{
-    if(window._mmPremiumCached === true) return true;
-  }catch(e){}
+  try{ if(window._mmPremiumCached === true) return true; }catch(e){}
   return false;
 }
 
@@ -12626,7 +12621,6 @@ async function persistPremium(source, extra){
   if(!currentUser) return;
   currentUser.premium = true;
   window._mmPremiumCached = true;
-  if(extra && extra.licenseKey) currentUser.licenseKey = extra.licenseKey;
   if(extra && extra.orderId) currentUser.premiumOrderId = extra.orderId;
   currentUser.premiumSource = source || 'play';
   currentUser.premiumAt = Date.now();
@@ -12635,9 +12629,7 @@ async function persistPremium(source, extra){
     users[currentUser.username] = currentUser;
     await saveUsers(users);
   }catch(e){}
-  try{
-    await dbPut('settings',{key:'premium_'+currentUser.username, value:'true'});
-  }catch(e){}
+  try{ await dbPut('settings',{key:'premium_'+currentUser.username, value:'true'}); }catch(e){}
   if(typeof firebaseDB!=='undefined' && firebaseDB){
     try{ firebaseDB.ref('users/'+currentUser.username+'/premium').set(true); }catch(e){}
   }
@@ -12647,176 +12639,143 @@ async function persistPremium(source, extra){
 async function activatePremium(source, extra){
   await persistPremium(source, extra);
   try{ hideBannerAd(); }catch(e){}
-  try{
-    const strip=document.getElementById('premiumStrip');
-    if(strip) strip.style.display='none';
-  }catch(e){}
+  try{ const strip=document.getElementById('premiumStrip'); if(strip) strip.style.display='none'; }catch(e){}
   try{ closeModal('upgradeModal'); }catch(e){}
   renderPremiumBadge();
-  showToast('🎉 Premium on — ads removed!', 2800);
+  showToast('🎉 Premium unlocked — thank you!', 2800);
+}
+
+function mmPurchasesPlugin(){
+  try{ const C=window.Capacitor; return (C && C.Plugins && C.Plugins.NativePurchases) || null; }catch(e){ return null; }
+}
+function mmTxnState(t){ return String((t && t.purchaseState!=null) ? t.purchaseState : '').toUpperCase(); }
+function mmTxnPurchased(t){ const st=mmTxnState(t); return st==='' || st==='PURCHASED' || st==='1'; }
+
+/** Show the real price from Google Play (never a hard-coded price). */
+async function mmLoadPremiumPrice(){
+  const P=mmPurchasesPlugin(); if(!P || !isNativePlayApp()) return;
+  try{
+    const r=await P.getProduct({productIdentifier:PREMIUM_PRODUCT_ID, productType:'inapp'});
+    const prod=(r && r.product) || r;
+    const price=prod && (prod.priceString || prod.price);
+    if(price){
+      window._mmPremiumPrice=String(price);
+      const a=document.getElementById('premiumPriceText'); if(a) a.textContent=String(price);
+      const b=document.getElementById('premiumStripPrice'); if(b) b.textContent=String(price)+' →';
+      const c=document.getElementById('premiumPayBtn'); if(c && !c.disabled) c.textContent='⭐ Upgrade — '+String(price);
+    }
+  }catch(e){ console.log('Premium price lookup failed:', e && e.message); }
 }
 
 function showUpgradeModal(){
   try{ closeInterstitialAd(); }catch(e){}
-  if(isPremium()){
-    showToast('⭐ You already have Premium');
-    return;
-  }
+  if(isPremium()){ showToast('⭐ You already have Premium'); return; }
   const hint=document.getElementById('premiumPayHint');
   if(hint){
     hint.textContent = isNativePlayApp()
-      ? 'Payment is processed by Google Play (UPI, card, Play balance). One-time purchase — Restore if you reinstall.'
-      : 'Install the Play Store app to buy with Google Play. License keys still work here.';
+      ? 'Payment is processed securely by Google Play (UPI, card, Play balance). One-time purchase — use Restore if you reinstall.'
+      : 'Premium can be purchased in the Google Play app.';
   }
   openModal('upgradeModal');
+  mmLoadPremiumPrice();
 }
 
 async function initiatePayment(){
   if(isPremium()){ showToast('⭐ Already Premium'); return; }
+  if(!isNativePlayApp()){ showToast('💳 Premium can be purchased in the Google Play app.', 3500); return; }
+  const P=mmPurchasesPlugin();
+  if(!P){ showToast('⚠️ Billing is not available in this version of the app.', 4000); return; }
   const btn=document.getElementById('premiumPayBtn');
-  if(btn){ btn.disabled=true; btn.textContent='⏳ Connecting…'; }
-
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Connecting to Google Play…'; }
   try{
-    // 1) Native Play Billing via Capacitor plugin (if present)
-    if(isNativePlayApp()){
-      const ok = await purchasePremiumViaPlay();
-      if(ok) return;
-      // Fall through only if plugin missing — show clear message
+    try{
+      const b=await P.isBillingSupported();
+      if(b && b.isBillingSupported===false){ showToast('⚠️ Google Play billing is not available on this device.', 4000); return; }
+    }catch(e){}
+    const t=await P.purchaseProduct({productIdentifier:PREMIUM_PRODUCT_ID, productType:'inapp'});
+    const st=mmTxnState(t);
+    if(st==='PENDING' || st==='2'){
+      showToast('⏳ Payment is pending. Premium unlocks when Google Play confirms it.', 5000);
+      return;
     }
-
-    // 2) Web / no billing plugin: cannot charge digital goods outside Play for the store build
-    showToast('💳 Open the Google Play version to purchase, or use a license key.', 3500);
-    try{ showLicenseEntry(); }catch(e){}
+    if(t && mmTxnPurchased(t)){
+      await activatePremium('play_billing', {orderId:(t.orderId||t.transactionId||'')});
+      return;
+    }
+    showToast('⚠️ The purchase was not completed.', 3500);
+  }catch(e){
+    const msg=String((e && e.message) || e || '');
+    if(/cancel/i.test(msg)) showToast('Purchase cancelled');
+    else if(/already.?own/i.test(msg)) { await restorePremiumPurchases(); }
+    else showToast('⚠️ Purchase failed. Please try again.', 4000);
+    console.warn('Purchase error:', msg);
   } finally {
-    if(btn){ btn.disabled=false; btn.textContent='⭐ Pay '+PREMIUM_PRICE_LABEL+' — Remove Ads'; }
+    if(btn){ btn.disabled=false; btn.textContent=window._mmPremiumPrice ? ('⭐ Upgrade — '+window._mmPremiumPrice) : '⭐ Upgrade to Premium'; }
   }
 }
 
-/** Play Billing purchase — works when a Capacitor billing plugin is installed */
-async function purchasePremiumViaPlay(){
-  const C=window.Capacitor;
-  if(!C) return false;
-
-  // Try common plugin shapes
-  const tryPlugins = [
-    async ()=>{
-      // @capgo/native-purchases style
-      const P = C.Plugins && (C.Plugins.NativePurchases || C.Plugins.NativePurchasesPlugin);
-      if(!P) return null;
-      if(typeof P.purchaseProduct==='function'){
-        const r = await P.purchaseProduct({ productIdentifier: PREMIUM_PRODUCT_ID, productType: 'inapp' });
-        return r;
-      }
-      if(typeof P.purchase==='function'){
-        return await P.purchase({ productId: PREMIUM_PRODUCT_ID });
-      }
-      return null;
-    },
-    async ()=>{
-      // cordova-plugin-purchase bridge sometimes exposed on window.store
-      if(window.store && typeof window.store.order==='function'){
-        return await new Promise((resolve,reject)=>{
-          try{
-            window.store.order(PREMIUM_PRODUCT_ID);
-            const t=setTimeout(()=>resolve({pending:true}), 8000);
-            window.store.once(window.store.APPROVED, (p)=>{ clearTimeout(t); resolve(p); });
-            window.store.once(window.store.FINISHED, (p)=>{ clearTimeout(t); resolve(p); });
-          }catch(e){ reject(e); }
-        });
-      }
-      return null;
-    },
-    async ()=>{
-      // Generic Capacitor registerPlugin style
-      if(typeof C.registerPlugin==='function'){
-        try{
-          const Billing = C.registerPlugin('BillingPlugin');
-          if(Billing && typeof Billing.purchase==='function'){
-            return await Billing.purchase({ productId: PREMIUM_PRODUCT_ID });
-          }
-        }catch(e){}
-      }
-      return null;
-    }
-  ];
-
-  let lastErr=null;
-  for(const fn of tryPlugins){
-    try{
-      const r = await fn();
-      if(r===null) continue;
-      // Treat presence of result without explicit cancel as success for unlock
-      const cancelled = !!(r && (r.cancelled || r.canceled || r.userCancelled));
-      if(cancelled){ showToast('Purchase cancelled'); return true; }
-      await activatePremium('play_billing', { orderId: (r && (r.orderId||r.transactionId||r.purchaseToken)) || '' });
-      return true;
-    }catch(e){
-      lastErr=e;
-      const msg=String((e&&e.message)||e||'');
-      if(/cancel/i.test(msg)){ showToast('Purchase cancelled'); return true; }
-      console.warn('Play billing attempt failed', e);
-    }
-  }
-
-  if(lastErr){
-    showToast('⚠️ Play Billing not ready in this build. Use license key or update the app.', 4000);
-  } else {
-    showToast('⚠️ Billing plugin not installed in this APK yet. Developer: add Play Billing plugin.', 4000);
-  }
-  return false;
+/** True only if Google Play reports a completed purchase of the premium product for this Google account. */
+async function mmPlayOwnsPremium(){
+  const P=mmPurchasesPlugin(); if(!P) return false;
+  try{ await P.restorePurchases(); }catch(e){}
+  try{
+    const r=await P.getPurchases({productType:'inapp'});
+    const list=(r && r.purchases) || [];
+    return list.some(p=>((p.productIdentifier||p.productId)===PREMIUM_PRODUCT_ID) && mmTxnPurchased(p));
+  }catch(e){ return false; }
 }
 
 async function restorePremiumPurchases(){
   if(isPremium()){ showToast('⭐ Premium already active'); return; }
   showToast('🔄 Checking purchases…');
-
-  // Local / license restore
   await loadPremiumFlag();
   if(isPremium()){ await activatePremium('restore_local'); return; }
-
-  if(!isNativePlayApp()){
-    showToast('Restore works in the Play Store app after you buy once.', 3000);
-    return;
-  }
-
-  const C=window.Capacitor;
-  try{
-    const P = C.Plugins && (C.Plugins.NativePurchases || C.Plugins.NativePurchasesPlugin);
-    if(P && typeof P.restorePurchases==='function'){
-      const r = await P.restorePurchases();
-      const owned = r && (r.purchases || r.products || r.items || []);
-      const hit = Array.isArray(owned) && owned.some(p=>{
-        const id = p.productId || p.productIdentifier || p.id || '';
-        return id===PREMIUM_PRODUCT_ID || p.owned===true;
-      });
-      if(hit || (r && r.restored)){
-        await activatePremium('play_restore');
-        return;
-      }
-    }
-    if(window.store && typeof window.store.refresh==='function'){
-      window.store.refresh();
-      showToast('If you bought before, Premium will unlock shortly.', 3000);
-      return;
-    }
-  }catch(e){
-    console.warn(e);
-  }
+  if(!isNativePlayApp()){ showToast('Restore works in the Google Play app after you buy once.', 3000); return; }
+  if(await mmPlayOwnsPremium()){ await activatePremium('play_restore'); return; }
   showToast('No previous purchase found for this Google account.', 3000);
 }
 
-function showLicenseEntry(){
-  const box=document.getElementById('licenseEntryBox');
-  if(box) box.style.display='block';
+/** Silent check at login so a reinstall / new phone gets Premium back automatically. */
+async function mmSyncPremiumFromPlay(){
+  if(!currentUser || isPremium() || !isNativePlayApp()) return;
+  try{
+    if(await mmPlayOwnsPremium()){
+      await persistPremium('play_sync');
+      try{ hideBannerAd(); }catch(e){}
+      try{ renderPremiumBadge(); }catch(e){}
+      try{ const strip=document.getElementById('premiumStrip'); if(strip) strip.style.display='none'; }catch(e){}
+    }
+  }catch(e){}
 }
 
-async function activateLicense(){
-  const key = (document.getElementById('licenseKey')?.value||'').trim().toUpperCase();
-  // License format: UKV-XXXX-XXXX (issued by developer)
-  if(!key || !key.startsWith('UKV-') || key.length < 12){
-    showToast('❌ Invalid license key!'); return;
-  }
-  await activatePremium('license', { licenseKey: key });
+/** Permanent account deletion: server copy (Firebase) + everything on this device. */
+async function deleteMyAccount(){
+  if(!currentUser){ showToast('Please log in first'); return; }
+  const uname=currentUser.username;
+  if(!confirm('Delete your account and ALL data?\n\n• Your profile and cloud backup are removed from our server\n• All data on this device is erased\n• This cannot be undone')) return;
+  const typed=prompt('To confirm, type DELETE');
+  if(!typed || typed.trim().toUpperCase()!=='DELETE'){ showToast('Account deletion cancelled'); return; }
+  showToast('🧨 Deleting your account…', 6000);
+  let cloudOk=true;
+  try{
+    if(typeof firebaseDB!=='undefined' && firebaseDB){
+      await firebaseDB.ref('users/'+uname).remove();
+      await firebaseDB.ref('backups/'+uname).remove();
+    }
+  }catch(e){ cloudOk=false; console.warn('Cloud delete failed', e); }
+  if(!cloudOk && !confirm('Could not reach the server (check your internet).\n\nErase the data on this device anyway? Your cloud copy may remain until you retry.')) return;
+  try{
+    const C=window.Capacitor;
+    if(C && C.Plugins && C.Plugins.LocalNotifications){
+      const pend=await C.Plugins.LocalNotifications.getPending();
+      if(pend && pend.notifications && pend.notifications.length) await C.Plugins.LocalNotifications.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+    }
+  }catch(e){}
+  for(const st of ['transactions','loans','goals','emis','recurring','investments','settings','categories','users']){ try{ await dbClear(st); }catch(e){} }
+  try{ localStorage.clear(); }catch(e){}
+  try{ sessionStorage.clear(); }catch(e){}
+  try{ clearCryptoKey(); }catch(e){}
+  location.reload();
 }
 
 function renderPremiumBadge(){
@@ -12950,7 +12909,7 @@ window.onload=async()=>{
   }
   // Update JS health indicator
   var jc=document.getElementById('jsCheck');
-  if(jc){ jc.textContent='✅ App Ready — v18'; jc.style.background='#e8f5e9'; jc.style.color='#2e7d32'; }
+  if(jc){ jc.textContent='✅ App Ready — 1.3.0'; jc.style.background='#e8f5e9'; jc.style.color='#2e7d32'; }
 };
 </script>
 
@@ -13112,25 +13071,34 @@ window.onload=async()=>{
     </div>
     <div style="font-size:0.78rem;line-height:1.8;color:var(--text);">
       <p style="font-weight:800;margin-bottom:8px;">Money Manager Pro — Privacy Policy</p>
-      <p style="color:var(--muted);margin-bottom:16px;">Last updated: January 2025 &nbsp;|&nbsp; Developed by Ullasan KV, Poyanad, Kannur</p>
+      <p style="color:var(--muted);margin-bottom:16px;">Last updated: October 2026 &nbsp;|&nbsp; Developed by Ullasan KV, Poyanad, Kannur, Kerala, India</p>
 
-      <p style="font-weight:700;margin-bottom:4px;">1. Information We Collect</p>
-      <p style="color:var(--muted);margin-bottom:12px;">When you register, we collect your name, phone number, email address and city. All financial data you enter (transactions, loans, goals) is stored only on your device.</p>
+      <p style="font-weight:700;margin-bottom:4px;">1. What we collect</p>
+      <p style="color:var(--muted);margin-bottom:12px;">Registration details you enter: name, phone number, email, city, username and avatar. These are stored on your device and sent to our Firebase (Google Cloud) database so we can understand our user base and improve the app. The financial data you enter (transactions, bills, loans, goals, investments, notes, bill photos) is stored on your device, encrypted with AES-256.</p>
 
-      <p style="font-weight:700;margin-bottom:4px;">2. How We Use Your Information</p>
-      <p style="color:var(--muted);margin-bottom:12px;">Your registration details are used solely to understand our user base and improve the app. We do not sell, share or disclose your personal information to any third party.</p>
+      <p style="font-weight:700;margin-bottom:4px;">2. Cloud backup (optional)</p>
+      <p style="color:var(--muted);margin-bottom:12px;">If you use Cloud Backup, a copy of your app data is uploaded to our Firebase database under your username so you can restore it on another phone. You can delete it at any time (see section 7). Bill photos are never uploaded.</p>
 
-      <p style="font-weight:700;margin-bottom:4px;">3. Data Storage</p>
-      <p style="color:var(--muted);margin-bottom:12px;">Your financial data is stored locally on your device using IndexedDB. Registration information is stored securely on Firebase (Google Cloud). Your data is never used for advertising.</p>
+      <p style="font-weight:700;margin-bottom:4px;">3. Permissions</p>
+      <p style="color:var(--muted);margin-bottom:12px;">• Microphone — voice typing only; speech is converted to text by your phone's speech service.<br>• Notifications &amp; alarms — daily, bill and EMI reminders.<br>• Camera / photos — only when you scan a bill. The photo stays on your device; the text is read on your device (a reading engine is downloaded the first time).<br>• Fingerprint — unlock is handled by Android; we never receive your biometric data.</p>
 
-      <p style="font-weight:700;margin-bottom:4px;">4. Your Rights</p>
-      <p style="color:var(--muted);margin-bottom:12px;">You may request deletion of your data at any time by contacting us. You can clear all local data from Settings → Clear All Data.</p>
+      <p style="font-weight:700;margin-bottom:4px;">4. Purchases</p>
+      <p style="color:var(--muted);margin-bottom:12px;">Premium is bought through Google Play. Payment details are handled entirely by Google; we only learn that the purchase was completed.</p>
 
-      <p style="font-weight:700;margin-bottom:4px;">5. Security</p>
-      <p style="color:var(--muted);margin-bottom:12px;">We implement reasonable security measures to protect your information. Financial data never leaves your device.</p>
+      <p style="font-weight:700;margin-bottom:4px;">5. Sharing</p>
+      <p style="color:var(--muted);margin-bottom:12px;">We do not sell your data and do not share it for advertising. Service providers: Google Firebase (storage) and Google Play (billing). We show no ads in this version.</p>
 
-      <p style="font-weight:700;margin-bottom:4px;">6. Contact</p>
-      <p style="color:var(--muted);margin-bottom:20px;">Developer: Ullasan KV, Poyanad, Kannur, Kerala<br>GitHub: ullasankv-tech</p>
+      <p style="font-weight:700;margin-bottom:4px;">6. Security</p>
+      <p style="color:var(--muted);margin-bottom:12px;">Data on your device is encrypted. Cloud backups are stored in our Firebase database. No method of storage is 100% secure.</p>
+
+      <p style="font-weight:700;margin-bottom:4px;">7. Your choices and deletion</p>
+      <p style="color:var(--muted);margin-bottom:12px;">Delete everything yourself in Settings → Delete My Account &amp; Data (removes your profile and cloud backup from our server and erases all data on the device). To request deletion without the app, open an issue at github.com/ullasankv-tech/Moneymanagerpro or use the page https://ullasankv-tech.github.io/Moneymanagerpro/delete-account.html. Settings → Clear All Data erases only your financial entries.</p>
+
+      <p style="font-weight:700;margin-bottom:4px;">8. Children</p>
+      <p style="color:var(--muted);margin-bottom:12px;">The app is not directed to children under 13.</p>
+
+      <p style="font-weight:700;margin-bottom:4px;">9. Contact</p>
+      <p style="color:var(--muted);margin-bottom:20px;">Developer: Ullasan KV, Poyanad, Kannur, Kerala, India<br>GitHub: ullasankv-tech</p>
 
       <button onclick="closePrivacyPolicy()" style="width:100%;padding:13px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:14px;color:#fff;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:var(--font);">I Understand — Close</button>
     </div>
