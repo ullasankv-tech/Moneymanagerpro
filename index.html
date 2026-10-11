@@ -2711,6 +2711,28 @@ async function saveCategories(){
   await dbPut('categories',{key:'expense',value:JSON.stringify(EXPENSE_CATS)});
   await dbPut('categories',{key:'investment',value:JSON.stringify(INVESTMENT_CATS)});
 }
+function invCatKey(name){
+  const s=String(name||'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+  // Treat F&O / Future(s) & Option(s) as one key
+  if(/\b(fno|f and o)\b/.test(s) || (/future/.test(s) && /option/.test(s))) return 'futures options';
+  if(/commodit/.test(s)) return 'commodity';
+  return s;
+}
+function dedupeInvestmentCats(){
+  const seen=new Set();
+  const out=[];
+  (INVESTMENT_CATS||[]).forEach(c=>{
+    if(!c||!c.name) return;
+    const k=invCatKey(c.name);
+    if(seen.has(k)) return;
+    seen.add(k);
+    // Canonical names for known keys
+    if(k==='futures options'){ out.push({name:'Futures & Options', emoji:c.emoji||'📉'}); return; }
+    if(k==='commodity'){ out.push({name:'Commodity', emoji:c.emoji||'🛢️'}); return; }
+    out.push(c);
+  });
+  INVESTMENT_CATS=out;
+}
 async function loadCategories(){
   try{
     const inc=await dbGet('categories','income');
@@ -2719,16 +2741,18 @@ async function loadCategories(){
     if(inc) INCOME_CATS=JSON.parse(inc.value);
     if(exp) EXPENSE_CATS=JSON.parse(exp.value);
     if(inv) INVESTMENT_CATS=JSON.parse(inv.value);
-    // Ensure new investment categories exist for existing users
+    // Ensure Commodity + Futures & Options exist once (no duplicates)
+    dedupeInvestmentCats();
     const need=[{name:'Commodity',emoji:'🛢️'},{name:'Futures & Options',emoji:'📉'}];
     need.forEach(n=>{
-      if(!INVESTMENT_CATS.some(c=>String(c.name).toLowerCase()===n.name.toLowerCase())){
-        // insert before "Other Investment" if present
+      if(!INVESTMENT_CATS.some(c=>invCatKey(c.name)===invCatKey(n.name))){
         const oi=INVESTMENT_CATS.findIndex(c=>/other/i.test(c.name||''));
         if(oi>=0) INVESTMENT_CATS.splice(oi,0,n);
         else INVESTMENT_CATS.push(n);
       }
     });
+    dedupeInvestmentCats();
+    try{ await saveCategories(); }catch(e){}
   }catch{}
 }
 
@@ -3156,6 +3180,7 @@ function updateCategories(){
 function renderCategoryMaster(){
   document.getElementById('incomeCatCount').textContent=INCOME_CATS.length;
   document.getElementById('expenseCatCount').textContent=EXPENSE_CATS.length;
+  try{ dedupeInvestmentCats(); }catch(e){}
   document.getElementById('investmentCatCount').textContent=INVESTMENT_CATS.length;
   document.getElementById('incomeCatList').innerHTML=INCOME_CATS.map((cat,i)=>`
     <div class="cat-master-item"><span style="font-size:1.2rem;">${cat.emoji}</span><span style="flex:1;font-size:0.85rem;font-weight:600;">${cat.name}</span><button class="cat-master-del" onclick="deleteCat('income',${i})">✕</button></div>`).join('')||'<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:8px;">None</div>';
@@ -3185,6 +3210,7 @@ function resetCategories(){
   INCOME_CATS=[...DEFAULT_INCOME_CATS.map(c=>({...c}))];
   EXPENSE_CATS=[...DEFAULT_EXPENSE_CATS.map(c=>({...c}))];
   INVESTMENT_CATS=[...DEFAULT_INVESTMENT_CATS.map(c=>({...c}))];
+  try{ dedupeInvestmentCats(); }catch(e){}
   saveCategories();renderCategoryMaster();updateCategories();showToast('✅ Reset done!');
 }
 
@@ -5951,7 +5977,10 @@ function renderStatement(){
 }
 
 // INVESTMENTS
-function investmentCategoryOptions(){return INVESTMENT_CATS.map(c=>`<option value="${c.name}">${c.emoji} ${c.name}</option>`).join('');}
+function investmentCategoryOptions(){
+  try{ dedupeInvestmentCats(); }catch(e){}
+  return INVESTMENT_CATS.map(c=>`<option value="${c.name}">${c.emoji||''} ${c.name}</option>`).join('');
+}
 function setInvestmentCategoryOptions(){const e=document.getElementById('invPurchaseCategory');if(e)e.innerHTML=investmentCategoryOptions();}
 function invEsc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function newInvSaleId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
