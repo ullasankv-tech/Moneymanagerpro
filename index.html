@@ -1063,6 +1063,18 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div class="daily-limit-warning" id="dailyWarning">⚠️ <span id="dailyWarningText"></span></div>
       </div>
 
+      <!-- SALARY DAY BANNER -->
+      <div id="salaryDayBanner" style="display:none;margin-bottom:14px;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg,#0d47a1,#1565c0);color:#fff;box-shadow:0 4px 14px rgba(21,101,192,0.35);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;opacity:0.9;letter-spacing:0.04em;text-transform:uppercase;">💼 Salary Day</div>
+            <div style="font-size:1rem;font-weight:900;margin-top:2px;" id="salaryDayBannerTitle">It's payday!</div>
+            <div style="font-size:0.75rem;opacity:0.9;margin-top:4px;line-height:1.4;" id="salaryDayBannerSub">Complete your checklist: income → auto-split → bills.</div>
+          </div>
+          <button type="button" onclick="openPaydayChecklist(true)" style="flex-shrink:0;padding:10px 14px;border:none;border-radius:12px;background:#fff;color:#1565c0;font-weight:800;font-size:0.78rem;cursor:pointer;font-family:var(--font);">Checklist</button>
+        </div>
+      </div>
+
       <div class="budget-alert" id="budgetAlert">
         <span style="font-size:1.3rem;">⚠️</span>
         <div><div style="font-size:0.85rem;font-weight:700;" id="budgetAlertText"></div><div style="font-size:0.74rem;color:var(--muted);" id="budgetAlertSub"></div></div>
@@ -1690,6 +1702,30 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 </div>
 <div id="tab-settings" style="display:none;">
 
+      <!-- SALARY DAY AUTOMATION -->
+      <div class="panel">
+        <h3>💼 Salary Day Automation</h3>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;line-height:1.5;">On your salary date the app shows a payday checklist: record income, run auto-split, review bills and safe-to-spend.</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:0.85rem;font-weight:700;">Enable salary day</div>
+          <label class="toggle"><input type="checkbox" id="salaryDayEnabled" onchange="saveSalaryDaySettings()"><span class="slider"></span></label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <label style="font-size:0.68rem;font-weight:700;color:var(--muted);">Salary day of month</label>
+            <select id="salaryDayOfMonth" onchange="saveSalaryDaySettings()" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;">
+              <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option><option value="5">5th</option><option value="6">6th</option><option value="7">7th</option><option value="8">8th</option><option value="9">9th</option><option value="10">10th</option><option value="11">11th</option><option value="12">12th</option><option value="13">13th</option><option value="14">14th</option><option value="15">15th</option><option value="16">16th</option><option value="17">17th</option><option value="18">18th</option><option value="19">19th</option><option value="20">20th</option><option value="21">21st</option><option value="22">22nd</option><option value="23">23rd</option><option value="24">24th</option><option value="25">25th</option><option value="26">26th</option><option value="27">27th</option><option value="28">28th</option><option value="29">29th</option><option value="30">30th</option><option value="31">31st</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.68rem;font-weight:700;color:var(--muted);">Expected salary (optional)</label>
+            <input type="number" id="salaryDayAmount" min="0" step="1" placeholder="e.g. 50000" onchange="saveSalaryDaySettings()" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);margin-top:4px;"/>
+          </div>
+        </div>
+        <div style="font-size:0.68rem;color:var(--muted);line-height:1.45;margin-bottom:10px;">Auto-split uses the rules under <b>Register → Pockets</b>. Each income is still split only once.</div>
+        <button type="button" onclick="openPaydayChecklist(true)" style="width:100%;padding:11px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">📋 Open payday checklist</button>
+      </div>
+
       <!-- CURRENCY MASTER -->
       <div class="panel">
         <h3>💱 Currency</h3>
@@ -2054,6 +2090,20 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <div id="avgResult" style="background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:12px;font-size:0.85rem;margin-bottom:10px;color:var(--muted);text-align:center;">Enter quantities and prices to see the new average.</div>
     <button type="button" onclick="resetAveraging()" style="width:100%;padding:11px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;cursor:pointer;color:var(--text);font-family:var(--font);">Reset</button>
     <button type="button" class="modal-close" onclick="closeModal('investmentAveragingModal')">Close</button>
+  </div>
+</div>
+
+
+<!-- SALARY DAY / PAYDAY CHECKLIST -->
+<div class="modal-overlay" id="paydayModal">
+  <div class="modal-sheet" style="max-width:480px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <h3 style="margin:0;">💼 Payday Checklist</h3>
+      <button type="button" onclick="closeModal('paydayModal')" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);">✕</button>
+    </div>
+    <p style="font-size:0.75rem;color:var(--muted);margin:0 0 12px;line-height:1.45;" id="paydayModalSub">Walk through these steps when your salary arrives.</p>
+    <div id="paydayChecklistBody"></div>
+    <button type="button" class="modal-close" onclick="closeModal('paydayModal')" style="margin-top:12px;">Close</button>
   </div>
 </div>
 
@@ -3160,6 +3210,12 @@ function showApp(){
   document.getElementById('txnDate').value=new Date().toISOString().split('T')[0];
   document.getElementById('reportMonthLabel').textContent=getMonthLabel();
   updateCategories();checkRecurringDue();renderAll();applyDarkMode();setupDailyReminder();
+  try{
+    Promise.resolve(loadSalaryDaySettings()).then(()=>{
+      try{ renderSalaryDayBanner(); }catch(e){}
+      try{ maybePromptPayday(); }catch(e){}
+    }).catch(()=>{});
+  }catch(e){}
 }
 
 // ═══════════════════════════════════════
@@ -8003,6 +8059,7 @@ async function clearAllData(){
   await dbPut('settings',{key:'networth_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'register_'+currentUser.username,    value:'[]'});
   await dbPut('settings',{key:'pocket_split_history_'+currentUser.username, value:'[]'});
+  try{ salaryDaySettings={enabled:false,day:1,amount:0,lastDoneYm:'',checklist:{}}; await dbPut('settings',{key:'salary_day_'+currentUser.username,value:JSON.stringify(salaryDaySettings)}); }catch(e){}
   try{ nwSnapshots=[]; await dbPut('settings',{key:'networth_snap_'+currentUser.username,value:'[]'}); }catch(e){}
   pocketSplitHistory=[];
   try{ _regSmartLoadedFor=null; }catch(e){}
@@ -8066,7 +8123,7 @@ function showTab(tab,pushHistory=true){
   if(tab==='report')renderReport();
   if(tab==='budget')renderBudget();
   if(tab==='goals'){renderGoals();renderRecurring();renderEmis();}
-  if(tab==='settings'){renderCategoryMaster();applyCurrencyUI();try{updateSmsUI();}catch(e){}};
+  if(tab==='settings'){renderCategoryMaster();applyCurrencyUI();try{updateSmsUI();}catch(e){};try{applySalaryDaySettingsUI();}catch(e){}};
   if(tab==='loans'){renderLoans();renderLoanReport();checkLoanOverdue();}
   if(tab==='reminders'){renderReminders();}
   if(tab==='register'){renderRegister(); if(typeof renderRegFeatureMode==='function') renderRegFeatureMode();}
@@ -8077,7 +8134,7 @@ function showTab(tab,pushHistory=true){
   if(strip) strip.style.display=(!currentUser||isPremium())?'none':'flex';
   if(tab==='investments'){renderInvestments();renderTaxCenter();}
 }
-function renderAll(){renderHome();renderMiniChart();checkBudgetAlert();renderHealthScore();renderDailyLimit();if(document.getElementById("nav-loans").classList.contains("active"))checkLoanOverdue();}
+function renderAll(){renderHome();renderMiniChart();checkBudgetAlert();renderHealthScore();renderDailyLimit();try{renderSalaryDayBanner();}catch(e){}if(document.getElementById("nav-loans").classList.contains("active"))checkLoanOverdue();}
 
 
 // ═══════════════════════════════════════
@@ -10807,6 +10864,282 @@ function parseCSVLine(line){
   result.push(current.trim());
   return result;
 }
+
+
+// ══════════════════════════════════════════════════════
+// SALARY DAY AUTOMATION
+// ══════════════════════════════════════════════════════
+let salaryDaySettings = { enabled:false, day:1, amount:0, lastDoneYm:'', checklist:{} };
+
+async function loadSalaryDaySettings(){
+  try{
+    if(!currentUser) return;
+    const r = await dbGet('settings','salary_day_'+currentUser.username);
+    if(r && r.value){
+      const v = typeof r.value==='string' ? JSON.parse(r.value) : r.value;
+      salaryDaySettings = Object.assign({ enabled:false, day:1, amount:0, lastDoneYm:'', checklist:{} }, v||{});
+    }
+  }catch(e){ salaryDaySettings = { enabled:false, day:1, amount:0, lastDoneYm:'', checklist:{} }; }
+  applySalaryDaySettingsUI();
+}
+async function saveSalaryDaySettings(){
+  const en = document.getElementById('salaryDayEnabled');
+  const dayEl = document.getElementById('salaryDayOfMonth');
+  const amtEl = document.getElementById('salaryDayAmount');
+  if(en) salaryDaySettings.enabled = !!en.checked;
+  if(dayEl) salaryDaySettings.day = Math.min(31, Math.max(1, parseInt(dayEl.value,10)||1));
+  if(amtEl) salaryDaySettings.amount = Math.max(0, parseFloat(amtEl.value)||0);
+  try{
+    await dbPut('settings',{key:'salary_day_'+currentUser.username, value:JSON.stringify(salaryDaySettings)});
+  }catch(e){ console.warn(e); }
+  try{ renderSalaryDayBanner(); }catch(e){}
+  showToast('✅ Salary day settings saved');
+}
+function applySalaryDaySettingsUI(){
+  const en = document.getElementById('salaryDayEnabled');
+  const dayEl = document.getElementById('salaryDayOfMonth');
+  const amtEl = document.getElementById('salaryDayAmount');
+  if(en) en.checked = !!salaryDaySettings.enabled;
+  if(dayEl) dayEl.value = String(salaryDaySettings.day||1);
+  if(amtEl) amtEl.value = salaryDaySettings.amount>0 ? salaryDaySettings.amount : '';
+}
+function salaryYmKey(d){
+  const x=d||new Date();
+  return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0');
+}
+function salaryDayThisMonth(){
+  const now=new Date();
+  const last=new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  return Math.min(Number(salaryDaySettings.day)||1, last);
+}
+function isSalaryDayWindow(){
+  if(!salaryDaySettings.enabled) return false;
+  const now=new Date();
+  const day=now.getDate();
+  const sday=salaryDayThisMonth();
+  // Active from salary day through +2 days
+  return day>=sday && day<=sday+2;
+}
+function paydayIncomeThisMonth(){
+  const now=new Date();
+  const mo=now.getMonth(), yr=now.getFullYear();
+  const sday=salaryDayThisMonth();
+  const incomes=opTxns().filter(t=>{
+    if(t.type!=='income') return false;
+    const d=new Date(t.date);
+    if(d.getMonth()!==mo||d.getFullYear()!==yr) return false;
+    const cat=String(t.category||'').toLowerCase();
+    const note=String(t.note||'').toLowerCase();
+    // Prefer salary-tagged, else any income on/near salary day
+    if(/salary|payroll|wage/.test(cat)||/salary|payroll/.test(note)) return true;
+    const dd=d.getDate();
+    return dd>=sday-1 && dd<=sday+2;
+  });
+  if(!incomes.length) return null;
+  return incomes.sort((a,b)=>Number(b.amount)-Number(a.amount))[0];
+}
+function paydayBillsDue(){
+  const sday=salaryDayThisMonth();
+  return (reminders||[]).filter(r=>{
+    if(r.paid) return false;
+    const dd=Number(r.dueDay)||0;
+    // bills due around salary week
+    return dd>=sday && dd<=Math.min(31, sday+7);
+  });
+}
+function renderSalaryDayBanner(){
+  const el=document.getElementById('salaryDayBanner');
+  if(!el) return;
+  if(!salaryDaySettings.enabled || !isSalaryDayWindow()){
+    el.style.display='none';
+    return;
+  }
+  const ym=salaryYmKey();
+  const done=salaryDaySettings.lastDoneYm===ym;
+  const inc=paydayIncomeThisMonth();
+  const title=document.getElementById('salaryDayBannerTitle');
+  const sub=document.getElementById('salaryDayBannerSub');
+  if(done){
+    if(title) title.textContent='Payday checklist complete';
+    if(sub) sub.textContent='You finished this month’s salary steps. Open again anytime from Settings.';
+    el.style.background='linear-gradient(135deg,#1b5e20,#2e7d32)';
+  } else {
+    if(title) title.textContent=inc ? 'Salary received — finish checklist' : "It's payday!";
+    if(sub) sub.textContent=inc
+      ? ('Income '+fmt(inc.amount)+' found. Run auto-split & review bills.')
+      : ('Salary day is the '+salaryDayThisMonth()+(salaryDaySettings.amount?(' · expected '+fmt(salaryDaySettings.amount)):'')+'.');
+    el.style.background='linear-gradient(135deg,#0d47a1,#1565c0)';
+  }
+  el.style.display='block';
+}
+async function openPaydayChecklist(force){
+  if(!currentUser){ showToast('⚠️ Sign in first'); return; }
+  try{ await ensureRegSmartLoaded(); }catch(e){}
+  try{ await loadSalaryDaySettings(); }catch(e){}
+  renderPaydayChecklist();
+  openModal('paydayModal');
+}
+function paydayCheckItem(key){
+  const ym=salaryYmKey();
+  if(!salaryDaySettings.checklist) salaryDaySettings.checklist={};
+  if(!salaryDaySettings.checklist[ym]) salaryDaySettings.checklist[ym]={};
+  salaryDaySettings.checklist[ym][key]=true;
+  // persist quietly
+  dbPut('settings',{key:'salary_day_'+currentUser.username, value:JSON.stringify(salaryDaySettings)}).catch(()=>{});
+  renderPaydayChecklist();
+}
+function renderPaydayChecklist(){
+  const body=document.getElementById('paydayChecklistBody');
+  const sub=document.getElementById('paydayModalSub');
+  if(!body) return;
+  const ym=salaryYmKey();
+  const checks=(salaryDaySettings.checklist&&salaryDaySettings.checklist[ym])||{};
+  const sday=salaryDayThisMonth();
+  const inc=paydayIncomeThisMonth();
+  const bills=paydayBillsDue();
+  const splitDone=inc && typeof isIncomeAlreadySplit==='function' && isIncomeAlreadySplit(inc.id);
+  if(sub) sub.textContent='Salary day '+sday+' · '+new Date().toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+
+  // Safe-to-spend quick figure
+  let safeTxt='—';
+  try{
+    const now=new Date();
+    const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+    const daysLeft=Math.max(1, daysInMonth-now.getDate()+1);
+    const mt=opTxns().filter(t=>{const d=new Date(t.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+    const mInc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount||0),0);
+    const mExp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount||0),0);
+    const safe=Math.floor(Math.max(0,mInc-mExp-500)/daysLeft);
+    safeTxt=fmt(safe)+' / day';
+  }catch(e){}
+
+  const item=(key, emoji, title, detail, done, actionsHtml)=>`
+    <div style="padding:12px;border-radius:14px;border:1.5px solid ${done?'#a5d6a7':'var(--border)'};background:${done?'#e8f5e9':'var(--bg)'};margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <div style="font-size:1.3rem;line-height:1;">${done?'✅':emoji}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:800;font-size:0.88rem;color:var(--text);">${title}</div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:3px;line-height:1.4;">${detail}</div>
+          ${actionsHtml?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${actionsHtml}</div>`:''}
+        </div>
+      </div>
+    </div>`;
+
+  // Step 1: Income
+  let step1Actions='';
+  if(!inc){
+    const prefill=salaryDaySettings.amount>0?salaryDaySettings.amount:'';
+    step1Actions=`<button type="button" onclick="paydayRecordSalary(${prefill||0})" style="padding:8px 12px;border:none;border-radius:10px;background:linear-gradient(135deg,#00b894,#00cec9);color:#fff;font-weight:700;font-size:0.75rem;cursor:pointer;font-family:var(--font);">➕ Record salary income</button>`;
+  } else if(!checks.income){
+    step1Actions=`<button type="button" onclick="paydayCheckItem('income')" style="padding:8px 12px;border:none;border-radius:10px;background:#1565c0;color:#fff;font-weight:700;font-size:0.75rem;cursor:pointer;font-family:var(--font);">Mark done</button>`;
+  }
+  const step1=item('income','💰','1. Record salary',
+    inc?('Found '+fmt(inc.amount)+' · '+(inc.date||'')+(inc.category?' · '+inc.category:''))
+       :('No salary-like income this month yet'+(salaryDaySettings.amount?'. Expected '+fmt(salaryDaySettings.amount):'.')),
+    !!(inc||checks.income), step1Actions);
+
+  // Step 2: Auto-split
+  let step2Actions='';
+  if(inc && !splitDone){
+    step2Actions=`<button type="button" onclick="paydayRunSplit()" style="padding:8px 12px;border:none;border-radius:10px;background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;font-weight:700;font-size:0.75rem;cursor:pointer;font-family:var(--font);">▶️ Run auto-split</button>
+      <button type="button" onclick="closeModal('paydayModal');openSecondaryTab('register','home');setTimeout(()=>setRegFeature('pockets'),80)" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-weight:700;font-size:0.75rem;cursor:pointer;font-family:var(--font);">Edit rules</button>`;
+  } else if(splitDone && !checks.split){
+    step2Actions=`<button type="button" onclick="paydayCheckItem('split')" style="padding:8px 12px;border:none;border-radius:10px;background:#1565c0;color:#fff;font-weight:700;font-size:0.75rem;cursor:pointer;font-family:var(--font);">Mark done</button>`;
+  }
+  const step2=item('split','👝','2. Auto-split into pockets',
+    splitDone?'This income was already auto-split into Emergency / Goals / Smart pockets.'
+      :(inc?'Uses your Register → Pockets split rules on the latest salary income.':'Record salary income first.'),
+    !!(splitDone||checks.split), step2Actions);
+
+  // Step 3: Bills
+  const billLines=bills.length
+    ? bills.slice(0,5).map(r=>r.emoji+' '+r.name+' · '+fmt(r.amount)+' · due '+r.dueDay).join('<br>')
+    : 'No unpaid bills due in the salary week.';
+  let step3Actions=`<button type="button" onclick="closeModal('paydayModal');openSecondaryTab('reminders','home')" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-weight:700;font-size:0.75rem;cursor:pointer;font-family:var(--font);">Open bills</button>`;
+  if(!checks.bills){
+    step3Actions+=`<button type="button" onclick="paydayCheckItem('bills')" style="padding:8px 12px;border:none;border-radius:10px;background:#1565c0;color:#fff;font-weight:700;font-size:0.75rem;cursor:pointer;font-family:var(--font);">Mark reviewed</button>`;
+  }
+  const step3=item('bills','🔔','3. Review bills due',
+    billLines, !!checks.bills, step3Actions);
+
+  // Step 4: Safe-to-spend
+  let step4Actions=`<button type="button" onclick="closeModal('paydayModal');openSecondaryTab('register','home');setTimeout(()=>setRegFeature('safe'),80)" style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-weight:700;font-size:0.75rem;cursor:pointer;font-family:var(--font);">Safe-to-spend</button>`;
+  if(!checks.safe){
+    step4Actions+=`<button type="button" onclick="paydayCheckItem('safe')" style="padding:8px 12px;border:none;border-radius:10px;background:#1565c0;color:#fff;font-weight:700;font-size:0.75rem;cursor:pointer;font-family:var(--font);">Mark done</button>`;
+  }
+  const step4=item('safe','📅','4. Check safe-to-spend',
+    'Rough daily allowance after a ₹500 buffer: <b>'+safeTxt+'</b>',
+    !!checks.safe, step4Actions);
+
+  const allDone = (inc||checks.income) && (splitDone||checks.split) && checks.bills && checks.safe;
+  let footer='';
+  if(allDone){
+    footer=`<button type="button" onclick="completePaydayChecklist()" style="width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#00b894,#00cec9);color:#fff;font-weight:800;font-size:0.88rem;cursor:pointer;font-family:var(--font);">🎉 Finish payday for this month</button>`;
+  } else {
+    footer=`<div style="font-size:0.7rem;color:var(--muted);text-align:center;line-height:1.4;">Complete all steps, then finish the month. You can reopen this anytime from Settings.</div>`;
+  }
+
+  body.innerHTML = step1+step2+step3+step4+footer;
+}
+async function paydayRecordSalary(amount){
+  amount=Number(amount)||0;
+  if(!(amount>0)){
+    const v=prompt('Salary amount received?', salaryDaySettings.amount>0?String(salaryDaySettings.amount):'');
+    amount=parseFloat(v)||0;
+  }
+  if(!(amount>0)){ showToast('⚠️ Enter a valid amount'); return; }
+  const today=(typeof localDateKey==='function')?localDateKey():new Date().toISOString().split('T')[0];
+  // Prefer Salary category if present
+  let cat='Salary';
+  const found=(INCOME_CATS||[]).find(c=>/salary/i.test(c.name||''));
+  if(found) cat=found.name;
+  else if(INCOME_CATS&&INCOME_CATS[0]) cat=INCOME_CATS[0].name;
+  const emoji=((INCOME_CATS||[]).find(c=>c.name===cat)||{}).emoji||'💰';
+  const txId=Date.now();
+  transactions.push({id:txId,type:'income',amount,category:cat,date:today,note:'Salary (payday)',emoji,createdAt:txId,source:'salary_day'});
+  try{ await saveData(); }catch(e){ showToast('⚠️ Could not save'); return; }
+  paydayCheckItem('income');
+  try{ renderAll(); }catch(e){}
+  showToast('✅ Salary '+fmt(amount)+' recorded', 2500);
+  renderPaydayChecklist();
+}
+async function paydayRunSplit(){
+  try{
+    await runPocketAutoSplit();
+    paydayCheckItem('split');
+    renderPaydayChecklist();
+  }catch(e){
+    console.warn(e);
+    showToast('⚠️ Auto-split failed');
+  }
+}
+async function completePaydayChecklist(){
+  salaryDaySettings.lastDoneYm = salaryYmKey();
+  try{
+    await dbPut('settings',{key:'salary_day_'+currentUser.username, value:JSON.stringify(salaryDaySettings)});
+  }catch(e){}
+  renderSalaryDayBanner();
+  closeModal('paydayModal');
+  showToast('🎉 Payday complete for '+salaryYmKey(), 2800);
+}
+async function maybePromptPayday(){
+  try{
+    if(!currentUser || !salaryDaySettings.enabled) return;
+    if(!isSalaryDayWindow()) return;
+    const ym=salaryYmKey();
+    if(salaryDaySettings.lastDoneYm===ym) return;
+    // soft prompt once per day
+    const k='payday_prompt_'+ym+'_'+new Date().getDate();
+    if(sessionStorage.getItem(k)) return;
+    sessionStorage.setItem(k,'1');
+    setTimeout(()=>{
+      if(confirm("💼 It's salary day window.\\n\\nOpen the payday checklist now?\\n(Income → Auto-split → Bills → Safe-to-spend)")){
+        openPaydayChecklist(true);
+      }
+    }, 900);
+  }catch(e){}
+}
+
 
 // ══════════════════════════════════════════════════════
 // REGISTER SMART FEATURES — Pockets, Safe-to-Spend, Subs, AI, Goal Boost
