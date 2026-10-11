@@ -1,4 +1,4 @@
-# Save as: .github/workflows/release-aab.yml   (keep your existing main.yml as it is)
+# Save as: .github/workflows/release-aab.yml
 # Run from: GitHub -> Actions -> "Build Signed Release AAB" -> Run workflow
 name: Build Signed Release AAB
 
@@ -28,11 +28,11 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - name: Prepare web assets
         run: |
@@ -42,10 +42,12 @@ jobs:
           if [ -f sw.js ]; then cp sw.js www/sw.js; fi
           if [ -d icons ]; then cp -r icons www/icons; fi
 
-      - name: Install Capacitor 6
+      # Capacitor 8 targets Android 16 (API 36), which Google Play requires for new apps and updates.
+      # @capgo/native-purchases = Google Play Billing (one-time Premium purchase).
+      - name: Install Capacitor 8
         run: |
           npm init -y
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/filesystem@6 @capacitor/share@6 @capgo/capacitor-native-biometric@6.0.4 @capacitor-community/speech-recognition@^6.0.0 @capacitor/local-notifications@^6
+          npm install --legacy-peer-deps @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 @capacitor/filesystem@8 @capacitor/share@8 @capacitor/local-notifications@8 @capgo/capacitor-native-biometric@^8 @capacitor-community/speech-recognition@^7.0.0 @capgo/native-purchases@^8.2.0
           npm install @capacitor/assets@3 --save-dev
 
       - name: Initialize Capacitor (non-interactive)
@@ -54,13 +56,18 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Add mic permission
+      - name: Add mic, notification and billing permissions
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q "RECORD_AUDIO" "$MANIFEST"; then
-            sed -i 's#<application#<uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>\n    <application#' "$MANIFEST"
+          add_perm() { if ! grep -q "$1" "$MANIFEST"; then sed -i "s|<application|<uses-permission android:name=\"$1\" />\n    <application|" "$MANIFEST"; fi; }
+          add_perm android.permission.RECORD_AUDIO
+          add_perm android.permission.POST_NOTIFICATIONS
+          add_perm com.android.vending.BILLING
+          if ! grep -q "android.speech.RecognitionService" "$MANIFEST"; then
+            sed -i 's#<application#<queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>\n    <application#' "$MANIFEST"
           fi
           npx cap sync android
+          grep -n "uses-permission" "$MANIFEST"
 
       - name: Add biometric permission
         run: |
@@ -68,14 +75,6 @@ jobs:
           if ! grep -q "USE_BIOMETRIC" "$MANIFEST"; then
             sed -i 's|<application|<uses-permission android:name="android.permission.USE_BIOMETRIC" />\n    <application|' "$MANIFEST"
           fi
-
-      - name: Add notification permission (daily reminder)
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST"; then
-            sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <application|' "$MANIFEST"
-          fi
-          grep -n "uses-permission" "$MANIFEST"
 
       - name: Generate app icons
         run: |
@@ -105,11 +104,26 @@ jobs:
           sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
           grep -n "versionCode\|versionName" android/app/build.gradle
 
+      - name: Check Play requirements (target API)
+        run: |
+          grep -n "targetSdkVersion\|compileSdkVersion" android/variables.gradle
+          T=$(grep -o "targetSdkVersion = [0-9]*" android/variables.gradle | grep -o "[0-9]*$")
+          if [ -z "$T" ] || [ "$T" -lt 36 ]; then echo "ERROR: targetSdkVersion is $T. Google Play requires 36 or higher for new apps and updates."; exit 1; fi
+
       - name: Build release bundle (unsigned)
         working-directory: android
         run: |
           chmod +x ./gradlew
           ./gradlew bundleRelease --no-daemon
+
+      - name: Check Play Billing library version (must be 8.0.0 or higher)
+        run: |
+          M=$(find android/app/build/intermediates -path "*merged_manifests*release*" -name AndroidManifest.xml | head -1)
+          echo "Merged manifest: $M"
+          V=$(tr -d "\n" < "$M" | grep -o 'com.google.android.play.billingclient.version"[^>]*value="[^"]*"' | sed 's/.*value="//;s/"//')
+          echo "Play Billing library version in this build: ${V:-not found}"
+          if [ -z "$V" ]; then echo "WARNING: billing version attribute not found - check that @capgo/native-purchases is installed."; 
+          elif [ "${V%%.*}" -lt 8 ]; then echo "ERROR: Google Play requires Billing Library 8.0.0 or higher. Update @capgo/native-purchases."; exit 1; fi
 
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/MoneyManagerPro.jks"
@@ -130,7 +144,7 @@ jobs:
 
       - name: Remove keystore
         if: always()
-        run: rm -f "$RUNNER_TEMP/upload-keystore.jks"
+        run: rm -f "$RUNNER_TEMP/MoneyManagerPro.jks"
 
       - name: Upload signed AAB
         uses: actions/upload-artifact@v4
