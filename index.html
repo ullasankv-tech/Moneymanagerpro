@@ -891,6 +891,11 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .inv-radio input{position:absolute;opacity:0;width:0;height:0;margin:0;padding:0;}
 .inv-radio span{display:block;text-align:center;padding:7px 2px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:.76rem;font-weight:700;cursor:pointer;color:var(--text);}
 .inv-radio input:checked+span{background:#1565c0;border-color:#1565c0;color:#fff;}
+.inv-chk-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;}
+.inv-chk-label{font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;min-width:52px;}
+.inv-chk{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;font-weight:700;color:var(--text);cursor:pointer;user-select:none;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);}
+.inv-chk input{width:15px;height:15px;accent-color:#1565c0;margin:0;cursor:pointer;flex-shrink:0;}
+.inv-chk:has(input:checked){border-color:#1565c0;background:#e3f2fd;color:#0d47a1;}
 .inv-link{background:none;border:none;color:#1565c0;font-weight:700;font-size:inherit;cursor:pointer;padding:0 2px;font-family:var(--font);text-decoration:underline;}
 .inv-cmp{cursor:pointer;border-bottom:1px dotted var(--muted);}
 .inv-chips{display:flex;flex-wrap:wrap;gap:6px;}
@@ -1651,17 +1656,18 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     </div>
     <div id="investmentSummary"></div>
     <div style="display:flex;gap:8px;margin:10px 0 14px;"><button type="button" onclick="openInvestmentEntriesModal()" style="flex:1;padding:11px 6px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📋 Edit Entries</button><button type="button" onclick="openInvPerformance()" style="flex:1;padding:11px 6px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-weight:700;font-size:0.85rem;cursor:pointer;color:var(--text);font-family:var(--font);">📊 Trading Performance</button></div>
-    <div id="invStmtFilters" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 10px;margin-bottom:10px;">
-      <div class="inv-seg"><b>Segment</b>
-        <label class="inv-radio"><input type="radio" name="invSegF" value="all" checked onchange="setInvFilter('seg','all')"><span>All</span></label>
-        <label class="inv-radio"><input type="radio" name="invSegF" value="eq" onchange="setInvFilter('seg','eq')"><span>EQ</span></label>
-        <label class="inv-radio"><input type="radio" name="invSegF" value="fno" onchange="setInvFilter('seg','fno')"><span>F&amp;O</span></label>
-        <label class="inv-radio"><input type="radio" name="invSegF" value="other" onchange="setInvFilter('seg','other')"><span>Other</span></label>
+    <div id="invStmtFilters" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px;">
+      <div class="inv-chk-row">
+        <span class="inv-chk-label">Category</span>
+        <label class="inv-chk"><input type="checkbox" id="invSegEq" checked onchange="onInvFilterChange()"><span>Shares / EQ</span></label>
+        <label class="inv-chk"><input type="checkbox" id="invSegFno" checked onchange="onInvFilterChange()"><span>F&amp;O</span></label>
+        <label class="inv-chk"><input type="checkbox" id="invSegCmd" checked onchange="onInvFilterChange()"><span>Commodity</span></label>
+        <label class="inv-chk"><input type="checkbox" id="invSegOth" checked onchange="onInvFilterChange()"><span>Other</span></label>
       </div>
-      <div class="inv-seg"><b>Status</b>
-        <label class="inv-radio"><input type="radio" name="invStatF" value="all" checked onchange="setInvFilter('status','all')"><span>All</span></label>
-        <label class="inv-radio"><input type="radio" name="invStatF" value="open" onchange="setInvFilter('status','open')"><span>Open</span></label>
-        <label class="inv-radio"><input type="radio" name="invStatF" value="closed" onchange="setInvFilter('status','closed')"><span>Closed</span></label>
+      <div class="inv-chk-row" style="margin-top:8px;">
+        <span class="inv-chk-label">Status</span>
+        <label class="inv-chk"><input type="checkbox" id="invStatOpen" checked onchange="onInvFilterChange()"><span>Open</span></label>
+        <label class="inv-chk"><input type="checkbox" id="invStatClosed" checked onchange="onInvFilterChange()"><span>Closed</span></label>
       </div>
     </div>
     <div id="investmentReportInline"></div>
@@ -2064,9 +2070,9 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
     <input type="hidden" id="invPurchaseId">
     <div class="inv-grid">
       <div class="form-group"><label>Purchase date</label><input type="date" class="form-input" id="invPurchaseDate"></div>
-      <div class="form-group"><label>Trade type</label><select class="form-input" id="invPurchaseTradeType" onchange="invTradeTypeChanged('Purchase')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option><option value="commodity">Commodity</option></select></div>
-      <div class="form-group inv-full" id="invPurchaseInstrWrap" style="display:none;"><label>Instrument (futures / options)</label><select class="form-input" id="invPurchaseInstrument" onchange="invTradeTypeChanged('Purchase')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
-      <div class="form-group"><label>Category</label><select class="form-input" id="invPurchaseCategory"></select></div>
+      <div class="form-group"><label>Trade type</label><select class="form-input" id="invPurchaseTradeType" onchange="invTradeTypeChanged('Purchase')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option></select></div>
+      <div class="form-group"><label>Category</label><select class="form-input" id="invPurchaseCategory" onchange="invCategoryChanged('Purchase')"></select></div>
+      <div class="form-group inv-full" id="invPurchaseInstrWrap" style="display:none;"><label>Future / Options</label><select class="form-input" id="invPurchaseInstrument" onchange="invTradeTypeChanged('Purchase')"><option value="futures">Future</option><option value="options">Options</option></select></div>
       <div class="form-group"><label>Asset type</label>
         <select class="form-input" id="invPurchaseAssetType">
           <option value="equity">Equity / Stocks</option>
@@ -2106,8 +2112,8 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div class="form-group inv-full"><label>Against purchase</label><div class="voice-field-row"><select class="form-input" id="invSalePurchase" onchange="updateInvestmentSaleBalance()"></select><button type="button" class="voice-mic-btn" aria-label="Speak scrip name" onclick="invVoiceScrip(this)">🎤</button></div></div>
       <div id="invSaleBalance" class="inv-full inv-bal"></div>
       <div class="form-group"><label>Sale date</label><input type="date" class="form-input" id="invSaleDate"></div>
-      <div class="form-group"><label>Trade type</label><select class="form-input" id="invSaleTradeType" onchange="invTradeTypeChanged('Sale')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option><option value="fno">F &amp; O</option><option value="commodity">Commodity</option></select></div>
-      <div class="form-group inv-full" id="invSaleInstrWrap" style="display:none;"><label>Instrument (futures / options)</label><select class="form-input" id="invSaleInstrument" onchange="invTradeTypeChanged('Sale')"><option value="futures">Futures</option><option value="options">Options</option></select></div>
+      <div class="form-group"><label>Trade type</label><select class="form-input" id="invSaleTradeType" onchange="invTradeTypeChanged('Sale')"><option value="delivery">Delivery</option><option value="intraday">Intraday</option></select></div>
+      <div class="form-group inv-full" id="invSaleInstrWrap" style="display:none;"><label>Future / Options</label><select class="form-input" id="invSaleInstrument" onchange="invTradeTypeChanged('Sale')"><option value="futures">Future</option><option value="options">Options</option></select></div>
       <div class="inv-sep"></div>
       <div class="form-group"><label>Sell quantity</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleQty" min="0.0001" step="0.0001" inputmode="decimal" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell quantity" onclick="invVoiceNumber('invSaleQty',this)">🎤</button></div></div>
       <div class="form-group"><label>Sell rate</label><div class="voice-field-row"><input type="number" class="form-input" id="invSaleRate" min="0" step="0.01" inputmode="decimal" oninput="calcInvestmentSale()"><button type="button" class="voice-mic-btn" aria-label="Speak sell rate" onclick="invVoiceNumber('invSaleRate',this)">🎤</button></div></div>
@@ -2302,7 +2308,8 @@ const DEFAULT_EXPENSE_CATS=[
 ];
 const DEFAULT_INVESTMENT_CATS=[
   {name:'Shares',emoji:'📊'},{name:'Mutual Funds',emoji:'📈'},{name:'Bonds',emoji:'🏦'},
-  {name:'Gold',emoji:'🪙'},{name:'Other Investment',emoji:'💎'}
+  {name:'Gold',emoji:'🪙'},{name:'Commodity',emoji:'🛢️'},{name:'Futures & Options',emoji:'📉'},
+  {name:'Other Investment',emoji:'💎'}
 ];
 
 // ═══════════════════════════════════════
@@ -2707,6 +2714,16 @@ async function loadCategories(){
     if(inc) INCOME_CATS=JSON.parse(inc.value);
     if(exp) EXPENSE_CATS=JSON.parse(exp.value);
     if(inv) INVESTMENT_CATS=JSON.parse(inv.value);
+    // Ensure new investment categories exist for existing users
+    const need=[{name:'Commodity',emoji:'🛢️'},{name:'Futures & Options',emoji:'📉'}];
+    need.forEach(n=>{
+      if(!INVESTMENT_CATS.some(c=>String(c.name).toLowerCase()===n.name.toLowerCase())){
+        // insert before "Other Investment" if present
+        const oi=INVESTMENT_CATS.findIndex(c=>/other/i.test(c.name||''));
+        if(oi>=0) INVESTMENT_CATS.splice(oi,0,n);
+        else INVESTMENT_CATS.push(n);
+      }
+    });
   }catch{}
 }
 
@@ -6111,24 +6128,98 @@ function invDeductibleCharges(type,instr,side,turnover,stored){
 }
 // Entry-form helpers (kind = 'Purchase' | 'Sale')
 function invChargeIds(kind){const pu=kind==='Purchase';return {type:'inv'+kind+'TradeType',instr:'inv'+kind+'Instrument',wrap:'inv'+kind+'InstrWrap',ch:'inv'+kind+'Charges',qty:pu?'invPurchaseQty':'invSaleQty',rate:pu?'invPurchaseRate':'invSaleRate'};}
-function invToggleInstr(kind){const i=invChargeIds(kind),t=document.getElementById(i.type),w=document.getElementById(i.wrap);if(t&&w)w.style.display=(t.value==='fno'||t.value==='commodity')?'':'none';}
+function invIsDerivCategory(cat){
+  const c=String(cat||'').toLowerCase();
+  return /future|option|f\s*&\s*o|f\s*and\s*o|\bfno\b/.test(c) || /commodit/.test(c);
+}
+function invIsFnoCategory(cat){
+  const c=String(cat||'').toLowerCase();
+  return /future|option|f\s*&\s*o|f\s*and\s*o|\bfno\b/.test(c);
+}
+function invIsCommodityCategory(cat){
+  return /commodit/i.test(String(cat||''));
+}
+/** Charge schema key: fno / commodity from category, else delivery|intraday from trade type */
+function invChargeSchemaKey(kind){
+  const i=invChargeIds(kind);
+  let cat='';
+  if(kind==='Purchase'){
+    const el=document.getElementById('invPurchaseCategory');
+    cat=el?el.value:'';
+  } else {
+    // Sale: use linked purchase category when available
+    try{
+      const pid=Number(document.getElementById('invSalePurchase')?.value||0);
+      const p=(typeof investments!=='undefined'?investments:[]).find(x=>x.id===pid);
+      if(p) cat=p.category||'';
+    }catch(e){}
+  }
+  if(invIsFnoCategory(cat)) return 'fno';
+  if(invIsCommodityCategory(cat)) return 'commodity';
+  const t=document.getElementById(i.type);
+  const v=t?t.value:'delivery';
+  return (v==='intraday')?'intraday':'delivery';
+}
+function invToggleInstr(kind){
+  const i=invChargeIds(kind),w=document.getElementById(i.wrap);
+  if(!w) return;
+  let show=false;
+  if(kind==='Purchase'){
+    const cat=document.getElementById('invPurchaseCategory')?.value||'';
+    show=invIsDerivCategory(cat);
+  } else {
+    try{
+      const pid=Number(document.getElementById('invSalePurchase')?.value||0);
+      const p=(investments||[]).find(x=>x.id===pid);
+      show=p && invIsDerivCategory(p.category||'');
+    }catch(e){}
+  }
+  w.style.display=show?'':'none';
+}
+function invCategoryChanged(kind){
+  const ch=document.getElementById(invChargeIds(kind).ch);
+  if(ch) ch.dataset.manual='';
+  invToggleInstr(kind);
+  invRefreshCharges(kind);
+  if(kind==='Purchase') calcInvestmentPurchase();
+}
 function invRefreshCharges(kind){
   const i=invChargeIds(kind),ch=document.getElementById(i.ch);
   if(!ch||ch.dataset.manual==='1')return;
   const q=Number(document.getElementById(i.qty).value||0),r=Number(document.getElementById(i.rate).value||0);
-  ch.value=q*r>0?invComputeCharges(document.getElementById(i.type).value,document.getElementById(i.instr).value,kind==='Purchase'?'buy':'sell',q*r).toFixed(2):'';
+  const schema=invChargeSchemaKey(kind);
+  const instr=document.getElementById(i.instr)?.value||'futures';
+  ch.value=q*r>0?invComputeCharges(schema,instr,kind==='Purchase'?'buy':'sell',q*r).toFixed(2):'';
 }
-function invTradeTypeChanged(kind){const ch=document.getElementById(invChargeIds(kind).ch);if(ch)ch.dataset.manual='';invToggleInstr(kind);invRefreshCharges(kind);if(kind==='Purchase')calcInvestmentPurchase();}
-function invChargesTyped(kind){const ch=document.getElementById(invChargeIds(kind).ch);ch.dataset.manual=ch.value.trim()===''?'':'1';if(kind==='Purchase')calcInvestmentPurchase();}
+function invTradeTypeChanged(kind){
+  const ch=document.getElementById(invChargeIds(kind).ch);
+  if(ch) ch.dataset.manual='';
+  invToggleInstr(kind);
+  invRefreshCharges(kind);
+  if(kind==='Purchase') calcInvestmentPurchase();
+  if(kind==='Sale') calcInvestmentSale();
+}
+/** Any user edit (including clearing the field) stays manual so auto-fill cannot put digits back. */
+function invChargesTyped(kind){
+  const ch=document.getElementById(invChargeIds(kind).ch);
+  if(ch) ch.dataset.manual='1';
+  if(kind==='Purchase') calcInvestmentPurchase();
+  if(kind==='Sale') calcInvestmentSale();
+}
 function invResetChargeFields(kind){
   const i=invChargeIds(kind);
-  document.getElementById(i.type).value='delivery';document.getElementById(i.instr).value='futures';
-  const ch=document.getElementById(i.ch);ch.value='';ch.dataset.manual='';
+  const tEl=document.getElementById(i.type); if(tEl) tEl.value='delivery';
+  const inEl=document.getElementById(i.instr); if(inEl) inEl.value='futures';
+  const ch=document.getElementById(i.ch); if(ch){ ch.value=''; ch.dataset.manual=''; }
   invToggleInstr(kind);
 }
 function invLoadChargeFields(kind,rec){
   const i=invChargeIds(kind);
-  document.getElementById(i.type).value=rec.tradeType||'delivery';
+  let tt=rec.tradeType||'delivery';
+  // Legacy: F&O / Commodity used to live in Trade type — map to Delivery and rely on Category
+  if(tt==='fno'||tt==='commodity') tt='delivery';
+  if(tt!=='delivery'&&tt!=='intraday') tt='delivery';
+  document.getElementById(i.type).value=tt;
   document.getElementById(i.instr).value=rec.instrument||'futures';
   invToggleInstr(kind);
   const ch=document.getElementById(i.ch),saved=rec.charges;
@@ -6142,8 +6233,12 @@ function invLoadChargeFields(kind,rec){
 function invSyncSaleTypeFromLot(){
   const idEl=document.getElementById('invSaleId');if(!idEl||Number(idEl.value||0))return;
   const sel=document.getElementById('invSalePurchase'),p=investments.find(x=>String(x.id)===(sel&&sel.value));if(!p)return;
-  document.getElementById('invSaleTradeType').value=p.tradeType||'delivery';
+  let tt=p.tradeType||'delivery';
+  if(tt==='fno'||tt==='commodity') tt='delivery';
+  if(tt!=='delivery'&&tt!=='intraday') tt='delivery';
+  document.getElementById('invSaleTradeType').value=tt;
   document.getElementById('invSaleInstrument').value=p.instrument||'futures';
+  invToggleInstr('Sale');
   invTradeTypeChanged('Sale');
 }
 
@@ -7000,13 +7095,47 @@ async function clearInvPrice(){
 }
 
 let invSegFilter='all',invStatusFilter='all',invPdfFiltered=false;
-// EQ = equity stocks (delivery or intraday); F&O = futures and options; Other = commodity, mutual funds, gold, crypto, etc.
-function invSegOf(x){return x.tradeType==='fno'?'fno':(x.tradeType==='commodity'?'other':((x.assetType||'equity')==='equity'?'eq':'other'));}
+// Segment is derived from Category (not Trade type)
+function invSegOf(x){
+  const cat=String(x.category||'').toLowerCase();
+  if(/future|option|f\s*&\s*o|f\s*and\s*o|\bfno\b/.test(cat)) return 'fno';
+  if(/commodit/.test(cat)) return 'commodity';
+  if(/share|equity|stock/.test(cat) || (x.assetType||'equity')==='equity'){
+    // Shares / equity-like
+    if(/mutual|bond|gold|crypto|other/.test(cat)) return 'other';
+    return 'eq';
+  }
+  // legacy fallback from old tradeType
+  if(x.tradeType==='fno') return 'fno';
+  if(x.tradeType==='commodity') return 'commodity';
+  return 'other';
+}
+function invActiveSegFilters(){
+  const out=[];
+  if(document.getElementById('invSegEq')?.checked) out.push('eq');
+  if(document.getElementById('invSegFno')?.checked) out.push('fno');
+  if(document.getElementById('invSegCmd')?.checked) out.push('commodity');
+  if(document.getElementById('invSegOth')?.checked) out.push('other');
+  return out;
+}
+function invActiveStatusFilters(){
+  const out=[];
+  if(document.getElementById('invStatOpen')?.checked) out.push('open');
+  if(document.getElementById('invStatClosed')?.checked) out.push('closed');
+  return out;
+}
 function invFilterLabel(){
-  const sg={eq:'EQ',fno:'F&O',other:'Other'}[invSegFilter],st={open:'Open',closed:'Closed'}[invStatusFilter];
-  return [sg,st].filter(Boolean).join(' · ');
+  const segs=invActiveSegFilters(), sts=invActiveStatusFilters();
+  const sgMap={eq:'Shares/EQ',fno:'F&O',commodity:'Commodity',other:'Other'};
+  const sg=segs.length===4||!segs.length?'All cat.':segs.map(s=>sgMap[s]||s).join(', ');
+  const st=sts.length===2||!sts.length?'All status':sts.map(s=>s==='open'?'Open':'Closed').join(', ');
+  return sg+' · '+st;
+}
+function onInvFilterChange(){
+  renderInvestmentDateWise('investmentReportInline');
 }
 function setInvFilter(kind,val){
+  // kept for compatibility
   if(kind==='seg')invSegFilter=val;else invStatusFilter=val;
   renderInvestmentDateWise('investmentReportInline');
 }
@@ -7022,7 +7151,16 @@ function investmentStatementRows(from,to,useFilter){
     const soldDates=[...new Set(sales.map(z=>z.date).filter(Boolean))].sort();
     const sc=sales.reduce((t,z)=>t+Number(z.charges||0),0),bc=Number(x.charges||0),bq=Number(x.qty||0);
     const isOpen=Number(invBalanceQty(x).toFixed(4))>0,seg=invSegOf(x);
-    if(useFilter&&((invSegFilter!=='all'&&seg!==invSegFilter)||(invStatusFilter==='open'&&!isOpen)||(invStatusFilter==='closed'&&isOpen)))return;
+    if(useFilter){
+      const segs=invActiveSegFilters(), sts=invActiveStatusFilters();
+      // If none checked, treat as "show none"; if all checked, show all of that group
+      if(segs.length && !segs.includes(seg)) return;
+      if(sts.length===1){
+        if(sts[0]==='open' && !isOpen) return;
+        if(sts[0]==='closed' && isOpen) return;
+      }
+      if(sts.length===0) return;
+    }
     out.push({key:invStockKey(x.stock),bal:Number(invBalanceQty(x).toFixed(4)),tradeType:x.tradeType||'delivery',instrument:x.instrument||'',seg:seg,open:isOpen,date:x.date,stock:x.stock,qty:x.qty,buyRate:x.buyRate,buyCharges:bc,buyAmount:x.buyAmount,bought:bought,qtySold:q,sellRate:q?amt/q:0,sellCharges:sc,soldAmount:amt,soldDates:soldDates,profit:amt-sc-q*Number(x.buyRate||0)-(bq>0?bc*Math.min(q/bq,1):0)});
   });
   out.forEach(r=>{const pp=invPrices[r.key];r.cmp=(r.open&&pp&&Number(pp.price)>0)?Number(pp.price):null;r.cmpManual=!!(r.cmp!==null&&pp.src==='manual');r.est=invEstProfit(r);});
