@@ -24,7 +24,7 @@
   --bg:#f0fff8;--surface:#fff;--border:#d8f0e8;--text:#1a2e1a;--muted:#6b8f6b;
   --bevel-light:rgba(255,255,255,0.85);--bevel-dark:rgba(20,50,30,0.28);
   --shadow:0 4px 24px rgba(0,0,0,0.08);--shadow-lg:0 8px 40px rgba(0,0,0,0.14);
-  --safe-top:var(--safe-area-inset-top, env(safe-area-inset-top, 0px));--safe-bottom:var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --safe-top:env(safe-area-inset-top, 0px);--safe-bottom:env(safe-area-inset-bottom, 0px);
   --font:system-ui,-apple-system,sans-serif;
 }
 [data-theme="dark"]{
@@ -98,7 +98,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 .icon-btn{background:none;border:1.5px solid var(--border);border-radius:10px;padding:6px 10px;font-size:0.9rem;cursor:pointer;color:var(--muted);}
 
 /* CONTENT */
-.app-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;padding-bottom:calc(145px + var(--safe-bottom));}
+.app-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;padding-bottom:calc(88px + var(--safe-bottom));}
 
 /* BALANCE CARD */
 .balance-card{background:linear-gradient(135deg,#1f9d84,#22a1a6,#4a7fc4);border-radius:22px;padding:20px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;box-shadow:0 8px 28px rgba(31,157,132,0.22);}
