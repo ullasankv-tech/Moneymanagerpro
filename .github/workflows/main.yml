@@ -52,7 +52,7 @@ jobs:
       - name: Install Capacitor 8
         run: |
           npm init -y
-          npm install --legacy-peer-deps @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 @capacitor/filesystem@8 @capacitor/share@8 @capacitor/local-notifications@8 @capgo/capacitor-native-biometric@^8 @capacitor-community/speech-recognition@^7.0.0 @capgo/native-purchases@^8.2.0
+          npm install --legacy-peer-deps @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 @capacitor/filesystem@8 @capacitor/share@8 @capacitor/app@8 @capacitor/local-notifications@8 @capgo/capacitor-native-biometric@^8 @capacitor-community/speech-recognition@^7.0.0 @capgo/native-purchases@^8.2.0
           npm install @capacitor/assets@3 --save-dev
       
       - name: Initialize Capacitor (non-interactive)
