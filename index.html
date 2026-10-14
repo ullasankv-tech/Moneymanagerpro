@@ -12951,104 +12951,32 @@ async function mmSyncPremiumFromPlay(){
 
 /** Permanent account deletion: server copy (Firebase) + everything on this device. */
 async function deleteMyAccount(){
+  if(!currentUser){ showToast('Please log in first'); return; }
+  const uname=currentUser.username;
+  if(!confirm('Delete your account and ALL data?\n\n• Your profile and cloud backup are removed from our server\n• All data on this device is erased\n• This cannot be undone')) return;
+  const typed=prompt('To confirm, type DELETE');
+  if(!typed || typed.trim().toUpperCase()!=='DELETE'){ showToast('Account deletion cancelled'); return; }
+  showToast('🧨 Deleting your account…', 6000);
+  let cloudOk=true;
   try{
-    if(!currentUser){ showToast('Please log in first'); return; }
-    const uname=String(currentUser.username||'');
-    if(!uname){ showToast('Please log in first'); return; }
-
-    // Use window.confirm/prompt so WebViews cannot shadow them
-    if(!window.confirm('Delete your account and ALL data?\n\n• Your profile and cloud backup are removed from our server\n• All data on this device is erased\n• This cannot be undone')) return;
-    const typed=window.prompt('To confirm, type DELETE','');
-    if(!typed || String(typed).trim().toUpperCase()!=='DELETE'){ showToast('Account deletion cancelled'); return; }
-
-    showToast('Deleting your account…', 8000);
-
-    // --- LOCAL WIPE FIRST (must not depend on network) ---
-    try{ clearSession(); }catch(e){}
-    try{
-      if(typeof getUsersSync==='function' && typeof saveUsersSync==='function'){
-        const umap=getUsersSync()||{};
-        delete umap[uname];
-        saveUsersSync(umap);
-      }
-    }catch(e){}
-
-    // Best-effort notification cancel (do not block wipe)
-    try{
-      const C=window.Capacitor;
-      if(C && C.Plugins && C.Plugins.LocalNotifications){
-        const pend=await Promise.race([
-          C.Plugins.LocalNotifications.getPending(),
-          new Promise(r=>setTimeout(()=>r(null),2000))
-        ]);
-        if(pend && pend.notifications && pend.notifications.length){
-          await Promise.race([
-            C.Plugins.LocalNotifications.cancel({notifications:pend.notifications.map(n=>({id:n.id}))}),
-            new Promise(r=>setTimeout(r,2000))
-          ]);
-        }
-      }
-    }catch(e){}
-
-    const stores=['transactions','loans','goals','emis','recurring','investments','settings','categories','users'];
-    for(const st of stores){
-      try{ if(typeof dbClear==='function') await dbClear(st); }catch(e){}
+    if(typeof firebaseDB!=='undefined' && firebaseDB){
+      await firebaseDB.ref('users/'+uname).remove();
+      await firebaseDB.ref('backups/'+uname).remove();
     }
-
-    // Remove known keys even if clear() is restricted in some WebViews
-    try{
-      const keys=[];
-      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k!=null) keys.push(k); }
-      keys.forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
-      localStorage.clear();
-    }catch(e){}
-    try{ sessionStorage.clear(); }catch(e){}
-    try{ if(typeof clearCryptoKey==='function') clearCryptoKey(); }catch(e){}
-
-    // Clear in-memory state
-    try{
-      currentUser=null;
-      if(typeof transactions!=='undefined') transactions=[];
-      if(typeof budgets!=='undefined') budgets={};
-      if(typeof goals!=='undefined') goals=[];
-      if(typeof emis!=='undefined') emis=[];
-      if(typeof recurringTxns!=='undefined') recurringTxns=[];
-      if(typeof loans!=='undefined') loans=[];
-      if(typeof investments!=='undefined') investments=[];
-      if(typeof reminders!=='undefined') reminders=[];
-      if(typeof netWorthItems!=='undefined') netWorthItems=[];
-      if(typeof regSheets!=='undefined') regSheets=[];
-    }catch(e){}
-
-    // Cloud delete in background (never blocks local wipe/reload)
-    try{
-      if(typeof firebaseDB!=='undefined' && firebaseDB){
-        Promise.race([
-          Promise.all([
-            firebaseDB.ref('users/'+uname).remove(),
-            firebaseDB.ref('backups/'+uname).remove()
-          ]),
-          new Promise(r=>setTimeout(r,5000))
-        ]).catch(function(){});
-      }
-    }catch(e){}
-
-    showToast('Account deleted — reloading…', 2000);
-    setTimeout(function(){
-      try{ location.replace(location.pathname + location.search + '?deleted=' + Date.now()); }
-      catch(e1){
-        try{ location.href = location.pathname || '/'; }
-        catch(e2){ location.reload(); }
-      }
-    }, 300);
-  }catch(err){
-    console.error('deleteMyAccount error', err);
-    try{ localStorage.clear(); }catch(e){}
-    try{ sessionStorage.clear(); }catch(e){}
-    try{ clearSession(); }catch(e){}
-    showToast('Delete finished with errors — reloading…', 2000);
-    setTimeout(function(){ location.reload(); }, 400);
-  }
+  }catch(e){ cloudOk=false; console.warn('Cloud delete failed', e); }
+  if(!cloudOk && !confirm('Could not reach the server (check your internet).\n\nErase the data on this device anyway? Your cloud copy may remain until you retry.')) return;
+  try{
+    const C=window.Capacitor;
+    if(C && C.Plugins && C.Plugins.LocalNotifications){
+      const pend=await C.Plugins.LocalNotifications.getPending();
+      if(pend && pend.notifications && pend.notifications.length) await C.Plugins.LocalNotifications.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+    }
+  }catch(e){}
+  for(const st of ['transactions','loans','goals','emis','recurring','investments','settings','categories','users']){ try{ await dbClear(st); }catch(e){} }
+  try{ localStorage.clear(); }catch(e){}
+  try{ sessionStorage.clear(); }catch(e){}
+  try{ clearCryptoKey(); }catch(e){}
+  location.reload();
 }
 
 function renderPremiumBadge(){
