@@ -1955,7 +1955,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div style="background:linear-gradient(135deg,#1565c0,#4d96ff);border-radius:16px;padding:20px;color:#fff;text-align:center;margin-bottom:12px;">
           <div style="font-size:2.5rem;margin-bottom:8px;">💰</div>
           <div style="font-size:1rem;font-weight:800;letter-spacing:0.02em;">Money Manager Pro</div>
-          <div style="font-size:0.72rem;opacity:0.85;margin-top:4px;">Version 1.3.0</div>
+          <div style="font-size:0.72rem;opacity:0.85;margin-top:4px;">Version 1.3.0 · v19</div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.25);">
             <div style="font-size:0.72rem;opacity:0.7;">Developed by</div>
             <div style="font-size:0.92rem;font-weight:800;margin-top:2px;">Ullasan KV</div>
@@ -12949,106 +12949,99 @@ async function mmSyncPremiumFromPlay(){
   }catch(e){}
 }
 
-/** Permanent account deletion: server copy (Firebase) + everything on this device. */
+/** Permanent account deletion: server copy (Firebase) + all local app data. */
 async function deleteMyAccount(){
-  try{
-    if(!currentUser){ showToast('Please log in first'); return; }
-    const uname=String(currentUser.username||'');
-    if(!uname){ showToast('Please log in first'); return; }
-
-    // Use window.confirm/prompt so WebViews cannot shadow them
-    if(!window.confirm('Delete your account and ALL data?\n\n• Your profile and cloud backup are removed from our server\n• All data on this device is erased\n• This cannot be undone')) return;
-    const typed=window.prompt('To confirm, type DELETE','');
-    if(!typed || String(typed).trim().toUpperCase()!=='DELETE'){ showToast('Account deletion cancelled'); return; }
-
-    showToast('Deleting your account…', 8000);
-
-    // --- LOCAL WIPE FIRST (must not depend on network) ---
-    try{ clearSession(); }catch(e){}
-    try{
-      if(typeof getUsersSync==='function' && typeof saveUsersSync==='function'){
-        const umap=getUsersSync()||{};
-        delete umap[uname];
-        saveUsersSync(umap);
-      }
-    }catch(e){}
-
-    // Best-effort notification cancel (do not block wipe)
-    try{
-      const C=window.Capacitor;
-      if(C && C.Plugins && C.Plugins.LocalNotifications){
-        const pend=await Promise.race([
-          C.Plugins.LocalNotifications.getPending(),
-          new Promise(r=>setTimeout(()=>r(null),2000))
-        ]);
-        if(pend && pend.notifications && pend.notifications.length){
-          await Promise.race([
-            C.Plugins.LocalNotifications.cancel({notifications:pend.notifications.map(n=>({id:n.id}))}),
-            new Promise(r=>setTimeout(r,2000))
-          ]);
-        }
-      }
-    }catch(e){}
-
-    const stores=['transactions','loans','goals','emis','recurring','investments','settings','categories','users'];
-    for(const st of stores){
-      try{ if(typeof dbClear==='function') await dbClear(st); }catch(e){}
-    }
-
-    // Remove known keys even if clear() is restricted in some WebViews
-    try{
-      const keys=[];
-      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k!=null) keys.push(k); }
-      keys.forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
-      localStorage.clear();
-    }catch(e){}
-    try{ sessionStorage.clear(); }catch(e){}
-    try{ if(typeof clearCryptoKey==='function') clearCryptoKey(); }catch(e){}
-
-    // Clear in-memory state
-    try{
-      currentUser=null;
-      if(typeof transactions!=='undefined') transactions=[];
-      if(typeof budgets!=='undefined') budgets={};
-      if(typeof goals!=='undefined') goals=[];
-      if(typeof emis!=='undefined') emis=[];
-      if(typeof recurringTxns!=='undefined') recurringTxns=[];
-      if(typeof loans!=='undefined') loans=[];
-      if(typeof investments!=='undefined') investments=[];
-      if(typeof reminders!=='undefined') reminders=[];
-      if(typeof netWorthItems!=='undefined') netWorthItems=[];
-      if(typeof regSheets!=='undefined') regSheets=[];
-    }catch(e){}
-
-    // Cloud delete in background (never blocks local wipe/reload)
-    try{
-      if(typeof firebaseDB!=='undefined' && firebaseDB){
-        Promise.race([
-          Promise.all([
-            firebaseDB.ref('users/'+uname).remove(),
-            firebaseDB.ref('backups/'+uname).remove()
-          ]),
-          new Promise(r=>setTimeout(r,5000))
-        ]).catch(function(){});
-      }
-    }catch(e){}
-
-    showToast('Account deleted — reloading…', 2000);
-    setTimeout(function(){
-      try{ location.replace(location.pathname + location.search + '?deleted=' + Date.now()); }
-      catch(e1){
-        try{ location.href = location.pathname || '/'; }
-        catch(e2){ location.reload(); }
-      }
-    }, 300);
-  }catch(err){
-    console.error('deleteMyAccount error', err);
-    try{ localStorage.clear(); }catch(e){}
-    try{ sessionStorage.clear(); }catch(e){}
-    try{ clearSession(); }catch(e){}
-    showToast('Delete finished with errors — reloading…', 2000);
-    setTimeout(function(){ location.reload(); }, 400);
+  if(!currentUser){
+    showToast('⚠️ Please log in first');
+    return;
   }
+  const uname=String(currentUser.username||'').trim();
+  if(!uname){
+    showToast('⚠️ Could not identify the current account');
+    return;
+  }
+
+  // Confirm twice. Avoid prompt(), which may not work in Android WebViews.
+  if(!confirm('Delete your account and ALL data?\n\n• Your profile and cloud backup will be removed from Firebase\n• All Money Manager Pro data stored on this device will be erased\n• This cannot be undone')) return;
+  if(!confirm('FINAL CONFIRMATION\n\nPermanently delete account "'+uname+'" and its data now?')) {
+    showToast('Account deletion cancelled');
+    return;
+  }
+
+  showToast('🧨 Deleting account from the server…', 6000);
+
+  // Do not sign the user out or clear local data if the server deletion fails.
+  try{
+    if(!firebaseDB && typeof initFirebase==='function') initFirebase();
+    if(!firebaseDB) throw new Error('Firebase is not connected. Check internet connection and reload the app.');
+
+    // Use child() so the username is treated as one Firebase path segment.
+    await firebaseDB.ref('users').child(uname).remove();
+    await firebaseDB.ref('backups').child(uname).remove();
+
+    // Verify that both server records are actually gone.
+    const checks = await Promise.all([
+      firebaseDB.ref('users').child(uname).once('value'),
+      firebaseDB.ref('backups').child(uname).once('value')
+    ]);
+    if(checks.some(s => s && s.val() !== null)){
+      throw new Error('Firebase still returns account or backup data after deletion.');
+    }
+  }catch(e){
+    console.error('Account cloud deletion failed:', e);
+    const detail=(e && e.message) ? e.message : String(e||'Unknown error');
+    showToast('❌ Server deletion failed. Your local data was NOT erased. '+detail, 9000);
+    alert('Account deletion was not completed.\n\nFirebase could not confirm removal of your account and cloud backup, so this app has kept your local data and login intact.\n\nReason: '+detail+'\n\nPlease check your internet connection. If the error mentions permission/unauthorized, the Firebase Realtime Database rules must allow deletion.');
+    return;
+  }
+
+  // Cancel pending notifications if the native plugin is present.
+  try{
+    const C=window.Capacitor;
+    const plugin=C && C.Plugins && C.Plugins.LocalNotifications;
+    if(plugin){
+      const pend=await plugin.getPending();
+      if(pend && pend.notifications && pend.notifications.length){
+        await plugin.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+      }
+    }
+  }catch(e){ console.warn('Notification cleanup skipped:',e); }
+
+  // Clear IndexedDB in ONE transaction and wait for transaction completion.
+  // dbClear() resolves on request success and can hide transaction-level failures.
+  try{
+    if(!db) db=await initDB();
+    if(!db) throw new Error('Could not open the local database.');
+    const stores=Array.from(db.objectStoreNames);
+    if(stores.length){
+      await new Promise((resolve,reject)=>{
+        let tx;
+        try{
+          tx=db.transaction(stores,'readwrite');
+          stores.forEach(st=>tx.objectStore(st).clear());
+        }catch(err){ reject(err); return; }
+        tx.oncomplete=()=>resolve();
+        tx.onerror=()=>reject(tx.error||new Error('IndexedDB clear transaction failed.'));
+        tx.onabort=()=>reject(tx.error||new Error('IndexedDB clear transaction was aborted.'));
+      });
+    }
+  }catch(e){
+    console.error('Local database deletion failed after cloud deletion:',e);
+    const detail=(e && e.message) ? e.message : String(e||'Unknown error');
+    showToast('⚠️ Cloud account deleted, but local data could not be cleared: '+detail, 9000);
+    alert('The cloud account and backup were deleted, but local data could not be cleared.\n\nPlease close other Money Manager Pro tabs/windows and try clearing app storage from Android Settings. Do not sign in again until local data is cleared.');
+    return;
+  }
+
+  // Only clear credentials/session after both server and local data deletion succeeded.
+  try{ localStorage.clear(); }catch(e){ console.warn('localStorage cleanup failed:',e); }
+  try{ sessionStorage.clear(); }catch(e){ console.warn('sessionStorage cleanup failed:',e); }
+  try{ clearCryptoKey(); }catch(e){}
+  try{ currentUser=null; }catch(e){}
+  try{ clearSession(); }catch(e){}
+  showToast('✅ Account and data deleted');
+  alert('Account and data deletion completed. You will return to the login/registration screen.');
+  location.reload();
 }
 
 function renderPremiumBadge(){
@@ -13182,7 +13175,7 @@ window.onload=async()=>{
   }
   // Update JS health indicator
   var jc=document.getElementById('jsCheck');
-  if(jc){ jc.textContent='✅ App Ready — 1.3.0'; jc.style.background='#e8f5e9'; jc.style.color='#2e7d32'; }
+  if(jc){ jc.textContent='✅ App Ready — v18'; jc.style.background='#e8f5e9'; jc.style.color='#2e7d32'; }
 };
 </script>
 
