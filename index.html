@@ -1450,13 +1450,13 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       <div id="regModePockets" style="display:none;">
         <div class="panel">
           <h3>👝 Smart Money Pockets</h3>
-          <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;">Virtual envelopes for goals, bills, fun &amp; emergency. Auto-split income or move surplus with one tap.</p>
+          <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;">Virtual envelopes for goals, bills, fun &amp; emergency. Auto-split your remaining balance or move surplus with one tap.</p>
           <div id="pocketsList"></div>
           <button onclick="openAddPocket()" style="width:100%;padding:12px;margin-top:10px;background:linear-gradient(135deg,#cc5de8,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:var(--font);">+ Create Pocket</button>
         </div>
         <div class="panel">
           <h3>⚡ Auto-Split Rules</h3>
-          <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;">When you record income, split a % into Emergency, Goals, and any Smart Money Pocket you choose.</p>
+          <p style="font-size:0.72rem;color:var(--muted);margin-bottom:10px;">Splits a % of your remaining balance (this month's income − expenses − money already set aside) into Emergency, Goals, and any Smart Money Pocket you choose.</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
             <div>
               <label style="font-size:0.68rem;font-weight:700;color:var(--muted);">% to Emergency</label>
@@ -1475,11 +1475,11 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
               </select>
               <input type="number" id="pocketSplitCustomPct" min="0" max="50" value="0" placeholder="%" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:10px;font-size:0.88rem;background:var(--bg);color:var(--text);outline:none;font-family:var(--font);"/>
             </div>
-            <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">Pick any pocket you created (Fun, Travel, Bills…) and a % of latest income goes there.</div>
+            <div style="font-size:0.65rem;color:var(--muted);margin-top:4px;">Pick any pocket you created (Fun, Travel, Bills…) and a % of your remaining balance goes there.</div>
           </div>
           <button onclick="savePocketSplitRules()" style="width:100%;padding:11px;background:linear-gradient(135deg,#00b894,#00cec9);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">💾 Save Split Rules</button>
           <div id="pocketSplitStatus" style="margin-top:10px;padding:10px 12px;border-radius:12px;font-size:0.72rem;line-height:1.5;display:none;border:1.5px solid var(--border);background:var(--bg);"></div>
-          <button id="pocketSplitRunBtn" onclick="runPocketAutoSplit()" style="width:100%;padding:11px;margin-top:8px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">▶️ Run Auto-Split on Latest Income</button>
+          <button id="pocketSplitRunBtn" onclick="runPocketAutoSplit()" style="width:100%;padding:11px;margin-top:8px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">▶️ Run Auto-Split on Remaining Balance</button>
           <button id="pocketSplitUndoBtn" onclick="undoPocketAutoSplit()" style="width:100%;padding:11px;margin-top:8px;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:12px;color:#e65100;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);display:none;">↩️ Undo last auto-split</button>
           <div style="font-size:0.65rem;color:var(--muted);margin-top:8px;line-height:1.45;">Each income can be auto-split <b>only once</b>. Use Undo if you allocated by mistake.</div>
         </div>
@@ -2732,6 +2732,7 @@ function clearCryptoKey(){ _cryptoKey = null; }
 // ── saveData: persist all in-memory arrays to IndexedDB ──
 async function saveData(){
   if(!currentUser)return;
+  try{mmQueueReconcile();}catch(e){}
   if(!db){
     // IndexedDB wasn't open (WebView storage hiccup, permission issue, etc.)
     // Try once to reopen it before giving up, instead of silently losing this save.
@@ -3243,7 +3244,7 @@ function doLogout(){
   currentUser=null;
   transactions=[];budgets={};goals=[];emis=[];recurringTxns=[];loans=[];investments=[];
   reminders=[];netWorthItems=[];regSheets=[];
-  try{ moneyPockets=[]; pocketSplitHistory=[]; subscriptions=[]; _regSmartLoadedFor=null; }catch(e){}
+  try{ moneyPockets=[]; pocketSplitHistory=[]; mmSetAsideLog=[]; mmDrawLedger={}; subscriptions=[]; _regSmartLoadedFor=null; }catch(e){}
   clearSession();
   try{
     document.getElementById('appScreen').classList.remove('active');
@@ -3275,6 +3276,7 @@ function showApp(){
   if(typeof loadRegSmartFeatures==='function') loadRegSmartFeatures();
   loadSmsSettings();
   loadCurrency();
+  try{ Promise.all([mmLoadSetAsideLog(),mmLoadDrawLedger(),ensureRegSmartLoaded()]).then(()=>setTimeout(mmQueueReconcile,1500)); }catch(e){}
   loadHomeNote();
   renderHealthScore();
   // Show onboarding on first launch
@@ -4424,11 +4426,11 @@ function addGoal(){
 }
 function addToGoal(id,amount){
   const goal=goals.find(g=>g.id===id);
-  if(goal){goal.saved=Math.min(goal.target,goal.saved+amount);saveData();renderGoals();}
+  if(goal){const _b=goal.saved||0;goal.saved=Math.min(goal.target,goal.saved+amount);mmLogSetAside('goal',goal.id,goal.name,goal.saved-_b);saveData();renderGoals();}
 }
 function deleteGoal(id){
   if(!confirm('Delete this goal?'))return;
-  goals=goals.filter(g=>g.id!==id);saveData();renderGoals();showToast('🗑️ Goal deleted');
+  goals=goals.filter(g=>g.id!==id);mmDropSetAside('goal',id);saveData();renderGoals();showToast('🗑️ Goal deleted');
 }
 function renderGoals(){
   const container=document.getElementById('goalsList');
@@ -5288,7 +5290,164 @@ function budgetSpentFor(category,date,excludeId){
 }
 // Returns true to go ahead and save. Asks first when this expense would take the category over its budget.
 // credit = amount this same entry already contributed to the same category/month (used when editing).
+/* ═══ MONEY SET ASIDE (Pockets / Emergency / Goals) ═══
+   Auto-split amounts come from pocketSplitHistory; manual "add to pocket", "boost goal" and
+   "add to goal" amounts are logged here. Used by Safe to Spend and the expense warning. */
+let mmSetAsideLog=[];   // [{d:'YYYY-MM-DD', a:amount, n:name, i:id, k:'pocket'|'goal'}]
+async function mmLoadSetAsideLog(){
+  try{
+    const r=await dbGet('settings','setaside_'+currentUser.username);
+    mmSetAsideLog=r?JSON.parse(r.value):[];
+    if(!Array.isArray(mmSetAsideLog)) mmSetAsideLog=[];
+  }catch(e){ mmSetAsideLog=[]; }
+}
+async function mmSaveSetAsideLog(){
+  try{ await dbPut('settings',{key:'setaside_'+currentUser.username,value:JSON.stringify(mmSetAsideLog)}); }catch(e){}
+}
+function mmLogSetAside(kind,id,name,amount){
+  amount=Number(amount)||0; if(!(amount>0)) return;
+  mmSetAsideLog.push({d:qaLocalISO(new Date()),a:amount,n:name||'',i:id,k:kind});
+  mmSaveSetAsideLog();
+}
+function mmDropSetAside(kind,id){
+  const before=mmSetAsideLog.length;
+  mmSetAsideLog=mmSetAsideLog.filter(e=>!(e.k===kind && String(e.i)===String(id)));
+  if(mmSetAsideLog.length!==before) mmSaveSetAsideLog();
+}
+/** Gross amount moved into Pockets/Emergency/Goals in a month ('YYYY-MM'). */
+function mmGrossAside(mk){
+  let t=0;
+  (pocketSplitHistory||[]).forEach(h=>{
+    if(String(h.date||'').slice(0,7)===mk) (h.allocations||[]).forEach(a=>{ t+=Number(a.amount)||0; });
+  });
+  (mmSetAsideLog||[]).forEach(e=>{ if(String(e.d).slice(0,7)===mk) t+=Number(e.a)||0; });
+  return t;
+}
+function mmDrawnFor(mk){ return (mmDrawLedger[mk]||[]).reduce((a,x)=>a+(Number(x.a)||0),0); }
+/** Money still set aside in the month of the given date (after expenses took some back). */
+function mmSetAsideFor(dateStr){
+  const mk=String(dateStr||qaLocalISO(new Date())).slice(0,7);
+  return Math.max(0,mmGrossAside(mk)-mmDrawnFor(mk));
+}
+
+/* ── Spending set-aside money: when an expense is bigger than your free cash, the difference is
+      automatically taken out of your Pockets / Goals / Emergency, and given back if the expense
+      is deleted or reduced. Order: other pockets → Goals pocket → savings goals → Emergency (last). ── */
+let mmDrawLedger={};   // {'YYYY-MM':[{k:'pocket'|'goal', i:id, n:name, a:amount}]}
+let _mmReconciling=false,_mmRecTimer=null;
+async function mmLoadDrawLedger(){
+  try{ const r=await dbGet('settings','setaside_draw_'+currentUser.username); mmDrawLedger=r?JSON.parse(r.value):{}; if(!mmDrawLedger||typeof mmDrawLedger!=='object'||Array.isArray(mmDrawLedger)) mmDrawLedger={}; }
+  catch(e){ mmDrawLedger={}; }
+}
+async function mmSaveDrawLedger(){ try{ await dbPut('settings',{key:'setaside_draw_'+currentUser.username,value:JSON.stringify(mmDrawLedger)}); }catch(e){} }
+function mmHolders(){
+  const out=[], P=moneyPockets||[];
+  const em=p=>/emergenc/i.test(String(p.name||'')), gp=p=>/goal/i.test(String(p.name||''));
+  P.filter(p=>!em(p)&&!gp(p)).forEach(o=>out.push({k:'pocket',obj:o}));
+  P.filter(p=>gp(p)&&!em(p)).forEach(o=>out.push({k:'pocket',obj:o}));
+  (typeof goals!=='undefined'?goals:[]).forEach(o=>out.push({k:'goal',obj:o}));
+  P.filter(em).forEach(o=>out.push({k:'pocket',obj:o}));
+  return out;
+}
+/** Drop set-aside / draw entries that belong to a pocket or goal that no longer exists (e.g. after data was cleared). */
+function mmPruneOrphans(){
+  try{
+    if(!currentUser||typeof _regSmartLoadedFor==='undefined'||_regSmartLoadedFor!==currentUser.username) return false;
+    const P=moneyPockets||[], G=(typeof goals!=='undefined'?goals:[]);
+    const ok=(k,i)=>(k==='goal'?G:P).some(o=>String(o.id)===String(i));
+    let changed=false;
+    const n0=mmSetAsideLog.length;
+    mmSetAsideLog=mmSetAsideLog.filter(e=>ok(e.k,e.i));
+    if(mmSetAsideLog.length!==n0){ changed=true; mmSaveSetAsideLog(); }
+    let lc=false;
+    Object.keys(mmDrawLedger).forEach(m=>{
+      const l=mmDrawLedger[m]||[], f=l.filter(x=>ok(x.k,x.i));
+      if(f.length!==l.length){ lc=true; if(f.length) mmDrawLedger[m]=f; else delete mmDrawLedger[m]; }
+    });
+    if(lc){ changed=true; mmSaveDrawLedger(); }
+    return changed;
+  }catch(e){ return false; }
+}
+function mmQueueReconcile(){ clearTimeout(_mmRecTimer); _mmRecTimer=setTimeout(function(){ try{mmReconcileSetAside();}catch(e){} },900); }
+async function mmReconcileSetAside(){
+  if(_mmReconciling||!currentUser||typeof _regSmartLoadedFor==='undefined'||_regSmartLoadedFor!==currentUser.username) return;
+  _mmReconciling=true;
+  try{
+    if(mmPruneOrphans()){ try{renderSafeToSpend();}catch(e){} }
+    const curMk=qaLocalISO(new Date()).slice(0,7);
+    const months=new Set([curMk]);
+    Object.keys(mmDrawLedger).forEach(m=>months.add(m));
+    const tx=opTxns();
+    let pk=false,gl=false,lg=false,took=0,gave=0;
+    months.forEach(mk=>{
+      const gross=mmGrossAside(mk);
+      const mt=tx.filter(t=>String(t.date).slice(0,7)===mk);
+      const inc=mt.filter(t=>t.type==='income').reduce((a,t)=>a+(Number(t.amount)||0),0);
+      const exp=mt.filter(t=>t.type==='expense').reduce((a,t)=>a+(Number(t.amount)||0),0);
+      let ledger=mmDrawLedger[mk]||[];
+      let have=ledger.reduce((a,x)=>a+(Number(x.a)||0),0);
+      if(gross<=0){ if(have>0){ delete mmDrawLedger[mk]; lg=true; } return; }
+      const want=Math.min(gross,Math.max(0,gross-(inc-exp)));
+      if(want>have+0.004){
+        let need=want-have;
+        mmHolders().forEach(h=>{
+          if(need<=0) return;
+          const sv=Number(h.obj.saved)||0; if(sv<=0) return;
+          const t=Math.min(sv,need); h.obj.saved=sv-t; need-=t; took+=t;
+          const ex=ledger.find(x=>x.k===h.k&&String(x.i)===String(h.obj.id));
+          if(ex) ex.a=(Number(ex.a)||0)+t; else ledger.push({k:h.k,i:h.obj.id,n:h.obj.name||'',a:t});
+          if(h.k==='goal') gl=true; else pk=true;
+        });
+        lg=true;
+      } else if(want<have-0.004){
+        let back=have-want;
+        for(let i=ledger.length-1;i>=0&&back>0;i--){
+          const x=ledger[i], r=Math.min(Number(x.a)||0,back);
+          const holder=(x.k==='goal'?(typeof goals!=='undefined'?goals:[]):(moneyPockets||[])).find(o=>String(o.id)===String(x.i));
+          if(holder){ holder.saved=(Number(holder.saved)||0)+r; if(x.k==='goal'){ if(holder.target) holder.saved=Math.min(holder.target,holder.saved); gl=true; } else pk=true; gave+=r; }
+          x.a=(Number(x.a)||0)-r; back-=r;
+        }
+        ledger=ledger.filter(x=>(Number(x.a)||0)>0.004);
+        lg=true;
+      }
+      if(ledger.length) mmDrawLedger[mk]=ledger; else delete mmDrawLedger[mk];
+    });
+    if(lg) await mmSaveDrawLedger();
+    if(pk) await savePockets();
+    if(gl && typeof saveData==='function') await saveData();
+    if(pk||gl||lg){
+      try{renderPockets();}catch(e){} try{renderGoals();}catch(e){} try{renderSafeToSpend();}catch(e){}
+      if(took>0.5) showToast('💼 '+fmt(took)+' taken from your Pockets/Goals to cover spending',4200);
+      else if(gave>0.5) showToast('↩ '+fmt(gave)+' returned to your Pockets/Goals',3500);
+    }
+  }catch(e){ console.warn('Set-aside reconcile failed',e); }
+  finally{ _mmReconciling=false; }
+}
+
+/** Warn when an expense would dip into money already set aside this month. */
+function setAsideConfirm(amount,date,excludeId,credit){
+  try{
+    amount=Number(amount)||0; credit=Number(credit||0);
+    if(!(amount>credit)) return true;
+    const mk0=String(date).slice(0,7);
+    const aside=excludeId!=null?mmGrossAside(mk0):mmSetAsideFor(date);
+    if(!(aside>0)) return true;
+    const mk=String(date).slice(0,7);
+    const mt=opTxns().filter(t=>String(t.date).slice(0,7)===mk && t.id!==excludeId);
+    const inc=mt.filter(t=>t.type==='income').reduce((a,t)=>a+(Number(t.amount)||0),0);
+    const exp=mt.filter(t=>t.type==='expense').reduce((a,t)=>a+(Number(t.amount)||0),0);
+    const freeNow=inc-exp-aside;
+    if(freeNow-amount>=0) return true;
+    const mon=new Date(date+'T00:00:00').toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+    const dip=Math.min(aside,amount-Math.max(0,freeNow));
+    return confirm('⚠️ This uses money you set aside\n\n'+mon+'\nIncome: '+fmt(inc)+'\nSpent so far: '+fmt(exp)+'\nSet aside (Pockets/Goals): '+fmt(aside)+'\nFree to spend now: '+fmt(Math.max(0,freeNow))+'\n\nThis expense: '+fmt(amount)+'\n'+fmt(dip)+' will be taken out of your Pockets/Goals/Emergency.\n\nAdd it anyway?');
+  }catch(e){ console.error('Set-aside check error',e); return true; }
+}
 function budgetConfirm(category,amount,date,excludeId,credit){
+  if(!budgetConfirmCore(category,amount,date,excludeId,credit)) return false;
+  return setAsideConfirm(amount,date,excludeId,credit);
+}
+function budgetConfirmCore(category,amount,date,excludeId,credit){
   try{
     const limit=Number(budgets[category]||0);
     if(!(limit>0))return true;
@@ -7512,7 +7671,7 @@ function saveEdit(){
 async function buildBackupObj(){
   // Decrypt and read all settings-stored modules
   let remindersData=[],netWorthData=[],registerData=[],dailyLimitVal=0,homeNotesData=[];
-  let pocketsData=[],pocketSplitData=null,subsData=[],tax80cData=[],taxSettingsData=null;
+  let pocketsData=[],pocketSplitData=null,subsData=[],tax80cData=[],taxSettingsData=null,setAsideData=[],pocketHistData=[],drawLedgerData={};
   try{
     const r1=await dbGet('settings','reminders_'+currentUser.username);
     if(r1){ const dec=await decryptData(r1.value); remindersData=JSON.parse(dec); }
@@ -7527,6 +7686,12 @@ async function buildBackupObj(){
       if(rp){ pocketsData=JSON.parse(await decryptData(rp.value)); }
       const rs=await dbGet('settings','pocket_split_'+currentUser.username);
       if(rs){ pocketSplitData=JSON.parse(rs.value); }
+      const rsa=await dbGet('settings','setaside_'+currentUser.username);
+      if(rsa){ setAsideData=JSON.parse(rsa.value); }
+      const rdl=await dbGet('settings','setaside_draw_'+currentUser.username);
+      if(rdl){ drawLedgerData=JSON.parse(rdl.value); }
+      const rph=await dbGet('settings','pocket_split_history_'+currentUser.username);
+      if(rph){ pocketHistData=JSON.parse(rph.value); }
       const rb=await dbGet('settings','subscriptions_'+currentUser.username);
       if(rb){ subsData=JSON.parse(await decryptData(rb.value)); }
       const r8=await dbGet('settings','tax80c_'+currentUser.username);
@@ -7557,6 +7722,9 @@ async function buildBackupObj(){
     dailyLimit:dailyLimitVal,
     pockets:pocketsData,
     pocketSplitRules:pocketSplitData,
+    setAsideLog:setAsideData,
+    drawLedger:drawLedgerData,
+    pocketSplitHistory:pocketHistData,
     subscriptions:subsData,
     tax80c:tax80cData,
     taxSettings:taxSettingsData,
@@ -8092,6 +8260,9 @@ async function applyBackupData(data){
 
   // Pockets / subscriptions / tax data (only replaced when present in the backup file)
   if(Array.isArray(data.pockets)){ moneyPockets=data.pockets; await savePockets(); }
+  if(Array.isArray(data.setAsideLog)){ mmSetAsideLog=data.setAsideLog; await mmSaveSetAsideLog(); }
+  mmDrawLedger=(data.drawLedger&&typeof data.drawLedger==='object'&&!Array.isArray(data.drawLedger))?data.drawLedger:{}; await mmSaveDrawLedger();
+  if(Array.isArray(data.pocketSplitHistory)){ pocketSplitHistory=data.pocketSplitHistory; await savePocketSplitHistory(); }
   if(data.pocketSplitRules && typeof data.pocketSplitRules==='object'){ pocketSplitRules=data.pocketSplitRules; await dbPut('settings',{key:'pocket_split_'+currentUser.username,value:JSON.stringify(pocketSplitRules)}); }
   if(Array.isArray(data.subscriptions)){ subscriptions=data.subscriptions; await saveSubscriptions(); }
   if(Array.isArray(data.tax80c)){ tax80cEntries=data.tax80c; await save80C(); }
@@ -8165,6 +8336,7 @@ async function clearAllData(){
   try{ auditLog=[]; lastBackupAt=0; tripMode={enabled:false,code:'USD',rate:1}; pocketCarry={rule:'keep',lastYm:''}; await dbPut('settings',{key:'audit_log_'+currentUser.username,value:'[]'}); await dbPut('settings',{key:'last_backup_'+currentUser.username,value:'0'}); await dbPut('settings',{key:'trip_mode_'+currentUser.username,value:JSON.stringify(tripMode)}); await dbPut('settings',{key:'pocket_carry_'+currentUser.username,value:JSON.stringify(pocketCarry)}); }catch(e){}
   try{ nwSnapshots=[]; await dbPut('settings',{key:'networth_snap_'+currentUser.username,value:'[]'}); }catch(e){}
   pocketSplitHistory=[];
+  try{ mmSetAsideLog=[]; mmDrawLedger={}; await mmSaveSetAsideLog(); await mmSaveDrawLedger(); }catch(e){}
   try{ _regSmartLoadedFor=null; }catch(e){}
   try{ moneyPockets=[]; await savePockets(); }catch(e){}
   await dbPut('settings',{key:'daily_limit_'+currentUser.username, value:'0'});
@@ -11825,6 +11997,16 @@ function getLatestMonthIncome(){
     return (b.id||0)-(a.id||0);
   })[0];
 }
+/** Balance available to split = this month's income − this month's expenses − money already set aside. */
+function mmSplitBase(latest){
+  mmPruneOrphans();
+  const mk=String(latest&&latest.date||qaLocalISO(new Date())).slice(0,7);
+  const mt=opTxns().filter(t=>String(t.date).slice(0,7)===mk);
+  const inc=mt.filter(t=>t.type==='income').reduce((a,t)=>a+(Number(t.amount)||0),0);
+  const exp=mt.filter(t=>t.type==='expense').reduce((a,t)=>a+(Number(t.amount)||0),0);
+  const aside=Math.max(0,mmGrossAside(mk)-mmDrawnFor(mk));
+  return {mk,inc,exp,aside,base:Math.max(0,inc-exp-aside)};
+}
 function isIncomeAlreadySplit(txnId){
   return (pocketSplitHistory||[]).some(h=>String(h.txnId)===String(txnId));
 }
@@ -11839,7 +12021,8 @@ function updatePocketSplitUI(){
     undoBtn.style.display = lastHist ? 'block' : 'none';
     if(lastHist){
       const when=lastHist.date||'';
-      undoBtn.textContent='↩️ Undo last auto-split ('+fmt(lastHist.amount||0)+(when?' · '+when:'')+')';
+      const _tot=(lastHist.allocations||[]).reduce((a,x)=>a+(Number(x.amount)||0),0);
+      undoBtn.textContent='↩️ Undo last auto-split ('+fmt(_tot)+(when?' · '+when:'')+')';
     }
   }
 
@@ -11865,8 +12048,16 @@ function updatePocketSplitUI(){
     status.style.background='#e8f5e9';
     status.style.borderColor='#a5d6a7';
     status.style.color='#1b5e20';
-    status.innerHTML='✅ Ready: latest income <b>'+fmt(latest.amount)+'</b> ('+(latest.date||'')+(latest.category?' · '+latest.category:'')+') has not been split yet.';
-    if(runBtn){ runBtn.disabled=false; runBtn.style.opacity='1'; runBtn.textContent='▶️ Run Auto-Split on Latest Income'; }
+    const sb=mmSplitBase(latest);
+    const calc='Income '+fmt(sb.inc)+' − Expenses '+fmt(sb.exp)+(sb.aside>0?(' − Already set aside '+fmt(sb.aside)):'');
+    if(sb.base>0){
+      status.innerHTML='✅ Ready: remaining balance <b>'+fmt(sb.base)+'</b> will be split.<br><span style="font-size:0.66rem;">'+calc+'</span>';
+      if(runBtn){ runBtn.disabled=false; runBtn.style.opacity='1'; runBtn.textContent='▶️ Run Auto-Split on Remaining Balance'; }
+    } else {
+      status.style.background='#fff8e1'; status.style.borderColor='#ffe082'; status.style.color='#8a5a00';
+      status.innerHTML='⚠️ No remaining balance to split this month.<br><span style="font-size:0.66rem;">'+calc+'</span>';
+      if(runBtn){ runBtn.disabled=true; runBtn.style.opacity='0.55'; runBtn.textContent='No balance to split'; }
+    }
   }
 }
 
@@ -11970,6 +12161,7 @@ async function addToPocket(id){
   const amt=parseFloat(prompt('Amount to add to '+p.name+' (₹)'))||0;
   if(amt<=0) return;
   p.saved=(p.saved||0)+amt;
+  mmLogSetAside('pocket',p.id,p.name,amt);
   await savePockets();
   renderPockets();
   showToast('✅ Added '+fmt(amt)+' to '+p.name);
@@ -11977,6 +12169,7 @@ async function addToPocket(id){
 async function deletePocket(id){
   if(!confirm('Delete this pocket?')) return;
   moneyPockets=moneyPockets.filter(x=>x.id!==id);
+  mmDropSetAside('pocket',id);
   await savePockets();
   renderPockets();
   showToast('🗑️ Pocket deleted');
@@ -12005,8 +12198,9 @@ async function runPocketAutoSplit(){
   if(customIdEl) pocketSplitRules.customId = customIdEl.value||'';
   try{ await dbPut('settings',{key:'pocket_split_'+currentUser.username,value:JSON.stringify(pocketSplitRules)}); }catch(e){}
 
-  const incomeAmt = Number(latest.amount)||0;
-  if(!(incomeAmt>0)){ showToast('⚠️ Latest income amount is zero'); return; }
+  const sb = mmSplitBase(latest);
+  const incomeAmt = sb.base;   // remaining balance, not just the newly posted income
+  if(!(incomeAmt>0)){ showToast('⚠️ No remaining balance to split this month (income − expenses − already set aside)',4200); updatePocketSplitUI(); return; }
 
   const emPct=(Number(pocketSplitRules.emergency)||0)/100;
   const goPct=(Number(pocketSplitRules.goals)||0)/100;
@@ -12066,6 +12260,9 @@ async function runPocketAutoSplit(){
   pocketSplitHistory.push({
     txnId: latest.id,
     amount: incomeAmt,
+    income: sb.inc,
+    expenses: sb.exp,
+    alreadySetAside: sb.aside,
     date: latest.date,
     category: latest.category||'',
     at: Date.now(),
@@ -12155,7 +12352,8 @@ function renderSafeToSpend(){
   const mt=opTxns().filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
   const mInc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const mExp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const remainingCash=Math.max(0,mInc-mExp);
+  const setAside=mmSetAsideFor(qaLocalISO(today));
+  const remainingCash=Math.max(0,mInc-mExp-setAside);
 
   // Upcoming unpaid bills (reminders)
   const todayD=today.getDate();
@@ -12188,6 +12386,7 @@ function renderSafeToSpend(){
     brEl.innerHTML=`
       <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>Month income</span><strong style="color:#00b894;">${fmt(mInc)}</strong></div>
       <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>Month expenses</span><strong style="color:#ff6b6b;">${fmt(mExp)}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>Set aside (Pockets/Goals)</span><strong style="color:#7b1fa2;">− ${fmt(setAside)}</strong></div>
       <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>Cash remaining</span><strong>${fmt(remainingCash)}</strong></div>
       <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>Upcoming bills</span><strong style="color:#e65100;">− ${fmt(upcomingBills)}</strong></div>
       <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span>Goal buffer (est.)</span><strong>− ${fmt(Math.round(goalNeed))}</strong></div>
@@ -12360,7 +12559,9 @@ async function boostGoal(id){
   const defaultAmt=Math.min(maxLeft, 500);
   const amt=parseFloat(prompt('Amount to add to "'+g.name+'" (₹)', String(defaultAmt)))||0;
   if(amt<=0) return;
+  const _before=g.saved||0;
   g.saved=Math.min(g.target, (g.saved||0)+amt);
+  mmLogSetAside('goal',g.id,g.name,g.saved-_before);
   if(typeof saveData==='function') await saveData();
   if(typeof renderGoals==='function') renderGoals();
   renderGoalBoost();
