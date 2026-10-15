@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Money Manager Pro">
 <meta name="description" content="Best personal finance app for India. Track income, expenses, loans, savings goals, net worth and bank SMS. Works offline. By Ullasan KV, Poyanad, Kannur.">
 <meta name="application-name" content="Money Manager Pro">
-<title>Money Manager Pro v18 — Personal Finance Tracker</title>
+<title>Money Manager Pro — Personal Finance Tracker</title>
 <link rel="manifest" href="manifest.json">
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -1959,7 +1959,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
         <div style="background:linear-gradient(135deg,#1565c0,#4d96ff);border-radius:16px;padding:20px;color:#fff;text-align:center;margin-bottom:12px;">
           <div style="font-size:2.5rem;margin-bottom:8px;">💰</div>
           <div style="font-size:1rem;font-weight:800;letter-spacing:0.02em;">Money Manager Pro</div>
-          <div style="font-size:0.72rem;opacity:0.85;margin-top:4px;">Version 1.3.0 · v19</div>
+          <div style="font-size:0.72rem;opacity:0.85;margin-top:4px;" id="aboutVersionLabel">Version …</div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.25);">
             <div style="font-size:0.72rem;opacity:0.7;">Developed by</div>
             <div style="font-size:0.92rem;font-weight:800;margin-top:2px;">Ullasan KV</div>
@@ -2455,6 +2455,75 @@ let INCOME_CATS=[...DEFAULT_INCOME_CATS], EXPENSE_CATS=[...DEFAULT_EXPENSE_CATS]
 let currentType='income', reportMonth=new Date().getMonth(), reportYear=new Date().getFullYear();
 let reportTab='summary', reportMain='general', invFrom='', invTo='', dwFrom='', dwTo='', isDark=false, settings={};
 let pinEntry='', pinMode='check';
+
+// ═══════════════════════════════════════
+// APP VERSION / BUILD (from GitHub Actions + Android)
+// CI sets versionName "1.0.<run_number>" and versionCode <run_number>
+// in main.yml / release-aab.yml. Values are injected at build time and
+// also read at runtime via Capacitor App.getInfo() on Android.
+// ═══════════════════════════════════════
+// Placeholders — GitHub Actions replaces only the %%...%% tokens (not variable names)
+window.__MM_APP_VERSION__ = '%%MM_APP_VERSION%%';
+window.__MM_APP_BUILD__   = '%%MM_APP_BUILD%%';
+let _mmVersionCache = null;
+
+function _mmParseInjected(v){
+  if(v==null) return '';
+  const s=String(v).trim();
+  // Unreplaced placeholder from source tree (web preview / before CI inject)
+  if(!s || s==='%%MM_APP_VERSION%%' || s==='%%MM_APP_BUILD%%') return '';
+  return s;
+}
+
+/** Returns { version, build, shortLabel, aboutLabel } */
+async function getAppVersionInfo(){
+  if(_mmVersionCache) return _mmVersionCache;
+  let version = _mmParseInjected(window.__MM_APP_VERSION__);
+  let build   = _mmParseInjected(window.__MM_APP_BUILD__);
+  // Native APK: authoritative source = Android versionName / versionCode
+  try{
+    const C=window.Capacitor;
+    if(C && (typeof C.isNativePlatform!=='function' || C.isNativePlatform())){
+      let info=null;
+      if(typeof capCall==='function'){
+        try{ info=await capCall(C,'App','getInfo',{}); }catch(e){}
+      }
+      if(!info && C.Plugins && C.Plugins.App && typeof C.Plugins.App.getInfo==='function'){
+        try{ info=await C.Plugins.App.getInfo(); }catch(e){}
+      }
+      if(info){
+        if(info.version) version = String(info.version);
+        if(info.build!=null && info.build!=='') build = String(info.build);
+      }
+    }
+  }catch(e){}
+  if(!version) version = '1.0.0';
+  if(!build) build = 'dev';
+  const shortLabel = version + (build && build!=='dev' ? ' ('+build+')' : '');
+  const aboutLabel = 'Version '+version + (build && build!=='dev' ? ' · build '+build : '');
+  _mmVersionCache = { version, build, shortLabel, aboutLabel };
+  return _mmVersionCache;
+}
+
+async function refreshAppVersionUI(){
+  const info = await getAppVersionInfo();
+  try{
+    const jc=document.getElementById('jsCheck');
+    if(jc){
+      jc.textContent='✅ App Ready — '+info.shortLabel;
+      jc.style.background='#e8f5e9';
+      jc.style.color='#2e7d32';
+    }
+  }catch(e){}
+  try{
+    const av=document.getElementById('aboutVersionLabel');
+    if(av) av.textContent=info.aboutLabel;
+  }catch(e){}
+  try{
+    document.title='Money Manager Pro '+info.version+' — Personal Finance Tracker';
+  }catch(e){}
+  return info;
+}
 
 // ═══════════════════════════════════════
 // UTILS
@@ -3499,6 +3568,8 @@ function doLogout(){
   reminders=[];netWorthItems=[];regSheets=[];
   try{ moneyPockets=[]; pocketSplitHistory=[]; mmSetAsideLog=[]; mmDrawLedger={}; subscriptions=[]; _regSmartLoadedFor=null; }catch(e){}
   clearSession();
+  // Clear forms so next login never briefly shows previous user's values
+  try{ if(typeof resetUIForUserSwitch==='function') resetUIForUserSwitch(); }catch(e){}
   try{
     document.getElementById('appScreen').classList.remove('active');
     document.getElementById('pinScreen').classList.remove('active');
@@ -3512,6 +3583,87 @@ function doLogout(){
   }catch(e){ location.reload(); }
   showToast('👋 Logged out successfully!');
 }
+/** Clear form fields, notes, filters and force Home tab after user switch / login. */
+function resetUIForUserSwitch(){
+  try{
+    // Close open modals so previous user's sheets are not visible
+    document.querySelectorAll('.modal-overlay.open').forEach(m=>{
+      m.classList.remove('open');
+      m.style.display='';
+    });
+    try{ if(typeof closeVoiceAssistant==='function') closeVoiceAssistant(); }catch(e){}
+    try{
+      const calc=document.querySelector('.calc-float.open');
+      if(calc) calc.classList.remove('open');
+    }catch(e){}
+
+    const today=(typeof localDateKey==='function')?localDateKey():new Date().toISOString().split('T')[0];
+
+    // Text / number / date inputs that commonly hold the previous user
+    [
+      'txnAmount','txnNote','qaInput',
+      'goalName','goalTarget',
+      'loanPerson','loanAmount','loanNote','loanRate','loanDue','loanDate',
+      'repayAmount','repayNote','repayDate',
+      'editAmount','editNote','editDate',
+      'editLoanPerson','editLoanAmount','editLoanNote','editLoanRate','editLoanDue','editLoanDate',
+      'editRepayAmount','editRepayNote','editRepayDate',
+      'remName','remAmount','remDueDay','remEmoji',
+      'nwFormName','nwFormAmount','nwFormEmoji',
+      'regSheetName','newColName',
+      'salaryDayAmount'
+    ].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.value='';
+    });
+
+    // Dates → today
+    ['txnDate','homeTxnDate','homeNotesDate','loanDate','repayDate','editDate'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.value=today;
+    });
+
+    // Filters
+    const filt=document.getElementById('txnFilter');
+    if(filt) filt.value='all';
+
+    // Quick-add preview card
+    const qaCard=document.getElementById('qaCard');
+    if(qaCard){ qaCard.style.display='none'; qaCard.innerHTML=''; }
+
+    // Notes editor (contenteditable)
+    const notes=document.getElementById('homeNotesText');
+    if(notes) notes.innerHTML='';
+
+    // Report month back to current
+    try{
+      const now=new Date();
+      reportMonth=now.getMonth();
+      reportYear=now.getFullYear();
+      const rml=document.getElementById('reportMonthLabel');
+      if(rml) rml.textContent=getMonthLabel();
+    }catch(e){}
+
+    // Notes calendar view
+    try{ notesCalView=null; }catch(e){}
+
+    // Transaction type toggle → Income
+    try{ if(typeof setType==='function') setType('income'); }catch(e){}
+
+    // Always land on Home so secondary pages re-render on next open
+    try{ showTab('home', false); }catch(e){
+      try{
+        currentAppTab='home';
+        const home=document.getElementById('tab-home');
+        if(home) home.style.display='block';
+      }catch(e2){}
+    }
+
+    const ac=document.getElementById('appContent');
+    if(ac) ac.scrollTop=0;
+  }catch(e){ console.warn('resetUIForUserSwitch', e); }
+}
+
 function showApp(){
   document.getElementById('pinScreen').classList.remove('active');
   document.getElementById('pinScreen').style.display='none';
@@ -3524,12 +3676,16 @@ function showApp(){
     const lbl=document.getElementById('storageBackendLabel');
     if(lbl&&typeof mmStorageLabel==='function') lbl.textContent=mmStorageLabel();
   }catch(e){}
+
+  // Wipe previous user's form values / open pages before painting this user
+  resetUIForUserSwitch();
+
   runAutoBackupIfEnabled();
-  // Load all features
+  // Load all features for THIS user, then paint
   loadDailyLimit().then(()=>renderDailyLimit());
-  loadReminders().then(()=>checkRemindersDueToday());
-  loadNetWorth().then(()=>{});
-  loadRegister();
+  loadReminders().then(()=>{ try{renderReminders();}catch(e){} try{checkRemindersDueToday();}catch(e){} });
+  loadNetWorth().then(()=>{ try{renderNetWorth();}catch(e){} });
+  loadRegister().then(()=>{ try{ if(typeof renderRegister==='function') renderRegister(); }catch(e){} });
   if(typeof loadRegSmartFeatures==='function') loadRegSmartFeatures();
   loadSmsSettings();
   loadCurrency();
@@ -3543,9 +3699,17 @@ function showApp(){
   // Render premium badge if applicable
   setTimeout(renderPremiumBadge, 500);
   document.getElementById('balanceDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  document.getElementById('txnDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('txnDate').value=(typeof localDateKey==='function')?localDateKey():new Date().toISOString().split('T')[0];
   document.getElementById('reportMonthLabel').textContent=getMonthLabel();
   updateCategories();checkRecurringDue();renderAll();applyDarkMode();setupDailyReminder();
+  // Re-render key modules so no stale DOM from previous user remains
+  try{ renderGoals(); }catch(e){}
+  try{ renderRecurring(); }catch(e){}
+  try{ renderEmis(); }catch(e){}
+  try{ renderLoans(); }catch(e){}
+  try{ renderBudget(); }catch(e){}
+  try{ if(typeof renderInvestments==='function') renderInvestments(); }catch(e){}
+  try{ if(typeof renderCategoryMaster==='function') renderCategoryMaster(); }catch(e){}
   try{
     Promise.resolve(loadSalaryDaySettings()).then(()=>{
       try{ renderSalaryDayBanner(); }catch(e){}
@@ -7988,7 +8152,8 @@ async function buildBackupObj(){
   }catch(e){ console.log('export module read',e); }
 
   return {
-    appVersion:'1.3.0',
+    appVersion:(_mmVersionCache&&_mmVersionCache.version)||_mmParseInjected(window.__MM_APP_VERSION__)||'1.0.0',
+    appBuild:(_mmVersionCache&&_mmVersionCache.build)||_mmParseInjected(window.__MM_APP_BUILD__)||'dev',
     appName:'Money Manager Pro',
     developer:'Ullasan KV, Poyanad, Kannur, Kerala',
     user:currentUser.name,
@@ -12913,7 +13078,8 @@ function saveUserToFirebase(user){
       username:user.username,
       avatar:user.avatar,
       registeredAt:user.registeredAt,
-      appVersion:'1.3.0',
+      appVersion:(_mmVersionCache&&_mmVersionCache.version)||_mmParseInjected(window.__MM_APP_VERSION__)||'1.0.0',
+      appBuild:(_mmVersionCache&&_mmVersionCache.build)||_mmParseInjected(window.__MM_APP_BUILD__)||'dev',
       platform:navigator.userAgent.substring(0,80)
     };
     firebaseDB.ref('users/'+user.username).set(safe);
@@ -13399,9 +13565,11 @@ window.onload=async()=>{
     console.error('Startup error:',e);
     document.getElementById('loginScreen').classList.add('active');
   }
-  // Update JS health indicator
-  var jc=document.getElementById('jsCheck');
-  if(jc){ jc.textContent='✅ App Ready — v18'; jc.style.background='#e8f5e9'; jc.style.color='#2e7d32'; }
+  // Update JS health indicator + version labels (from CI / native App.getInfo)
+  try{ await refreshAppVersionUI(); }catch(e){
+    var jc=document.getElementById('jsCheck');
+    if(jc){ jc.textContent='✅ App Ready'; jc.style.background='#e8f5e9'; jc.style.color='#2e7d32'; }
+  }
 };
 </script>
 
