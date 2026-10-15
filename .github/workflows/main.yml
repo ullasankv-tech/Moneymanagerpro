@@ -43,9 +43,20 @@ jobs:
         run: |
           mkdir -p www
           cp index.html www/index.html
+          if [ -f user-manual.html ]; then cp user-manual.html www/user-manual.html; fi
           if [ -f manifest.json ]; then cp manifest.json www/manifest.json; fi
           if [ -f sw.js ]; then cp sw.js www/sw.js; fi
           if [ -d icons ]; then cp -r icons www/icons; fi
+
+      # Inject the same version/build that Android will use into the HTML UI labels
+      - name: Inject version into web assets
+        run: |
+          VER="1.0.${{ github.run_number }}"
+          BUILD="${{ github.run_number }}"
+          echo "Injecting version=$VER build=$BUILD into www/index.html"
+          sed -i "s/%%MM_APP_VERSION%%/${VER}/g" www/index.html
+          sed -i "s/%%MM_APP_BUILD%%/${BUILD}/g" www/index.html
+          grep -n "MM_APP_VERSION\|MM_APP_BUILD\|App Ready\|aboutVersion" www/index.html | head -20
 
       # Capacitor 8 targets Android 16 (API 36), which Google Play requires for new apps and updates.
       # @capgo/native-purchases = Google Play Billing (one-time Premium purchase).
@@ -104,11 +115,13 @@ jobs:
           EOF
 
       # Android only installs an update when the new APK has the SAME signing key and a HIGHER versionCode.
-      # The debug key changes on every CI run, so we sign with our own keystore and bump the version each run.
+      # Match versionName / versionCode to what was injected into the web UI.
       - name: Set version
         run: |
-          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
-          sed -i "s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+          VER="1.0.${{ github.run_number }}"
+          BUILD="${{ github.run_number }}"
+          sed -i "s/versionCode [0-9]*/versionCode ${BUILD}/" android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"${VER}\"/" android/app/build.gradle
           grep -n "versionCode\|versionName" android/app/build.gradle
 
       - name: Check Play requirements (target API)
