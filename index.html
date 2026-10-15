@@ -1771,21 +1771,11 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
       </div>
 
 
-      <!-- SMS AUTO-READ (moved from Net Worth) -->
+      <!-- USER GUIDE -->
       <div class="panel">
-        <h3>📲 SMS Auto-Read</h3>
-        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;line-height:1.5;">Detect bank SMS on this device and approve transactions quickly. Works best on Android / installed app.</p>
-        <div class="sms-panel" id="smsPanel" style="margin-bottom:0;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div>
-              <div style="font-size:0.88rem;font-weight:800;color:var(--text);">Bank SMS detection</div>
-              <div style="font-size:0.7rem;color:var(--muted);margin-top:2px;"><span class="sms-status-dot" id="smsDot"></span><span id="smsStatusText">Tap to enable</span></div>
-            </div>
-            <button onclick="toggleSmsRead()" id="smsToggleBtn" style="padding:8px 16px;background:linear-gradient(135deg,#1565c0,#4d96ff);border:none;border-radius:20px;color:#fff;font-size:0.75rem;font-weight:700;cursor:pointer;font-family:var(--font);">Enable</button>
-          </div>
-          <div id="smsPendingList"></div>
-          <div id="smsEmptyMsg" style="text-align:center;font-size:0.75rem;color:#888;padding:8px;">Bank SMS transactions will appear here for quick approval</div>
-        </div>
+        <h3>📖 User Guide</h3>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;line-height:1.5;">Step by step help for every part of the App: Adding transactions, Bills, pockets, reports, backup and more.</p>
+        <button type="button" onclick="openUserGuide()" class="export-btn" style="margin-bottom:0;background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;border-color:#1565c0;">📖 Open user guide</button>
       </div>
 
 
@@ -9727,6 +9717,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 // ── BACK BUTTON HANDLER ──
 window.addEventListener('popstate',e=>{
+  // In-app User Guide (not .modal-overlay)
+  try{
+    const ug=document.getElementById('userGuideModal');
+    if(ug && ug.style.display==='flex'){ closeUserGuide(); return; }
+  }catch(err){}
+  // Privacy policy modal
+  try{
+    const pm=document.getElementById('privacyModal');
+    if(pm && pm.style.display==='flex'){ closePrivacyPolicy(); return; }
+  }catch(err){}
   // If any modal is open, close it
   const openModal=document.querySelector('.modal-overlay.open');
   if(openModal){
@@ -13122,6 +13122,30 @@ async function restoreFromFirebase(){
   }
 }
 
+// ── User Guide (in-app viewer for user-manual.html) ──
+function openUserGuide(){
+  try{
+    const modal=document.getElementById('userGuideModal');
+    const frame=document.getElementById('userGuideFrame');
+    if(!modal||!frame){ showToast('⚠️ User guide not available'); return; }
+    // Prefer packaged file next to index.html (www/user-manual.html in the APK)
+    frame.src='user-manual.html';
+    modal.style.display='flex';
+    try{ history.pushState({modal:'userGuideModal'},''); }catch(e){}
+  }catch(e){
+    console.warn(e);
+    showToast('⚠️ Could not open user guide');
+  }
+}
+function closeUserGuide(){
+  try{
+    const modal=document.getElementById('userGuideModal');
+    const frame=document.getElementById('userGuideFrame');
+    if(frame) frame.src='about:blank';
+    if(modal) modal.style.display='none';
+  }catch(e){}
+}
+
 // ── Privacy Policy Modal ──
 function showPrivacyPolicy(){
   document.getElementById('privacyModal').style.display='flex';
@@ -13720,6 +13744,18 @@ window.onload=async()=>{
       </div>
     </div>
   </div>
+</div>
+
+<!-- USER GUIDE (opens user-manual.html inside the app) -->
+<div id="userGuideModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10050;flex-direction:column;">
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;padding-top:calc(12px + env(safe-area-inset-top,0px));background:linear-gradient(135deg,#0d2878,#1565c0);color:#fff;flex-shrink:0;">
+    <button type="button" onclick="closeUserGuide()" aria-label="Close user guide" style="background:rgba(255,255,255,0.18);border:none;color:#fff;border-radius:10px;width:40px;height:40px;font-size:1.2rem;font-weight:800;cursor:pointer;flex-shrink:0;">←</button>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:0.95rem;font-weight:800;">📖 User Guide</div>
+      <div style="font-size:0.68rem;opacity:0.85;">Money Manager Pro</div>
+    </div>
+  </div>
+  <iframe id="userGuideFrame" title="User Guide" src="about:blank" style="flex:1;width:100%;border:none;background:#fff;min-height:0;"></iframe>
 </div>
 
 <!-- PRIVACY POLICY MODAL -->
