@@ -9698,6 +9698,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 // ── BACK BUTTON HANDLER ──
 window.addEventListener('popstate',e=>{
+  // Delete-account confirm
+  try{
+    const dm=document.getElementById('deleteAccountModal');
+    if(dm && dm.style.display==='flex'){ closeDeleteAccountModal(); return; }
+  }catch(err){}
   // In-app User Guide (not .modal-overlay)
   try{
     const ug=document.getElementById('userGuideModal');
@@ -13374,34 +13379,112 @@ async function mmSyncPremiumFromPlay(){
   }catch(e){}
 }
 
-/** Permanent account deletion: server copy (Firebase) + everything on this device. */
-async function deleteMyAccount(){
+/** Open in-app confirm UI (Capacitor WebView often blocks window.confirm / prompt). */
+function deleteMyAccount(){
   if(!currentUser){ showToast('Please log in first'); return; }
-  const uname=currentUser.username;
-  if(!confirm('Delete your account and ALL data?\n\n• Your registration profile is removed from our server\n• All data on this device is erased\n• JSON files you saved elsewhere are not deleted\n• This cannot be undone')) return;
-  const typed=prompt('To confirm, type DELETE');
-  if(!typed || typed.trim().toUpperCase()!=='DELETE'){ showToast('Account deletion cancelled'); return; }
-  showToast('🧨 Deleting your account…', 6000);
-  let cloudOk=true;
+  const modal=document.getElementById('deleteAccountModal');
+  const input=document.getElementById('deleteAccountConfirmInput');
+  const err=document.getElementById('deleteAccountErr');
+  if(!modal||!input){
+    // Fallback if modal missing
+    _deleteMyAccountExecute();
+    return;
+  }
+  if(err){ err.style.display='none'; err.textContent=''; }
+  input.value='';
+  modal.style.display='flex';
+  try{ history.pushState({modal:'deleteAccountModal'},''); }catch(e){}
+  setTimeout(()=>{ try{ input.focus(); }catch(e){} }, 200);
+}
+function closeDeleteAccountModal(){
+  const modal=document.getElementById('deleteAccountModal');
+  if(modal) modal.style.display='none';
+  const input=document.getElementById('deleteAccountConfirmInput');
+  if(input) input.value='';
+}
+async function confirmDeleteAccountFromModal(){
+  const input=document.getElementById('deleteAccountConfirmInput');
+  const err=document.getElementById('deleteAccountErr');
+  const typed=(input&&input.value||'').trim().toUpperCase();
+  if(typed!=='DELETE'){
+    if(err){ err.textContent='Please type DELETE (all capitals) to confirm.'; err.style.display='block'; }
+    showToast('Type DELETE to confirm');
+    return;
+  }
+  closeDeleteAccountModal();
+  await _deleteMyAccountExecute();
+}
+
+/** Permanent account deletion: profile + all data on this device, then login screen. */
+async function _deleteMyAccountExecute(){
+  if(!currentUser){ showToast('Please log in first'); return; }
+  const uname=String(currentUser.username||'');
+  showToast('🧨 Deleting your account…', 8000);
+
+  // 1) Best-effort server profile cleanup (optional — local wipe always continues)
   try{
     if(typeof firebaseDB!=='undefined' && firebaseDB){
       await firebaseDB.ref('users/'+uname).remove();
-      await firebaseDB.ref('backups/'+uname).remove();
+      try{ await firebaseDB.ref('backups/'+uname).remove(); }catch(e2){}
     }
-  }catch(e){ cloudOk=false; console.warn('Cloud delete failed', e); }
-  if(!cloudOk && !confirm('Could not reach the server (check your internet).\n\nErase the data on this device anyway? Your cloud copy may remain until you retry.')) return;
+  }catch(e){ console.warn('Server profile delete failed (continuing local wipe)', e); }
+
+  // 2) Cancel pending local notifications
   try{
     const C=window.Capacitor;
     if(C && C.Plugins && C.Plugins.LocalNotifications){
       const pend=await C.Plugins.LocalNotifications.getPending();
-      if(pend && pend.notifications && pend.notifications.length) await C.Plugins.LocalNotifications.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+      if(pend && pend.notifications && pend.notifications.length){
+        await C.Plugins.LocalNotifications.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
+      }
     }
   }catch(e){}
-  for(const st of ['transactions','loans','goals','emis','recurring','investments','settings','categories','users']){ try{ await dbClear(st); }catch(e){} }
-  try{ localStorage.clear(); }catch(e){}
-  try{ sessionStorage.clear(); }catch(e){}
+
+  // 3) Remove this user from the accounts map (before full clear)
+  try{
+    const users=getUsersSync()||{};
+    Object.keys(users).forEach(k=>{
+      if(String(k).toUpperCase()===uname.toUpperCase()) delete users[k];
+    });
+    saveUsersSync(users);
+  }catch(e){}
+
+  // 4) Wipe all data stores (IndexedDB or native files)
+  for(const st of ['transactions','loans','goals','emis','recurring','investments','settings','categories','users']){
+    try{ await dbClear(st); }catch(e){}
+  }
+  try{ if(typeof _fsFlushAll==='function') await _fsFlushAll(); }catch(e){}
+
+  // 5) Clear session + web storage + crypto
+  try{ clearSession(); }catch(e){}
   try{ clearCryptoKey(); }catch(e){}
-  location.reload();
+  currentUser=null;
+  transactions=[];budgets={};goals=[];emis=[];recurringTxns=[];loans=[];investments=[];
+  try{ localStorage.removeItem('mm_session'); }catch(e){}
+  try{ localStorage.removeItem('mmp_users_v2'); }catch(e){}
+  try{ localStorage.removeItem('mm_users'); }catch(e){}
+  try{
+    // Clear any other app keys but keep nothing related to accounts
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k) keys.push(k); }
+    keys.forEach(k=>{
+      if(/^mm|^mmp|_user|session|pin|premium/i.test(k)) try{ localStorage.removeItem(k); }catch(e){}
+    });
+  }catch(e){}
+  try{ sessionStorage.clear(); }catch(e){}
+
+  // 6) Show login screen immediately, then hard reload so state is clean
+  try{
+    document.getElementById('appScreen').classList.remove('active');
+    document.getElementById('pinScreen').classList.remove('active');
+    document.getElementById('pinScreen').style.display='none';
+    document.getElementById('loginScreen').classList.add('active');
+    const lu=document.getElementById('loginUser'); if(lu) lu.value='';
+    const lp=document.getElementById('loginPass'); if(lp) lp.value='';
+  }catch(e){}
+
+  showToast('✅ Account deleted. Please register or sign in.', 4000);
+  setTimeout(()=>{ try{ location.href=location.href.split('#')[0]+'?fresh='+Date.now(); }catch(e){ location.reload(); } }, 600);
 }
 
 function renderPremiumBadge(){
@@ -13697,6 +13780,25 @@ window.onload=async()=>{
         <div style="font-weight:800;font-size:0.95rem;">Listening…</div>
         <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">e.g. “How much can I spend on Food today?”</div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE ACCOUNT CONFIRMATION (in-app — WebView-safe) -->
+<div id="deleteAccountModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10060;align-items:center;justify-content:center;padding:18px;">
+  <div style="width:100%;max-width:360px;background:var(--surface,#fff);border-radius:18px;padding:20px;border:2px solid #ef9a9a;box-shadow:0 12px 40px rgba(0,0,0,0.25);">
+    <div style="font-size:1.4rem;margin-bottom:6px;">🧨</div>
+    <div style="font-size:1rem;font-weight:800;color:#c62828;margin-bottom:8px;">Delete account &amp; data</div>
+    <p style="font-size:0.8rem;color:var(--muted,#555);line-height:1.5;margin:0 0 12px;">
+      This removes your profile and <b>all data on this device</b>. JSON files you saved elsewhere are not deleted. This cannot be undone.
+    </p>
+    <label style="display:block;font-size:0.75rem;font-weight:700;margin-bottom:6px;">Type <b>DELETE</b> to confirm</label>
+    <input id="deleteAccountConfirmInput" type="text" autocomplete="off" autocapitalize="characters" placeholder="DELETE"
+      style="width:100%;padding:12px;border:2px solid #ef9a9a;border-radius:12px;font-size:1rem;font-weight:700;letter-spacing:0.06em;margin-bottom:8px;box-sizing:border-box;font-family:var(--font,system-ui);background:var(--bg,#fafafa);color:var(--text,#111);"/>
+    <div id="deleteAccountErr" style="display:none;font-size:0.75rem;color:#c62828;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <button type="button" onclick="closeDeleteAccountModal()" style="flex:1;padding:12px;border:2px solid var(--border,#ddd);border-radius:12px;background:var(--bg,#f5f5f5);font-weight:700;cursor:pointer;font-family:var(--font,system-ui);">Cancel</button>
+      <button type="button" onclick="confirmDeleteAccountFromModal()" style="flex:1;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#c62828,#e53935);color:#fff;font-weight:800;cursor:pointer;font-family:var(--font,system-ui);">Delete forever</button>
     </div>
   </div>
 </div>
