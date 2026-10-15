@@ -2938,6 +2938,34 @@ function clearCryptoKey(){ _cryptoKey = null; }
 
 
 
+// Replace ONLY the current user's rows in a store — never wipe other users.
+async function dbReplaceUserRecords(store, username, newRows){
+  const u=String(username||'');
+  const all=await dbGetAll(store);
+  const others=(all||[]).filter(r=>String(r&&r._user||'')!==u);
+  const merged=others.concat(Array.isArray(newRows)?newRows:[]);
+  if(_fsMode){
+    _fsCache[store]=merged;
+    await _fsFlushStore(store);
+    return;
+  }
+  if(!db) return;
+  // IndexedDB: rewrite store with others + this user's new set
+  await new Promise((resolve)=>{
+    try{
+      const tx=db.transaction(store,'readwrite');
+      const os=tx.objectStore(store);
+      const rq=os.clear();
+      rq.onsuccess=()=>{
+        for(const item of merged) os.put(item);
+      };
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>resolve();
+      tx.onabort=()=>resolve();
+    }catch(e){ resolve(); }
+  });
+}
+
 // ── saveData: persist all in-memory arrays (native FS on Android, IndexedDB on web) ──
 async function saveData(){
   if(!currentUser)return;
@@ -2975,12 +3003,13 @@ async function saveData(){
       const enc=await encryptData(JSON.stringify({...r,_user:u}));
       return{id:r.id,_user:u,_enc:enc};
     }));
-    await dbClear('transactions'); await dbPutAll('transactions', encTxns);
-    await dbClear('loans');        await dbPutAll('loans',        encLoans);
-    await dbClear('goals');        await dbPutAll('goals',        encGoals);
-    await dbClear('emis');         await dbPutAll('emis',         encEmis);
-    await dbClear('recurring');    await dbPutAll('recurring',    encRecur);
-    // Encrypt budgets
+    // CRITICAL: only replace this user's records — other users must stay intact
+    await dbReplaceUserRecords('transactions', u, encTxns);
+    await dbReplaceUserRecords('loans',        u, encLoans);
+    await dbReplaceUserRecords('goals',        u, encGoals);
+    await dbReplaceUserRecords('emis',         u, encEmis);
+    await dbReplaceUserRecords('recurring',    u, encRecur);
+    // Encrypt budgets (already keyed per user via getKey)
     const encBudgets=await encryptData(JSON.stringify(budgets));
     await dbPut('settings',{key:getKey('budgets'),value:encBudgets});
     // Ensure native file backend has fully written to disk
@@ -2988,30 +3017,38 @@ async function saveData(){
   }catch(err){console.error('saveData error:',err);}
 }
 
-// ── loadData: load all records from IndexedDB into memory ──
+// ── loadData: load all records for the logged-in user into memory ──
 async function loadData(){
   if(!currentUser)return;
   if(!db){
     try{ db=await initDB(); }catch(e){}
   }
   if(!db){
-    console.error('loadData: IndexedDB unavailable — cannot load saved data!');
+    console.error('loadData: storage unavailable — cannot load saved data!');
     showToast('⚠️ Storage error — could not load your saved data! Please restart the app.',4500);
     return;
   }
   try{
-    const u=currentUser.username;
-    // Helper: decrypt a store's records for current user
+    const u=String(currentUser.username||'');
+    // Helper: decrypt a store's records for current user only
     async function decryptStore(storeName){
       const all=await dbGetAll(storeName);
-      const mine=all.filter(r=>r._user===u);
-      return Promise.all(mine.map(async r=>{
+      const mine=(all||[]).filter(r=>String(r&&r._user||'')===u);
+      const out=[];
+      for(const r of mine){
         if(r._enc){
-          try{ return JSON.parse(await decryptData(r._enc)); }
-          catch{ return r; } // legacy unencrypted record
+          try{
+            const plain=await decryptData(r._enc);
+            out.push(JSON.parse(plain));
+          }catch(e){
+            // Wrong key / corrupt — skip, do not inject encrypted blob into UI
+            console.warn('decrypt failed for',storeName,r.id,e&&e.message);
+          }
+        } else {
+          out.push(r);
         }
-        return r;
-      }));
+      }
+      return out;
     }
     transactions  = await decryptStore('transactions');
     loans         = await decryptStore('loans');
@@ -3437,6 +3474,9 @@ function doLogin(){
 
   // Load data async in background, then show app
   (async function(){
+    // Clear previous user's in-memory data before loading this account
+    transactions=[];budgets={};goals=[];emis=[];recurringTxns=[];loans=[];investments=[];
+    try{ reminders=[]; netWorthItems=[]; regSheets=[]; moneyPockets=[]; pocketSplitHistory=[]; mmSetAsideLog=[]; mmDrawLedger={}; subscriptions=[]; _regSmartLoadedFor=null; }catch(e){}
     try{ await initCryptoKey(user); }catch(e){}
     try{ await loadData(); }catch(e){}
     try{ await loadInvestments(); }catch(e){}
@@ -3451,6 +3491,8 @@ function doLogin(){
   })();
 }
 function doLogout(){
+  // Persist any pending native writes before dropping the session
+  try{ if(typeof _fsFlushAll==='function') _fsFlushAll(); }catch(e){}
   clearCryptoKey();
   currentUser=null;
   transactions=[];budgets={};goals=[];emis=[];recurringTxns=[];loans=[];investments=[];
@@ -7308,17 +7350,40 @@ async function deleteInvestmentSale(pid,sid){
 // ── Persistence ──
 async function saveInvestments(){
   if(!db||!currentUser)throw new Error('Database not available');
-  const u=currentUser.username,enc=await Promise.all(investments.map(async x=>({id:x.id,_user:u,_enc:await encryptData(JSON.stringify({...x,_user:u}))})));
-  // Single transaction: remove this user's old records and write the new set together (all-or-nothing)
+  const u=currentUser.username;
+  const enc=await Promise.all(investments.map(async x=>({id:x.id,_user:u,_enc:await encryptData(JSON.stringify({...x,_user:u}))})));
+  // Only replace this user's investments — leave other users untouched
+  if(typeof dbReplaceUserRecords==='function'){
+    await dbReplaceUserRecords('investments', u, enc);
+    if(typeof _fsFlushAll==='function'){ try{ await _fsFlushAll(); }catch(e){} }
+    return;
+  }
   await new Promise((resolve,reject)=>{
     const tx=db.transaction('investments','readwrite'),os=tx.objectStore('investments'),rq=os.getAll();
-    rq.onsuccess=()=>{(rq.result||[]).forEach(r=>{if(r._user===u)os.delete(r.id);});enc.forEach(r=>os.put(r));};
+    rq.onsuccess=()=>{(rq.result||[]).forEach(r=>{if(String(r._user)===String(u))os.delete(r.id);});enc.forEach(r=>os.put(r));};
     tx.oncomplete=()=>resolve();
     tx.onerror=()=>reject(tx.error);
     tx.onabort=()=>reject(tx.error||new Error('Transaction aborted'));
   });
 }
-async function loadInvestments(){if(!db||!currentUser)return;const u=currentUser.username,all=await dbGetAll('investments');investments=(await Promise.all(all.filter(x=>x._user===u).map(async x=>{try{return x._enc?JSON.parse(await decryptData(x._enc)):x;}catch{return x;}}))).map(normalizeInvestment);await loadInvChargesMaster();await loadInvRules();await loadInvFunds();await loadInvPriceData();}
+async function loadInvestments(){
+  if(!db||!currentUser)return;
+  const u=String(currentUser.username||'');
+  const all=await dbGetAll('investments');
+  const mine=(all||[]).filter(x=>String(x&&x._user||'')===u);
+  const decoded=[];
+  for(const x of mine){
+    try{
+      if(x._enc) decoded.push(JSON.parse(await decryptData(x._enc)));
+      else decoded.push(x);
+    }catch(e){ console.warn('investment decrypt failed',x.id); }
+  }
+  investments=decoded.map(normalizeInvestment);
+  await loadInvChargesMaster();
+  await loadInvRules();
+  await loadInvFunds();
+  await loadInvPriceData();
+}
 
 // ── Averaging (average buy price after buying more) ──
 function avgHoldings(){
