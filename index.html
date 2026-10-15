@@ -1882,17 +1882,13 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           <input type="checkbox" id="autoBackupOnLogin" onchange="saveAutoBackupPref()" style="width:16px;height:16px;flex-shrink:0;"/>
           <span>Automatic Backup to JSON on login</span>
         </label>
-        <div style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border);">
-          <div style="font-size:0.88rem;font-weight:700;margin-bottom:8px;">☁️ Cloud Backup</div>
-          <div style="display:flex;gap:8px;">
-            <button class="export-btn" style="margin-bottom:0;flex:1;width:auto;" onclick="backupToFirebase()">☁️ Backup to Cloud</button>
-            <button class="export-btn" style="margin-bottom:0;flex:1;width:auto;" onclick="restoreFromFirebase()">☁️ Restore from Cloud</button>
-          </div>
+        <div style="margin-top:10px;padding:10px;background:var(--bg);border-radius:10px;border:1.5px solid var(--border);font-size:0.72rem;color:var(--muted);line-height:1.5;">
+          💡 After <b>Local Backup – JSON</b>, save or share the file to <b>Google Drive</b>, Files, email or WhatsApp. That is your cloud copy — under your control. Use <b>Import JSON Backup</b> to restore it on this or another phone.
         </div>
         <div style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border);">
           <button class="export-btn" onclick="clearAllData()" style="border-color:#ffcdd2;color:#ff6b6b;margin-bottom:0;">🗑️ Clear All Data</button>
           <button class="export-btn" onclick="deleteMyAccount()" style="border-color:#ef9a9a;color:#c62828;margin-top:10px;margin-bottom:0;">🧨 Delete My Account &amp; Data</button>
-          <div style="font-size:0.68rem;color:var(--muted);margin-top:6px;line-height:1.5;">Permanently removes your profile and cloud backup from our server and erases everything stored on this device.</div>
+          <div style="font-size:0.68rem;color:var(--muted);margin-top:6px;line-height:1.5;">Removes your registration profile from our server (if online) and erases everything stored on this device. Local JSON files you saved elsewhere are not deleted.</div>
         </div>
       </div>
 
@@ -8635,22 +8631,7 @@ function downloadFile(name,content,type){
   exportFile(name,content,type,{label:name,fallbackText:content,note:'File saving is not available on this device. Copy the text below and paste it into a file named '+name+'.'});
 }
 async function downloadJSONBackup(name,content){
-  // Option A: Median's downloadFile() requires a real, publicly-fetchable http(s) URL —
-  // a data: URI doesn't qualify, which is the most likely reason earlier attempts
-  // always fell back to a generic 'open with' chooser. Since Firebase is already
-  // connected, upload the backup there first, then hand Median a real URL to it.
-  if(window.median && median.share && typeof median.share.downloadFile==='function' && firebaseDB){
-    try{
-      const backupData=JSON.parse(content);
-      await firebaseDB.ref('backups/'+currentUser.username).set(backupData);
-      const url=FIREBASE_CONFIG.databaseURL+'/backups/'+encodeURIComponent(currentUser.username)+'.json';
-      await median.share.downloadFile({url:url,open:false});
-      showToast('✅ Backup downloaded successfully!');
-      return;
-    }catch(e){
-      console.warn('Median hosted-URL download failed, falling back:',e);
-    }
-  }
+  // Local file only — no upload to Firebase / cloud. User can save/share to Drive themselves.
   await exportFile(name,content,'application/json',{label:'Backup',fallbackText:content,silentFallback:true,skipMedianDownload:true});
 }
 async function applyBackupData(data){
@@ -11926,7 +11907,7 @@ function renderBackupHealthUI(){
   if(!sub) return;
   if(!lastBackupAt){
     if(title) title.textContent='💾 Backup health — never backed up';
-    sub.textContent='Create a local or cloud backup to protect your data.';
+    sub.textContent='Create a local JSON backup and save it to Drive or Files.';
     if(card){ card.style.borderColor='#ef9a9a'; card.style.background='#fff5f5'; }
     return;
   }
@@ -13087,39 +13068,13 @@ function saveUserToFirebase(user){
   }catch(e){console.log('Firebase save skipped:',e.message);}
 }
 
-// ── Cloud Backup & Restore (Firebase) ──
+// Cloud backup removed — use Local Backup JSON + Google Drive / Files / share.
+// Stubs kept so any leftover UI/calls do not crash.
 async function backupToFirebase(){
-  if(!firebaseDB){
-    showToast('⚠️ Cloud backup is not set up yet. Contact the developer.');
-    return;
-  }
-  try{
-    showToast('☁️ Backing up...',1500);
-    const backupObj=await buildBackupObj();
-    await firebaseDB.ref('backups/'+currentUser.username).set(backupObj);
-    showToast('✅ Backed up to the cloud!');
-  }catch(e){
-    console.error('Cloud backup error',e);
-    showToast('⚠️ Cloud backup failed: '+(e&&e.message?e.message:'error'));
-  }
+  showToast('Cloud backup is no longer used. Use Local Backup – JSON and save the file to Drive or Files.');
 }
 async function restoreFromFirebase(){
-  if(!firebaseDB){
-    showToast('⚠️ Cloud backup is not set up yet. Contact the developer.');
-    return;
-  }
-  if(!confirm('Restore from your last cloud backup? This will replace the data currently on this device.'))return;
-  try{
-    showToast('☁️ Restoring...',1500);
-    const snap=await firebaseDB.ref('backups/'+currentUser.username).once('value');
-    const data=snap.val();
-    if(!data){ showToast('⚠️ No cloud backup found for this account.'); return; }
-    await applyBackupData(data);
-    showToast('✅ Restored from the cloud!');
-  }catch(e){
-    console.error('Cloud restore error',e);
-    showToast('⚠️ Cloud restore failed: '+(e&&e.message?e.message:'error'));
-  }
+  showToast('Cloud restore is no longer used. Use Import JSON Backup with your saved file.');
 }
 
 // ── User Guide (in-app viewer for user-manual.html) ──
@@ -13423,7 +13378,7 @@ async function mmSyncPremiumFromPlay(){
 async function deleteMyAccount(){
   if(!currentUser){ showToast('Please log in first'); return; }
   const uname=currentUser.username;
-  if(!confirm('Delete your account and ALL data?\n\n• Your profile and cloud backup are removed from our server\n• All data on this device is erased\n• This cannot be undone')) return;
+  if(!confirm('Delete your account and ALL data?\n\n• Your registration profile is removed from our server\n• All data on this device is erased\n• JSON files you saved elsewhere are not deleted\n• This cannot be undone')) return;
   const typed=prompt('To confirm, type DELETE');
   if(!typed || typed.trim().toUpperCase()!=='DELETE'){ showToast('Account deletion cancelled'); return; }
   showToast('🧨 Deleting your account…', 6000);
@@ -13772,8 +13727,8 @@ window.onload=async()=>{
       <p style="font-weight:700;margin-bottom:4px;">1. What we collect</p>
       <p style="color:var(--muted);margin-bottom:12px;">Registration details you enter: name, phone number, email, city, username and avatar. These are stored on your device and sent to our Firebase (Google Cloud) database so we can understand our user base and improve the app. The financial data you enter (transactions, bills, loans, goals, investments, notes, bill photos) is stored on your device, encrypted with AES-256.</p>
 
-      <p style="font-weight:700;margin-bottom:4px;">2. Cloud backup (optional)</p>
-      <p style="color:var(--muted);margin-bottom:12px;">If you use Cloud Backup, a copy of your app data is uploaded to our Firebase database under your username so you can restore it on another phone. You can delete it at any time (see section 7). Bill photos are never uploaded.</p>
+      <p style="font-weight:700;margin-bottom:4px;">2. Backups</p>
+      <p style="color:var(--muted);margin-bottom:12px;">You can export a JSON backup on your device and save or share it yourself (for example to Google Drive, Files or email). That file is under your control. We do not run a built-in cloud backup of your financial data. Bill photos stay on the device and are not included in JSON backups.</p>
 
       <p style="font-weight:700;margin-bottom:4px;">3. Permissions</p>
       <p style="color:var(--muted);margin-bottom:12px;">• Microphone — voice typing only; speech is converted to text by your phone's speech service.<br>• Notifications &amp; alarms — daily, bill and EMI reminders.<br>• Camera / photos — only when you scan a bill. The photo stays on your device; the text is read on your device (a reading engine is downloaded the first time).<br>• Fingerprint — unlock is handled by Android; we never receive your biometric data.</p>
@@ -13785,10 +13740,10 @@ window.onload=async()=>{
       <p style="color:var(--muted);margin-bottom:12px;">We do not sell your data and do not share it for advertising. Service providers: Google Firebase (storage) and Google Play (billing). We show no ads in this version.</p>
 
       <p style="font-weight:700;margin-bottom:4px;">6. Security</p>
-      <p style="color:var(--muted);margin-bottom:12px;">Data on your device is encrypted. Cloud backups are stored in our Firebase database. No method of storage is 100% secure.</p>
+      <p style="color:var(--muted);margin-bottom:12px;">Data on your device is encrypted. JSON backup files you export are as secure as the place you store them (phone storage, Drive, etc.). No method of storage is 100% secure.</p>
 
       <p style="font-weight:700;margin-bottom:4px;">7. Your choices and deletion</p>
-      <p style="color:var(--muted);margin-bottom:12px;">Delete everything yourself in Settings → Delete My Account &amp; Data (removes your profile and cloud backup from our server and erases all data on the device). To request deletion without the app, open an issue at github.com/ullasankv-tech/Moneymanagerpro or use the page https://ullasankv-tech.github.io/Moneymanagerpro/delete-account.html. Settings → Clear All Data erases only your financial entries.</p>
+      <p style="color:var(--muted);margin-bottom:12px;">Delete everything yourself in Settings → Delete My Account &amp; Data (removes your registration profile from our server when online and erases all data on the device). JSON files you saved elsewhere are not deleted by the app. To request deletion without the app, open an issue at github.com/ullasankv-tech/Moneymanagerpro or use the page https://ullasankv-tech.github.io/Moneymanagerpro/delete-account.html. Settings → Clear All Data erases only your financial entries on this phone.</p>
 
       <p style="font-weight:700;margin-bottom:4px;">8. Children</p>
       <p style="color:var(--muted);margin-bottom:12px;">The app is not directed to children under 13.</p>
