@@ -13415,32 +13415,58 @@ async function confirmDeleteAccountFromModal(){
   await _deleteMyAccountExecute();
 }
 
+function _mmWithTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')), ms||3000))
+  ]);
+}
+
+/** Force Login/Register screen visible (no reliance on reload alone). */
+function forceGoToLoginScreen(){
+  try{ currentUser=null; }catch(e){}
+  try{ clearSession(); }catch(e){}
+  try{ clearCryptoKey(); }catch(e){}
+  try{
+    document.querySelectorAll('.modal-overlay.open').forEach(m=>{
+      m.classList.remove('open');
+      m.style.display='';
+    });
+  }catch(e){}
+  try{
+    const dm=document.getElementById('deleteAccountModal');
+    if(dm) dm.style.display='none';
+  }catch(e){}
+  try{
+    const ug=document.getElementById('userGuideModal');
+    if(ug) ug.style.display='none';
+  }catch(e){}
+  try{
+    ['appScreen','pinScreen'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){ el.classList.remove('active'); }
+    });
+    const pin=document.getElementById('pinScreen');
+    if(pin) pin.style.display='none';
+    const login=document.getElementById('loginScreen');
+    if(login){
+      login.classList.add('active');
+      login.style.display=''; // let .screen.active CSS handle it
+    }
+    const lu=document.getElementById('loginUser'); if(lu) lu.value='';
+    const lp=document.getElementById('loginPass'); if(lp) lp.value='';
+    const ae=document.getElementById('authError'); if(ae) ae.style.display='none';
+    try{ if(typeof switchAuthTab==='function') switchAuthTab('login'); }catch(e){}
+  }catch(e){ console.warn('forceGoToLoginScreen', e); }
+}
+
 /** Permanent account deletion: profile + all data on this device, then login screen. */
 async function _deleteMyAccountExecute(){
   if(!currentUser){ showToast('Please log in first'); return; }
   const uname=String(currentUser.username||'');
   showToast('🧨 Deleting your account…', 8000);
 
-  // 1) Best-effort server profile cleanup (optional — local wipe always continues)
-  try{
-    if(typeof firebaseDB!=='undefined' && firebaseDB){
-      await firebaseDB.ref('users/'+uname).remove();
-      try{ await firebaseDB.ref('backups/'+uname).remove(); }catch(e2){}
-    }
-  }catch(e){ console.warn('Server profile delete failed (continuing local wipe)', e); }
-
-  // 2) Cancel pending local notifications
-  try{
-    const C=window.Capacitor;
-    if(C && C.Plugins && C.Plugins.LocalNotifications){
-      const pend=await C.Plugins.LocalNotifications.getPending();
-      if(pend && pend.notifications && pend.notifications.length){
-        await C.Plugins.LocalNotifications.cancel({notifications:pend.notifications.map(n=>({id:n.id}))});
-      }
-    }
-  }catch(e){}
-
-  // 3) Remove this user from the accounts map (before full clear)
+  // A) Clear session + user profile FIRST so any reload lands on login
   try{
     const users=getUsersSync()||{};
     Object.keys(users).forEach(k=>{
@@ -13448,43 +13474,72 @@ async function _deleteMyAccountExecute(){
     });
     saveUsersSync(users);
   }catch(e){}
-
-  // 4) Wipe all data stores (IndexedDB or native files)
-  for(const st of ['transactions','loans','goals','emis','recurring','investments','settings','categories','users']){
-    try{ await dbClear(st); }catch(e){}
-  }
-  try{ if(typeof _fsFlushAll==='function') await _fsFlushAll(); }catch(e){}
-
-  // 5) Clear session + web storage + crypto
   try{ clearSession(); }catch(e){}
-  try{ clearCryptoKey(); }catch(e){}
-  currentUser=null;
-  transactions=[];budgets={};goals=[];emis=[];recurringTxns=[];loans=[];investments=[];
   try{ localStorage.removeItem('mm_session'); }catch(e){}
   try{ localStorage.removeItem('mmp_users_v2'); }catch(e){}
   try{ localStorage.removeItem('mm_users'); }catch(e){}
+  try{ sessionStorage.clear(); }catch(e){}
+  currentUser=null;
+  transactions=[];budgets={};goals=[];emis=[];recurringTxns=[];loans=[];investments=[];
+  try{ clearCryptoKey(); }catch(e){}
+
+  // B) Best-effort server cleanup — NEVER block more than a few seconds
   try{
-    // Clear any other app keys but keep nothing related to accounts
+    if(typeof firebaseDB!=='undefined' && firebaseDB){
+      await _mmWithTimeout(firebaseDB.ref('users/'+uname).remove(), 2500);
+      try{ await _mmWithTimeout(firebaseDB.ref('backups/'+uname).remove(), 1500); }catch(e2){}
+    }
+  }catch(e){ console.warn('Server profile delete skipped', e&&e.message); }
+
+  // C) Cancel notifications (timeout)
+  try{
+    const C=window.Capacitor;
+    if(C && C.Plugins && C.Plugins.LocalNotifications){
+      const pend=await _mmWithTimeout(C.Plugins.LocalNotifications.getPending(), 1500);
+      if(pend && pend.notifications && pend.notifications.length){
+        await _mmWithTimeout(C.Plugins.LocalNotifications.cancel({
+          notifications:pend.notifications.map(n=>({id:n.id}))
+        }), 1500);
+      }
+    }
+  }catch(e){}
+
+  // D) Wipe all stores — on native FS, write empty files immediately (not delayed flush)
+  const stores=['transactions','loans','goals','emis','recurring','investments','settings','categories','users'];
+  for(const st of stores){
+    try{
+      if(typeof _fsMode!=='undefined' && _fsMode){
+        _fsCache[st]=[];
+        if(typeof _fsFlushStore==='function') await _fsFlushStore(st);
+      } else {
+        await dbClear(st);
+      }
+    }catch(e){}
+  }
+  try{ if(typeof _fsFlushAll==='function') await _fsFlushAll(); }catch(e){}
+
+  // E) Extra localStorage sweep
+  try{
     const keys=[];
     for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k) keys.push(k); }
     keys.forEach(k=>{
-      if(/^mm|^mmp|_user|session|pin|premium/i.test(k)) try{ localStorage.removeItem(k); }catch(e){}
+      if(/^mm|^mmp|session|pin|premium|currency/i.test(k)) try{ localStorage.removeItem(k); }catch(e){}
     });
   }catch(e){}
-  try{ sessionStorage.clear(); }catch(e){}
 
-  // 6) Show login screen immediately, then hard reload so state is clean
-  try{
-    document.getElementById('appScreen').classList.remove('active');
-    document.getElementById('pinScreen').classList.remove('active');
-    document.getElementById('pinScreen').style.display='none';
-    document.getElementById('loginScreen').classList.add('active');
-    const lu=document.getElementById('loginUser'); if(lu) lu.value='';
-    const lp=document.getElementById('loginPass'); if(lp) lp.value='';
-  }catch(e){}
-
+  // F) ALWAYS show login UI (even if reload fails in WebView)
+  forceGoToLoginScreen();
   showToast('✅ Account deleted. Please register or sign in.', 4000);
-  setTimeout(()=>{ try{ location.href=location.href.split('#')[0]+'?fresh='+Date.now(); }catch(e){ location.reload(); } }, 600);
+
+  // G) Hard reload as belt-and-suspenders (Capacitor-safe)
+  setTimeout(()=>{
+    try{
+      // Prefer full reload of current document
+      window.location.reload();
+    }catch(e){
+      try{ window.location.href='index.html'; }catch(e2){}
+    }
+  }, 500);
 }
 
 function renderPremiumBadge(){
@@ -13620,11 +13675,15 @@ window.onload=async()=>{
       if(pin&&pinEnabled){ showPinScreen('check'); }
       else{ showApp(); }
     } else {
+      // No session or user was deleted — must show Login/Register only
+      try{ document.getElementById('appScreen').classList.remove('active'); }catch(e){}
+      try{ document.getElementById('pinScreen').classList.remove('active'); document.getElementById('pinScreen').style.display='none'; }catch(e){}
       document.getElementById('loginScreen').classList.add('active');
     }
   }catch(e){
     // If anything fails, always show login screen so user is never stuck
     console.error('Startup error:',e);
+    try{ document.getElementById('appScreen').classList.remove('active'); }catch(err){}
     document.getElementById('loginScreen').classList.add('active');
   }
   // Update JS health indicator + version labels (from CI / native App.getInfo)
