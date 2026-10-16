@@ -3390,8 +3390,8 @@ async function migrateFromLocalStorage(){
     console.log('✅ Full migration from localStorage complete!');
   }catch(err){console.error('Migration error:',err);}
 }
-function showToast(msg,dur=1800){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
-let _mmBoxTimer=null;
+function showToast(msg,dur=1800){if(String(msg).length>30){showBox(msg,Math.max(dur,3500));return;}const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
+var _mmBoxTimer=null;
 function showBox(msg,dur=4000){
   let b=document.getElementById('mmBox');
   if(!b){b=document.createElement('div');b.id='mmBox';b.className='mm-box';b.setAttribute('role','alert');b.onclick=()=>b.classList.remove('show');document.body.appendChild(b);}
