@@ -5525,6 +5525,27 @@ function _emiLinkedExpenses(emi){
   });
 }
 
+/** Centered on-screen message box (WebView-safe; better than toast for important rules). */
+function showCenterAlert(title, message, btnLabel){
+  const modal=document.getElementById('centerAlertModal');
+  const tEl=document.getElementById('centerAlertTitle');
+  const mEl=document.getElementById('centerAlertMessage');
+  const bEl=document.getElementById('centerAlertBtn');
+  if(!modal||!mEl){
+    try{ alert((title?title+'\n\n':'')+(message||'')); }catch(e){}
+    return;
+  }
+  if(tEl) tEl.textContent=title||'Notice';
+  mEl.textContent=message||'';
+  if(bEl) bEl.textContent=btnLabel||'OK';
+  modal.style.display='flex';
+  try{ history.pushState({modal:'centerAlertModal'},''); }catch(e){}
+}
+function closeCenterAlert(){
+  const modal=document.getElementById('centerAlertModal');
+  if(modal) modal.style.display='none';
+}
+
 /** Delete loan from tracker only when no EMI payments remain in Income & Expense. */
 function deleteEmi(id){
   const emi=emis.find(e=>e.id===id);
@@ -5532,7 +5553,13 @@ function deleteEmi(id){
   const linked=_emiLinkedExpenses(emi);
   const paid=emi.paid||0;
   if(paid>0 || linked.length>0){
-    showToast('Cannot delete this loan yet. Use ↩ Undo for each paid EMI (removes the expense), or delete those expense entries in Home, then try again.', 5000);
+    const n=Math.max(paid, linked.length);
+    showCenterAlert(
+      'Cannot delete this loan',
+      'This loan has '+n+' paid EMI entr'+(n===1?'y':'ies')+' in Income & Expense.\n\n'+
+      'Please use ↩ Undo on this card for each paid EMI (that also removes the expense), or delete those expense entries on the Home screen first.\n\n'+
+      'After all linked payments are removed, you can delete the loan from the tracker.'
+    );
     return;
   }
   if(!confirm('Delete this EMI / loan from the tracker?\n\nNo payments are linked — only the schedule will be removed.'))return;
@@ -9907,6 +9934,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 // ── BACK BUTTON HANDLER ──
 window.addEventListener('popstate',e=>{
+  // Center alert
+  try{
+    const ca=document.getElementById('centerAlertModal');
+    if(ca && ca.style.display==='flex'){ closeCenterAlert(); return; }
+  }catch(err){}
   // Delete-account confirm
   try{
     const dm=document.getElementById('deleteAccountModal');
@@ -14049,6 +14081,16 @@ window.onload=async()=>{
         <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">e.g. “How much can I spend on Food today?”</div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- CENTER ALERT (important messages — middle of screen) -->
+<div id="centerAlertModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10070;align-items:center;justify-content:center;padding:18px;">
+  <div style="width:100%;max-width:340px;background:var(--surface,#fff);border-radius:18px;padding:22px 20px;border:2px solid var(--border,#e0e0e0);box-shadow:0 12px 40px rgba(0,0,0,0.25);text-align:center;">
+    <div style="font-size:1.8rem;margin-bottom:8px;">⚠️</div>
+    <div id="centerAlertTitle" style="font-size:1rem;font-weight:800;color:var(--text,#1a1a2e);margin-bottom:10px;">Notice</div>
+    <div id="centerAlertMessage" style="font-size:0.84rem;color:var(--muted,#555);line-height:1.55;white-space:pre-line;margin-bottom:18px;text-align:left;"></div>
+    <button type="button" id="centerAlertBtn" onclick="closeCenterAlert()" style="width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#1565c0,#4d96ff);color:#fff;font-weight:800;font-size:0.9rem;cursor:pointer;font-family:var(--font,system-ui);">OK</button>
   </div>
 </div>
 
