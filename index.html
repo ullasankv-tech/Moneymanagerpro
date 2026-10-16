@@ -10160,17 +10160,37 @@ let reminders=[];
 
 async function loadReminders(){
   try{
-    const all=await dbGetAll('settings');
-    const r=all.find(x=>x.key==='reminders_'+currentUser.username);
-    reminders=r?JSON.parse(r.value):[];
+    if(!currentUser){ reminders=[]; return; }
+    const r=await dbGet('settings','reminders_'+currentUser.username);
+    if(!r || r.value==null || r.value===''){ reminders=[]; }
+    else {
+      let raw=r.value;
+      // Saved with encryptData — must decrypt before JSON.parse
+      try{ raw=await decryptData(raw); }catch(e){}
+      try{
+        const parsed=typeof raw==='string'?JSON.parse(raw):raw;
+        reminders=Array.isArray(parsed)?parsed:[];
+      }catch(e){
+        // Legacy plain JSON already in object form
+        reminders=Array.isArray(r.value)?r.value:[];
+      }
+    }
     const cm=mmCurMonthKey();
     reminders.forEach(x=>{ if(x.paid && x.paidMonth && x.paidMonth!==cm){ x.paid=false; delete x.paidMonth; delete x.paidTxId; } });
-  }catch{reminders=[];}
+  }catch(e){ console.warn('loadReminders', e); reminders=[]; }
   setTimeout(function(){ try{ syncBillAlarms(); }catch(e){} }, 3000);
 }
 async function saveReminders(){
-  const enc=await encryptData(JSON.stringify(reminders));
-  await dbPut('settings',{key:'reminders_'+currentUser.username,value:enc});
+  if(!currentUser){ showToast('Please log in first'); return; }
+  try{
+    const enc=await encryptData(JSON.stringify(reminders||[]));
+    await dbPut('settings',{key:'reminders_'+currentUser.username,value:enc});
+    if(typeof _fsFlushAll==='function'){ try{ await _fsFlushAll(); }catch(e){} }
+  }catch(e){
+    console.error('saveReminders', e);
+    showToast('⚠️ Could not save bill reminder');
+    throw e;
+  }
 }
 
 function renderReminders(){
@@ -10255,6 +10275,7 @@ function openAddReminder(){
   openModal('addReminderModal');
 }
 async function saveReminder(){
+  if(!currentUser){ showToast('Please log in first'); return; }
   const name=document.getElementById('remName').value.trim();
   const amount=parseFloat(document.getElementById('remAmount').value)||0;
   const dueDay=parseInt(document.getElementById('remDueDay').value)||1;
@@ -10265,15 +10286,21 @@ async function saveReminder(){
   const alarmOn=!!(document.getElementById('remAlarmOn')||{}).checked;
   const alarmTime=(document.getElementById('remAlarmTime')||{}).value||'09:00';
   const alarmBefore=Math.min(7,Math.max(0,parseInt((document.getElementById('remAlarmBefore')||{}).value)||0));
+  if(!Array.isArray(reminders)) reminders=[];
   reminders.push({id:Date.now(),name,amount,dueDay,emoji,category,paid:false,alarmOn,alarmTime,alarmBefore,createdAt:new Date().toISOString()});
-  await saveReminders();
+  try{
+    await saveReminders();
+  }catch(e){
+    reminders.pop();
+    return;
+  }
   window._mmUserAction=true;
-  syncBillAlarms();
+  try{ syncBillAlarms(); }catch(e){}
   closeModal('addReminderModal');
   renderReminders();
   showToast('✅ Bill reminder added!');
   // Clear form
-  ['remName','remAmount','remDueDay'].forEach(id=>document.getElementById(id).value='');
+  ['remName','remAmount','remDueDay'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
 }
 function mmCurMonthKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 function findBillPocket(r){
