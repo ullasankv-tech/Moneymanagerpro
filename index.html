@@ -460,6 +460,9 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
 /* TOAST */
 .toast{position:fixed;top:calc(24px + var(--safe-top));left:50%;transform:translateX(-50%) translateY(-200px);background:#1a1a2e;color:#fff;padding:11px 22px;border-radius:50px;font-size:0.82rem;font-weight:700;z-index:9999;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.35s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.25);opacity:0;}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+/* CENTER BOX MESSAGE (for long messages that must wrap inside the screen) */
+.mm-box{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.92);width:calc(100% - 48px);max-width:340px;max-height:70vh;overflow-y:auto;background:#1a1a2e;color:#fff;padding:18px 20px;border-radius:18px;font-size:0.88rem;font-weight:600;line-height:1.5;text-align:center;white-space:normal;word-wrap:break-word;overflow-wrap:anywhere;z-index:10000;box-shadow:0 10px 40px rgba(0,0,0,0.35);opacity:0;pointer-events:none;transition:opacity 0.25s,transform 0.25s;box-sizing:border-box;}
+.mm-box.show{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto;}
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:none;align-items:flex-end;justify-content:center;}
@@ -3388,6 +3391,15 @@ async function migrateFromLocalStorage(){
   }catch(err){console.error('Migration error:',err);}
 }
 function showToast(msg,dur=1800){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
+let _mmBoxTimer=null;
+function showBox(msg,dur=4000){
+  let b=document.getElementById('mmBox');
+  if(!b){b=document.createElement('div');b.id='mmBox';b.className='mm-box';b.setAttribute('role','alert');b.onclick=()=>b.classList.remove('show');document.body.appendChild(b);}
+  b.textContent=msg;
+  b.classList.add('show');
+  clearTimeout(_mmBoxTimer);
+  _mmBoxTimer=setTimeout(()=>b.classList.remove('show'),dur);
+}
 function showError(msg, isSuccess=false){
   const el=document.getElementById('authError');
   if(!el)return;
@@ -4719,7 +4731,7 @@ async function _voiceListenNative(btn,onText){
   try{
     let perm=await SP.checkPermissions();
     if(!perm||perm.speechRecognition!=='granted')perm=await SP.requestPermissions();
-    if(!perm||perm.speechRecognition!=='granted'){showToast('⚠️ Microphone permission is blocked. Allow it in phone Settings → Apps → Money Manager Pro → Permissions.');return;}
+    if(!perm||perm.speechRecognition!=='granted'){showBox('⚠️ Microphone permission is blocked. Allow it in phone Settings → Apps → Money Manager Pro → Permissions.',5000);return;}
     _voiceRec={stop:function(){try{SP.stop();}catch(e){}}};
     _voiceSetBtn(btn,true);
     const res=await SP.start({language:'en-IN',maxResults:1,partialResults:false,popup:false});
