@@ -18,23 +18,24 @@ table{border-collapse:collapse;width:100%;font-size:.92rem}td,th{border:1px soli
 footer{text-align:center;color:#666;font-size:.85rem;padding:24px 18px 40px}
 @media print{header{background:#0d2878!important;-webkit-print-color-adjust:exact}nav.toc{display:none}}
 </style></head><body>
-<header><h1>Money Manager Pro</h1><p>User Guide — track your money, bills, goals and investments</p></header>
+<header><h1>Money Manager Pro</h1><p>User Guide — track your money, bills, goals, EMIs and investments</p></header>
 <main>
 <nav class="toc"><b>Contents</b>
-<a href="#start">1. Getting started</a><a href="#menu">2. The main menu</a><a href="#home">3. Home: adding transactions</a><a href="#bills">4. Bills &amp; EMIs</a><a href="#budget">5. Budgets &amp; goals</a><a href="#pockets">6. Pockets &amp; Safe to Spend</a><a href="#invest">7. Investments &amp; Trading</a><a href="#reports">8. Reports</a><a href="#remind">9. Reminders &amp; alarms</a><a href="#backup">10. Backup, restore &amp; deleting data</a><a href="#premium">11. Premium</a><a href="#help">12. Troubleshooting</a><a href="#privacy">13. Privacy</a></nav>
+<a href="#start">1. Getting started</a><a href="#menu">2. The main menu</a><a href="#home">3. Home: adding transactions</a><a href="#bills">4. Bills &amp; EMIs</a><a href="#budget">5. Budgets &amp; goals</a><a href="#pockets">6. Pockets &amp; Safe to Spend</a><a href="#invest">7. Investments &amp; Trading</a><a href="#reports">8. Reports</a><a href="#remind">9. Reminders &amp; alarms</a><a href="#backup">10. Backup, restore &amp; deleting data</a><a href="#premium">11. Premium</a><a href="#help">12. Troubleshooting</a><a href="#privacy">13. Privacy</a><a href="#guide">14. In-app User Guide</a></nav>
 
 <h2 id="start">1. Getting started</h2>
 <ol>
-<li><b>Install</b> Money Manager Pro from Google Play and open it.</li>
-<li><b>Register</b> once with your name, phone, email, city, a username and a password or PIN. You then log in with your username.</li>
+<li><b>Install</b> Money Manager Pro from Google Play (or your APK) and open it.</li>
+<li><b>Register</b> once with your name, phone, email, city, a username and a password. You then log in with your username.</li>
 <li><b>Lock the app (optional):</b> open <b>More → Security</b> to set or change your PIN, and turn on fingerprint unlock if your phone supports it.</li>
 <li><b>Choose your currency:</b> <b>More → Currency</b>. You can add your own currency to the table.</li>
 </ol>
-<div class="tip">Your entries are stored on your phone and encrypted. JSON backups are files you save or share yourself (for example to Google Drive).</div>
+<div class="tip">On the Android app, your data is stored in the app’s private files on the phone (not in Chrome). Entries are encrypted. JSON backups are files <b>you</b> save or share (for example to Google Drive).</div>
+<div class="tip">The app is designed for <b>one user per phone</b>. Use <b>More → About</b> to see the app version and build number (same as the Play / APK build).</div>
 
 <h2 id="menu">2. The main menu</h2>
 <p>The bar at the bottom of the screen has seven items:</p>
-<div class="menu"><div><b>Home</b><br>Add and review daily transactions</div><div><b>Register</b><br>Pockets, Safe to Spend, insights, Capital Account</div><div><b>Loans</b><br>Loan report and ledger statement</div><div><b>Trading</b><br>Trading entries, performance, calculators</div><div><b>Invest</b><br>Investment purchase/sale entries</div><div><b>Reports</b><br>Summary, statement, tax and more</div><div><b>More</b><br>Settings, backup, bills, budgets, goals</div></div>
+<div class="menu"><div><b>Home</b><br>Add and review daily transactions</div><div><b>Register</b><br>Pockets, Safe to Spend, insights, Capital Account</div><div><b>Loans</b><br>Loan report and ledger statement</div><div><b>Trading</b><br>Trading entries, performance, calculators</div><div><b>Invest</b><br>Investment purchase/sale entries</div><div><b>Reports</b><br>Summary, statement, tax and more</div><div><b>More</b><br>Settings, backup, bills, budgets, goals, user guide</div></div>
 
 <h2 id="home">3. Home: adding transactions</h2>
 <h3>Smart Quick-Add (fastest)</h3>
@@ -57,10 +58,25 @@ footer{text-align:center;color:#666;font-size:.85rem;padding:24px 18px 40px}
 <ul><li>Tap <b>+ Add Bill</b>: name, amount, due day of the month and category.</li>
 <li>Tick <b>Phone alarm message</b> to get a notification on the due date even when the app is closed. Pick the alarm time and how many days before.</li>
 <li>When you pay, tap <b>✅ Pay</b>. <b>Only then</b> is an expense recorded. If you tap Unpaid, that expense is removed again.</li></ul>
-<h3>EMI / Loan Tracker</h3>
-<ul><li>Add an EMI with its name, monthly amount and number of months.</li>
-<li><b>Pay EMI</b> records the monthly expense and moves the progress forward.</li>
-<li><b>↩ Undo</b> cancels the last payment and removes the same expense.</li></ul>
+
+<h3>EMI / Loan Tracker (More → Savings Goals area, or Goals tab → EMI / Loan Tracker)</h3>
+<p>Use this to track a bank-style loan with a fixed monthly EMI (including long tenures such as 120 months).</p>
+<ul>
+<li><b>+ Add EMI / Loan</b> — enter loan name, <b>total principal</b>, <b>monthly EMI</b>, <b>number of months</b>, start date and <b>interest rate (% per year)</b>.</li>
+<li><b>Pay EMI</b> — records a matching expense under Bills and advances the paid count.</li>
+<li><b>↩ Undo</b> — cancels the last payment and removes that expense from Income &amp; Expense.</li>
+<li><b>📊 Schedule</b> — builds a full month-by-month amortization table (opening balance, EMI, principal, interest, closing balance) and opens the Android share sheet so you can <b>open or save it in Excel</b> (or Google Sheets / Drive) if installed.</li>
+<li><b>🗑️ Delete</b> — removes the loan from the tracker <b>only if no payments are linked</b>. If you have already paid EMIs, a message box explains that you must use <b>↩ Undo</b> (or delete those expenses on Home) first, so orphan entries do not stay in Income &amp; Expense.</li>
+</ul>
+<table>
+<tr><th>On the card</th><th>Meaning</th></tr>
+<tr><td>Monthly EMI</td><td>Your instalment amount</td></tr>
+<tr><td>Paid</td><td>Cash already paid (linked expenses)</td></tr>
+<tr><td><b>Remaining</b></td><td><b>Outstanding principal only</b> (same idea as a bank loan balance)</td></tr>
+</table>
+<div class="tip"><b>Remaining</b> follows banking practice: it is the principal still left after EMIs you have marked paid — not “principal + all future interest”. A short line under the card may show how much you would still pay if you continued every EMI to the end (principal left + future interest).</div>
+<div class="warn">Interest is calculated on a reducing-balance basis. If your EMI is higher than the pure formula amount, the loan may finish in fewer months than the tenure you entered; the schedule and Remaining figures follow the actual balance.</div>
+
 <h3>Subscriptions</h3>
 <p><b>Register → Subscriptions</b> tracks recurring charges and suggests ones you may want to cancel.</p>
 
@@ -113,8 +129,10 @@ footer{text-align:center;color:#666;font-size:.85rem;padding:24px 18px 40px}
 <table><tr><th>Button</th><th>What it does</th></tr>
 <tr><td>Backup now / Local Backup – JSON</td><td>Saves a backup file you can keep or share (Drive, Files, email, WhatsApp)</td></tr>
 <tr><td>Import JSON Backup</td><td>Restores from a backup file you choose</td></tr>
-<tr><td>Clear All Data</td><td>Erases your financial entries on this phone</td></tr>
-<tr><td>Delete My Account &amp; Data</td><td>Removes your registration profile from our server (when online) and erases everything on the phone. Type DELETE to confirm. JSON files you saved elsewhere are not deleted.</td></tr></table>
+<tr><td>Automatic Backup to JSON on login</td><td>Optional: creates a local JSON backup when you sign in</td></tr>
+<tr><td>Clear All Data</td><td>Erases financial entries on this phone (account login may remain)</td></tr>
+<tr><td>Delete My Account &amp; Data</td><td>Removes your registration profile from our server (when online) and erases everything on this phone, then returns you to Login / Register. Type <b>DELETE</b> in the confirmation box. JSON files you saved elsewhere are not deleted.</td></tr></table>
+<div class="tip">There is <b>no built-in cloud backup</b> of your financial data. After <b>Local Backup – JSON</b>, save or share the file to Google Drive, Files or email — that is your cloud copy under your control.</div>
 <div class="tip"><b>New phone?</b> On the old phone use Local Backup – JSON and save the file to Google Drive. Install the app on the new phone, register, then Import JSON Backup and pick that file. Bill photos are not part of backups.</div>
 <p>The <b>Activity log</b> (More) shows your last 50 important actions such as deletes, auto-splits, undo and backups. It stays on your phone.</p>
 
@@ -128,11 +146,17 @@ footer{text-align:center;color:#666;font-size:.85rem;padding:24px 18px 40px}
 <tr><td>Bill scan cannot read the bill</td><td>Use good light and keep the bill flat. Connect to the internet for the first scan. You can always type the details.</td></tr>
 <tr><td>Premium not showing after purchase</td><td>Tap Restore purchases and check you are on the same Google account.</td></tr>
 <tr><td>Numbers look wrong after restoring</td><td>Restore the same backup file again. Backups from before a feature existed will not contain data for that feature.</td></tr>
-<tr><td>Import backup does nothing</td><td>Pick a JSON file created by this app’s Local Backup. A damaged or wrong file will not load.</td></tr></table>
-<p>Your app version is shown at <b>More → About</b>. Please include it when you ask for help. You can reach the developer through <a href="https://github.com/ullasankv-tech/Moneymanagerpro/issues">GitHub</a>.</p>
+<tr><td>Import backup does nothing</td><td>Pick a JSON file created by this app’s Local Backup. A damaged or wrong file will not load.</td></tr>
+<tr><td>Cannot delete an EMI / loan</td><td>Use <b>↩ Undo</b> for each paid EMI (or delete those expenses on Home), then delete the loan. A message box explains this if payments are still linked.</td></tr>
+<tr><td>EMI Schedule does not open in Excel</td><td>In the share sheet choose Excel, Sheets or Drive. Install Microsoft Excel or Google Sheets if needed, then try <b>📊 Schedule</b> again.</td></tr>
+</table>
+<p>Your app version and build are shown at <b>More → About</b> and on the login screen when the app is ready. Please include them when you ask for help. You can reach the developer through <a href="https://github.com/ullasankv-tech/Moneymanagerpro/issues">GitHub</a>.</p>
 
 <h2 id="privacy">13. Privacy</h2>
-<p>Your financial entries are stored encrypted on your phone. You control any copy you export as JSON. The full policy is at <a href="privacy-policy.html">Privacy Policy</a>, and you can request deletion without the app at <a href="delete-account.html">Delete account</a>.</p>
+<p>Your financial entries are stored encrypted in the app’s private storage on your phone. You control any copy you export as JSON. Registration details may be stored so we can improve the app; financial cloud backup is not built in. The full policy is at <a href="privacy-policy.html">Privacy Policy</a>, and you can request deletion without the app at <a href="delete-account.html">Delete account</a>.</p>
+
+<h2 id="guide">14. In-app User Guide</h2>
+<p>Open <b>More → User Guide → Open user guide</b> to read this guide inside the app (no browser required).</p>
 </main>
 <footer>Money Manager Pro · Developed by Ullasan KV, Kerala, India</footer>
 </body></html>
