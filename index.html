@@ -1563,11 +1563,12 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;t
           <h3>🚀 Goal Auto-Boost</h3>
           <p style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;">Move surplus cash into savings goals with one tap. Visual progress updates instantly.</p>
           <div id="boostSurplusCard" style="background:linear-gradient(135deg,#e8f5e9,#e3f2fd);border-radius:14px;padding:14px;margin-bottom:14px;border:2px solid #a5d6a7;">
-            <div style="font-size:0.72rem;font-weight:700;color:#2e7d32;">Estimated surplus this month</div>
+            <div style="font-size:0.72rem;font-weight:700;color:#2e7d32;">Estimated free surplus this month</div>
             <div style="font-size:1.5rem;font-weight:900;color:#1565c0;" id="boostSurplusAmt">₹0</div>
+            <div style="font-size:0.68rem;color:#546e7a;margin-top:4px;line-height:1.35;" id="boostSurplusSub">Income − Expenses − Set aside</div>
           </div>
           <div id="boostGoalsList"></div>
-          <button onclick="renderGoalBoost()" style="width:100%;margin-top:10px;padding:11px;background:linear-gradient(135deg,#00b894,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">🔄 Refresh</button>
+          <button type="button" id="boostRefreshBtn" onclick="refreshGoalBoost()" style="width:100%;margin-top:10px;padding:11px;background:linear-gradient(135deg,#00b894,#4d96ff);border:none;border-radius:12px;color:#fff;font-weight:700;font-size:0.85rem;cursor:pointer;font-family:var(--font);">🔄 Refresh</button>
         </div>
       </div>
 
@@ -13241,48 +13242,96 @@ function renderAIInsights(){
 }
 
 // ── Goal Auto-Boost ──
-function renderGoalBoost(){
+/** Reload goals from storage, then paint Goal Boost (used by Refresh). */
+async function refreshGoalBoost(){
+  const btn=document.getElementById('boostRefreshBtn');
+  if(btn){ btn.disabled=true; btn.textContent='🔄 Refreshing…'; }
+  try{
+    if(currentUser && typeof dbGetAll==='function'){
+      try{
+        const all=await dbGetAll('goals');
+        const u=String(currentUser.username||'');
+        const mine=(all||[]).filter(r=>String(r&&r._user||'')===u);
+        const decoded=[];
+        for(const r of mine){
+          if(r&&r._enc){
+            try{ decoded.push(JSON.parse(await decryptData(r._enc))); }
+            catch(e){}
+          } else if(r) decoded.push(r);
+        }
+        goals=decoded;
+      }catch(e){ console.warn('refreshGoalBoost reload goals', e); }
+      try{
+        if(typeof mmLoadSetAsideLog==='function') await mmLoadSetAsideLog();
+      }catch(e){}
+    }
+    renderGoalBoost(true);
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='🔄 Refresh'; }
+  }
+}
+
+function renderGoalBoost(fromRefresh){
   const today=new Date();
   const mo=today.getMonth(), yr=today.getFullYear();
   const mt=opTxns().filter(t=>{const d=new Date(t.date);return d.getMonth()===mo&&d.getFullYear()===yr;});
-  const mInc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const mExp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const surplus=Math.max(0,mInc-mExp);
+  const mInc=mt.filter(t=>t.type==='income').reduce((s,t)=>s+(Number(t.amount)||0),0);
+  const mExp=mt.filter(t=>t.type==='expense').reduce((s,t)=>s+(Number(t.amount)||0),0);
+  // Free surplus this month = income − expenses − already set aside (pockets/goals)
+  let setAside=0;
+  try{
+    const key=(typeof qaLocalISO==='function')?qaLocalISO(today):(typeof localDateKey==='function'?localDateKey(today):'');
+    if(typeof mmSetAsideFor==='function' && key) setAside=Number(mmSetAsideFor(key))||0;
+  }catch(e){}
+  const surplus=Math.max(0, mInc-mExp-setAside);
   const el=document.getElementById('boostSurplusAmt');
-  if(el) el.textContent=fmt(surplus);
+  if(el){
+    el.textContent=fmt(surplus);
+    // Brief highlight so Refresh is visibly effective
+    el.style.transition='transform 0.2s ease';
+    el.style.transform='scale(1.06)';
+    setTimeout(()=>{ try{ el.style.transform=''; }catch(e){} }, 220);
+  }
+  const sub=document.getElementById('boostSurplusSub');
+  if(sub){
+    sub.textContent='Income '+fmt(mInc)+' − Expenses '+fmt(mExp)+(setAside?(' − Set aside '+fmt(setAside)):'');
+  }
 
   const list=document.getElementById('boostGoalsList');
   if(!list) return;
-  const gList=(typeof goals!=='undefined'?goals:[]);
+  const gList=(typeof goals!=='undefined'&&Array.isArray(goals))?goals:[];
   if(!gList.length){
-    list.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.82rem;">No savings goals yet.<br>Create goals in the Goals section first, then boost them here.</div>';
+    list.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:0.82rem;">No savings goals yet.<br>Create goals in <b>More → Savings Goals</b> first, then refresh here.</div>';
+    if(fromRefresh) showToast('🔄 Refreshed · Surplus '+fmt(surplus)+' · No goals yet', 2800);
     return;
   }
   list.innerHTML=gList.map(g=>{
-    const pct=g.target>0?Math.min(100,Math.round((g.saved/g.target)*100)):0;
+    const pct=g.target>0?Math.min(100,Math.round(((g.saved||0)/g.target)*100)):0;
     return `<div class="pocket-card">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div style="font-weight:800;">🎯 ${g.name}</div>
-        <button onclick="boostGoal(${g.id})" style="padding:6px 12px;background:linear-gradient(135deg,#00b894,#4d96ff);border:none;border-radius:10px;color:#fff;font-size:0.72rem;font-weight:700;cursor:pointer;">Boost →</button>
+        <button type="button" onclick="boostGoal(${g.id})" style="padding:6px 12px;background:linear-gradient(135deg,#00b894,#4d96ff);border:none;border-radius:10px;color:#fff;font-size:0.72rem;font-weight:700;cursor:pointer;">Boost →</button>
       </div>
-      <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">${fmt(g.saved)} / ${fmt(g.target)}</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">${fmt(g.saved||0)} / ${fmt(g.target)}</div>
       <div class="pocket-bar"><div class="pocket-fill" style="width:${pct}%;background:#cc5de8;"></div></div>
     </div>`;
   }).join('');
+  if(fromRefresh) showToast('🔄 Refreshed · Surplus '+fmt(surplus)+' · '+gList.length+' goal(s)', 2500);
 }
 async function boostGoal(id){
-  const g=(typeof goals!=='undefined'?goals:[]).find(x=>x.id===id);
-  if(!g){ showToast('⚠️ Goal not found'); return; }
-  const maxLeft=Math.max(0,g.target-g.saved);
+  const g=(typeof goals!=='undefined'?goals:[]).find(x=>x.id===id || String(x.id)===String(id));
+  if(!g){ showToast('⚠️ Goal not found — tap Refresh'); return; }
+  const maxLeft=Math.max(0,(g.target||0)-(g.saved||0));
+  if(maxLeft<=0){ showToast('This goal is already fully funded'); return; }
   const defaultAmt=Math.min(maxLeft, 500);
   const amt=parseFloat(prompt('Amount to add to "'+g.name+'" (₹)', String(defaultAmt)))||0;
   if(amt<=0) return;
   const _before=g.saved||0;
   g.saved=Math.min(g.target, (g.saved||0)+amt);
-  mmLogSetAside('goal',g.id,g.name,g.saved-_before);
+  try{ mmLogSetAside('goal',g.id,g.name,g.saved-_before); }catch(e){}
   if(typeof saveData==='function') await saveData();
   if(typeof renderGoals==='function') renderGoals();
-  renderGoalBoost();
+  renderGoalBoost(false);
   showToast('🚀 Boosted '+g.name+' by '+fmt(amt));
 }
 
