@@ -2610,8 +2610,8 @@ function applyCurrencyUI(){
 
 // ═══════════════════════════════════════
 // DATABASE STORAGE
-// Android (Capacitor): private app directory  →  DATA/mmp_db/*.json  (NOT Chrome)
-// Browser / PWA:        IndexedDB             →  MoneyManagerProDB
+// Capacitor APK: private app directory ONLY → DATA/mmp_db/*.json (no Chrome / IndexedDB)
+// Browser HTML preview only: IndexedDB (not used by APK users)
 // Tables: transactions | loans | goals | emis | recurring | investments | settings | users | categories
 // ═══════════════════════════════════════
 const DB_NAME='MoneyManagerProDB', DB_VERSION=3;
@@ -2634,8 +2634,8 @@ function mmStorageIsNativeFS(){
   }catch(e){ return false; }
 }
 function mmStorageLabel(){
-  if(_fsMode||_storageBackend==='native-fs') return 'Android app directory (DATA/mmp_db) — separate from Chrome';
-  if(_storageBackend==='indexeddb'||db) return 'Browser IndexedDB (Chrome / WebView profile)';
+  if(_fsMode||_storageBackend==='native-fs') return 'Android app files only (DATA/mmp_db) — not Chrome';
+  if(_storageBackend==='indexeddb'||db) return 'Browser only (dev / HTML preview)';
   return 'Not available';
 }
 
@@ -2760,14 +2760,27 @@ async function _fsMigrateFromIndexedDB(){
     }
     if(any){
       await _fsFlushAll();
-      console.log('✅ Migrated IndexedDB data → Android app directory (mmp_db)');
+      console.log('✅ Migrated old IndexedDB data → Android app directory (mmp_db)');
     }
     try{ idb.close(); }catch(e){}
   }catch(e){ console.warn('Native migrate skipped:', e&&e.message); }
 }
 
+/** After APK uses file DB only, drop the old WebView IndexedDB so Chrome path is not used again. */
+function _fsDeleteIndexedDBDatabase(){
+  return new Promise((resolve)=>{
+    try{
+      if(typeof indexedDB==='undefined'||!indexedDB.deleteDatabase){ resolve(); return; }
+      const req=indexedDB.deleteDatabase(DB_NAME);
+      req.onsuccess=()=>{ console.log('✅ Old IndexedDB removed — APK uses app files only'); resolve(); };
+      req.onerror=()=>resolve();
+      req.onblocked=()=>resolve();
+    }catch(e){ resolve(); }
+  });
+}
+
 function initDB(){
-  // Android Capacitor: use private app DATA directory (not Chrome / WebView IndexedDB)
+  // Capacitor APK: native app directory ONLY — no Chrome / IndexedDB fallback
   if(mmStorageIsNativeFS()){
     return (async()=>{
       try{
@@ -2776,16 +2789,22 @@ function initDB(){
         _storageBackend='native-fs';
         // Dummy truthy db handle so existing `if(!db)` checks pass
         db={_native:true, close(){}, onclose:null, onerror:null};
+        // One-time pull of any older APK data that still lived in IndexedDB
         await _fsMigrateFromIndexedDB();
-        console.log('✅ Native file DB ready → DATA/'+MM_FS_DIR+'/ (separate from Chrome)');
+        try{ await _fsDeleteIndexedDBDatabase(); }catch(e){}
+        console.log('✅ Native-only file DB ready → DATA/'+MM_FS_DIR+'/');
         return db;
       }catch(e){
-        console.error('Native file DB failed, falling back to IndexedDB:', e);
+        console.error('Native file DB failed (no IndexedDB fallback on APK):', e);
         _fsMode=false;
-        return _initIndexedDB();
+        _storageBackend='none';
+        db=null;
+        try{ showToast('⚠️ App storage unavailable. Please reinstall the app.', 5000); }catch(e2){}
+        return null;
       }
     })();
   }
+  // HTML opened in a browser only (not shipped to APK users)
   return _initIndexedDB();
 }
 
