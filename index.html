@@ -3132,6 +3132,7 @@ async function loadData(){
     }
     transactions  = await decryptStore('transactions');
     loans         = await decryptStore('loans');
+    try{ if(typeof normalizeAllLoans==='function') normalizeAllLoans(); }catch(e){}
     goals         = await decryptStore('goals');
     emis          = await decryptStore('emis');
     recurringTxns = await decryptStore('recurring');
@@ -9101,14 +9102,37 @@ function renderAll(){renderHome();renderMiniChart();checkBudgetAlert();renderHea
 // ═══════════════════════════════════════
 let loanFilter='all', loanModalType='given';
 
+/** Ensure loan objects always have fields the UI expects (avoids blank "Borrowed" cards). */
+function normalizeLoan(l){
+  if(!l||typeof l!=='object') return null;
+  if(!Array.isArray(l.repayments)) l.repayments=[];
+  if(l.status!=='closed' && l.status!=='active') l.status='active';
+  // Accept common aliases if ever stored differently
+  if(l.type==='borrow'||l.type==='borrowed') l.type='taken';
+  if(l.type==='lend'||l.type==='lent') l.type='given';
+  if(l.type!=='taken' && l.type!=='given') l.type='given';
+  l.amount=Number(l.amount)||0;
+  l.rate=Number(l.rate)||0;
+  l.person=String(l.person||'').trim()||'Unknown';
+  return l;
+}
+function normalizeAllLoans(){
+  loans=(Array.isArray(loans)?loans:[]).map(normalizeLoan).filter(Boolean);
+}
+
 function setLoanModalType(type){
-  loanModalType=type;
-  document.getElementById('loanGivenBtn').classList.toggle('active',type==='given');
-  document.getElementById('loanTakenBtn').classList.toggle('active',type==='taken');
-  document.getElementById('loanPersonLabel').textContent=type==='given'?'Person Name (Borrower)':'Person Name (Lender)';
+  loanModalType=(type==='taken')?'taken':'given';
+  try{
+    document.getElementById('loanGivenBtn').classList.toggle('active',loanModalType==='given');
+    document.getElementById('loanTakenBtn').classList.toggle('active',loanModalType==='taken');
+    document.getElementById('loanPersonLabel').textContent=loanModalType==='given'?'Person Name (Borrower)':'Person Name (Lender)';
+  }catch(e){}
 }
 function openLoanModal(){
-  document.getElementById('loanDate').value=new Date().toISOString().split('T')[0];
+  try{
+    const d=document.getElementById('loanDate');
+    if(d) d.value=new Date().toISOString().split('T')[0];
+  }catch(e){}
   openModal('loanModal');
 }
 // ── Loan borrowed → Income side ──
@@ -9128,7 +9152,7 @@ function syncLoanBorrowTxn(loan){
   transactions.unshift({id:Date.now()+2,type:'income',amount:loan.amount,category:'Loan Received',date:loan.date,note:'Loan taken from '+loan.person+(loan.note?' — '+loan.note:''),createdAt:Date.now(),loanId:loan.id,loanBorrow:true});
 }
 function hasLoanBorrowTxn(loan){return transactions.some(t=>t.loanBorrow&&t.loanId===loan.id);}
-function addLoan(){
+async function addLoan(){
   const person=document.getElementById('loanPerson').value.trim();
   const amount=parseFloat(document.getElementById('loanAmount').value);
   const rate=parseFloat(document.getElementById('loanRate').value)||0;
@@ -9138,25 +9162,51 @@ function addLoan(){
   if(!person){showToast('⚠️ Enter person name!');return;}
   if(!amount||amount<=0){showToast('⚠️ Enter valid amount!');return;}
   if(!date){showToast('⚠️ Select loan date!');return;}
-  const newLoan={id:Date.now(),type:loanModalType,person,amount,rate,date,due,note,repayments:[],status:'active'};
+  // Prefer live type from UI buttons (more reliable than a stale variable)
+  let type=loanModalType;
+  try{
+    const takenBtn=document.getElementById('loanTakenBtn');
+    if(takenBtn && takenBtn.classList.contains('active')) type='taken';
+    else if(document.getElementById('loanGivenBtn')?.classList.contains('active')) type='given';
+  }catch(e){}
+  type=(type==='taken')?'taken':'given';
+  loanModalType=type;
+  const newLoan=normalizeLoan({id:Date.now(),type,person,amount,rate,date,due,note,repayments:[],status:'active'});
+  if(!Array.isArray(loans)) loans=[];
   loans.push(newLoan);
   syncLoanBorrowTxn(newLoan);
-  saveData();closeModal('loanModal');renderLoans();renderLoanReport();checkLoanOverdue();renderAll();
-  ['loanPerson','loanAmount','loanNote','loanDue'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('loanRate').value='0';
-  showToast(loanModalType==='given'?'💙 Loan entry added!':'🧡 Borrowed entry added & shown as income!');
+  try{ await saveData(); }catch(e){ console.warn('addLoan save', e); }
+  closeModal('loanModal');
+  try{ showTab('loans', false); }catch(e){}
+  renderLoans();
+  renderLoanReport();
+  checkLoanOverdue();
+  try{ renderAll(); }catch(e){}
+  ['loanPerson','loanAmount','loanNote','loanDue'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const rateEl=document.getElementById('loanRate'); if(rateEl) rateEl.value='0';
+  // Scroll borrowed section into view when relevant
+  try{
+    if(type==='taken'){
+      const box=document.getElementById('loanTakenCards');
+      if(box) box.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+  }catch(e){}
+  showToast(type==='given'?'💙 Loan entry added!':'🧡 Borrowed entry added — see Money I Borrowed below');
 }
 function setLoanFilter(f){loanFilter=f;renderLoans();}
 function calcInterest(loan){
-  if(!loan.rate||loan.rate===0)return 0;
+  if(!loan||!loan.rate||loan.rate===0)return 0;
   const start=new Date(loan.date);
+  if(isNaN(start.getTime())) return 0;
   const years=(new Date()-start)/(1000*60*60*24*365);
-  return Math.round(loan.amount*loan.rate*years/100);
+  return Math.round((Number(loan.amount)||0)*loan.rate*Math.max(0,years)/100);
 }
 function getLoanOutstanding(loan){
-  const totalRepaid=loan.repayments.reduce((s,r)=>s+r.amount,0);
+  if(!loan) return 0;
+  const reps=Array.isArray(loan.repayments)?loan.repayments:[];
+  const totalRepaid=reps.reduce((s,r)=>s+(Number(r.amount)||0),0);
   const interest=calcInterest(loan);
-  return Math.max(0,(loan.amount+interest)-totalRepaid);
+  return Math.max(0,((Number(loan.amount)||0)+interest)-totalRepaid);
 }
 function isOverdue(loan){
   if(loan.status==='closed'||!loan.due)return false;
@@ -9172,24 +9222,29 @@ function checkLoanOverdue(){
   }else{alertBox.classList.remove('show');}
 }
 function renderLoans(){
+  try{ normalizeAllLoans(); }catch(e){}
   const givenLoans=loans.filter(l=>l.type==='given');
   const takenLoans=loans.filter(l=>l.type==='taken');
-  const totalGiven=givenLoans.reduce((s,l)=>s+l.amount,0);
-  const totalTaken=takenLoans.reduce((s,l)=>s+l.amount,0);
+  const totalGiven=givenLoans.reduce((s,l)=>s+(Number(l.amount)||0),0);
+  const totalTaken=takenLoans.reduce((s,l)=>s+(Number(l.amount)||0),0);
   const pendingGiven=givenLoans.filter(l=>l.status==='active').reduce((s,l)=>s+getLoanOutstanding(l),0);
   const pendingTaken=takenLoans.filter(l=>l.status==='active').reduce((s,l)=>s+getLoanOutstanding(l),0);
-  document.getElementById('totalGiven').textContent=fmt(totalGiven);
-  document.getElementById('totalTaken').textContent=fmt(totalTaken);
-  document.getElementById('totalGivenPending').textContent=fmt(pendingGiven)+' pending';
-  document.getElementById('totalTakenPending').textContent=fmt(pendingTaken)+' pending';
+  try{
+    const tg=document.getElementById('totalGiven'); if(tg) tg.textContent=fmt(totalGiven);
+    const tt=document.getElementById('totalTaken'); if(tt) tt.textContent=fmt(totalTaken);
+    const tgp=document.getElementById('totalGivenPending'); if(tgp) tgp.textContent=fmt(pendingGiven)+' pending';
+    const ttp=document.getElementById('totalTakenPending'); if(ttp) ttp.textContent=fmt(pendingTaken)+' pending';
+  }catch(e){}
   renderLoanCards('given');
   renderLoanCards('taken');
 }
 
 function renderLoanCards(type){
+  try{ normalizeAllLoans(); }catch(e){}
   const list=loans.filter(l=>l.type===type&&l.status!=='closed'); // closed/paid loans live in History
   const cid=type==='given'?'loanGivenCards':'loanTakenCards';
   const el=document.getElementById(cid);
+  if(!el){ console.warn('Missing loan cards container', cid); return; }
   const isGiven=type==='given';
   const accent=isGiven?'#1565c0':'#e65100';
   const accentLight=isGiven?'#e3f2fd':'#fff3e0';
@@ -9198,15 +9253,16 @@ function renderLoanCards(type){
     el.innerHTML=`<div style="text-align:center;padding:20px 16px;background:var(--surface);border-radius:14px;border:2px dashed var(--border);">
       <div style="font-size:2rem;margin-bottom:6px;">${isGiven?'💙':'🧡'}</div>
       <div style="font-size:0.82rem;font-weight:600;color:var(--muted);">${isGiven?'No active loans given':'No active loans borrowed'}</div>
-      <div style="font-size:0.74rem;color:var(--muted);margin-top:4px;">Tap <strong>+ Add New Loan</strong> above</div>
+      <div style="font-size:0.74rem;color:var(--muted);margin-top:4px;">Tap <strong>+ Add New Loan</strong> above · choose <strong>${isGiven?'I Lent Money':'I Borrowed'}</strong></div>
     </div>`;
     return;
   }
 
   el.innerHTML=list.map(loan=>{
-    const totalRepaid=loan.repayments.reduce((s,r)=>s+r.amount,0);
+    const reps=Array.isArray(loan.repayments)?loan.repayments:[];
+    const totalRepaid=reps.reduce((s,r)=>s+(Number(r.amount)||0),0);
     const interest=calcInterest(loan);
-    const totalDue=loan.amount+interest;
+    const totalDue=(Number(loan.amount)||0)+interest;
     const outstanding=Math.max(0,totalDue-totalRepaid);
     const pct=Math.min(100,Math.round(totalDue>0?(totalRepaid/totalDue)*100:0));
     const overdue=isOverdue(loan);
@@ -9214,7 +9270,7 @@ function renderLoanCards(type){
     const statusBg=loan.status==='closed'?'#e8f5e9':overdue?'#ffebee':'#e3f2fd';
     const statusCol=loan.status==='closed'?'#2e7d32':overdue?'#c62828':'#1565c0';
     const dueLabel=loan.due?new Date(loan.due+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'No due date';
-    const startLabel=new Date(loan.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    const startLabel=loan.date?new Date(loan.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—';
     const barColor=loan.status==='closed'?'#aaa':isGiven?'#1565c0':'#e65100';
 
     return`<div onclick="openLoanDetail(${loan.id})" style="background:var(--surface);border-radius:16px;padding:16px;margin-bottom:10px;border:2px solid ${loan.status==='closed'?'var(--border)':overdue?'#ffcdd2':accentLight};box-shadow:0 2px 10px rgba(0,0,0,0.06);cursor:pointer;transition:all 0.2s;active:scale(0.98);">
@@ -9251,17 +9307,18 @@ function renderLoanCards(type){
           <div style="height:100%;width:${pct}%;background:${barColor};border-radius:10px;"></div>
         </div>
         <span style="font-size:0.7rem;font-weight:700;color:var(--muted);">${pct}%</span>
-        <span style="font-size:0.68rem;color:var(--muted);">${loan.repayments.length} payment${loan.repayments.length!==1?'s':''}</span>
+        <span style="font-size:0.68rem;color:var(--muted);">${(loan.repayments||[]).length} payment${(loan.repayments||[]).length!==1?'s':''}</span>
       </div>
     </div>`;
   }).join('');
 }
 
 function openLoanDetail(id){
-  const loan=loans.find(l=>l.id===id);if(!loan)return;
+  const loan=loans.find(l=>l.id===id||String(l.id)===String(id));if(!loan)return;
+  normalizeLoan(loan);
   const interest=calcInterest(loan);
-  const totalDue=loan.amount+interest;
-  const totalRepaid=loan.repayments.reduce((s,r)=>s+r.amount,0);
+  const totalDue=(Number(loan.amount)||0)+interest;
+  const totalRepaid=(loan.repayments||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);
   const outstanding=Math.max(0,totalDue-totalRepaid);
   const overdue=isOverdue(loan);
   const isGiven=loan.type==='given';
@@ -9537,11 +9594,12 @@ function deleteLoan(id){
   saveData();renderLoans();renderLoanReport();checkLoanOverdue();renderAll();showToast('🗑️ Deleted!');
 }
 function openLoanStatement(id){
-  const loan=loans.find(l=>l.id===id);if(!loan)return;
+  const loan=loans.find(l=>l.id===id||String(l.id)===String(id));if(!loan)return;
+  normalizeLoan(loan);
   _loanStmtId=id;
   const interest=calcInterest(loan);
-  const totalDue=loan.amount+interest;
-  const totalRepaid=loan.repayments.reduce((s,r)=>s+r.amount,0);
+  const totalDue=(Number(loan.amount)||0)+interest;
+  const totalRepaid=(loan.repayments||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);
   const outstanding=Math.max(0,totalDue-totalRepaid);
   const pct=Math.min(100,Math.round(totalDue>0?(totalRepaid/totalDue)*100:0));
   const startLabel=new Date(loan.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
